@@ -1,2 +1,4 @@
 {
+    "terminal.integrated.fontSize": 18,
+    "terminal.integrated.fontFamily": "'Fira Code'",
 }

@@ -1,7 +1,0 @@
-print("hello-world1111")
-print("hello-world11111")
-print("hello-world11112")
-print("hello-world11113")
-print("hello-world11114")
-print("hello-world11115")
-print("hello-world11116")
