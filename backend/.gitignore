@@ -7,3 +7,4 @@ htmlcov
 .cache
 .venv
 backend/.venv
+app/alembic/versions/*
