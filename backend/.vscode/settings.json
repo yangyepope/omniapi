@@ -1,4 +1,6 @@
 {
-    "terminal.integrated.fontSize": 18,
+    "terminal.integrated.fontSize": 16,
     "terminal.integrated.fontFamily": "'Fira Code'",
+    "editor.fontFamily": "Fira Code Retina",
+    "editor.fontSize": 16,
 }

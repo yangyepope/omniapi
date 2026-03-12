@@ -59,19 +59,16 @@ services:
     restart: "no"
     ports:
       - "8000:8000"
-      - "5678:5678"  # 开放调试端口
     build:
       context: .
       dockerfile: backend/Dockerfile
     # command: sleep infinity  # Infinite loop to keep container alive doing nothing
-    command: >
-      bash -c "python3 -m venv /app/.venv --clear && 
-      /app/.venv/bin/pip install 'urllib3<2.0' 'charset-normalizer<4' 'chardet<6' &&
-      /app/.venv/bin/pip install --upgrade pip && 
-      /app/.venv/bin/pip install debugpy sentry-sdk fastapi[all] uvicorn[standard] sqlalchemy sqlmodel pydantic-settings loguru httpx emails email-validator jinja2 pwdlib[argon2] python-jose[cryptography] PyJWT python-multipart alembic bcrypt psycopg[binary] requests python-dotenv starlette-core greenlet && 
-      /app/.venv/bin/pip uninstall -y typing && 
-      /app/.venv/bin/python -m debugpy --listen 0.0.0.0:5678 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
-    develop:  
+    command:
+      - fastapi
+      - run
+      - --reload
+      - "app/main.py"
+    develop:
       watch:
         - path: ./backend
           action: sync
@@ -84,8 +81,6 @@ services:
     # TODO: remove once coverage is done locally
     volumes:
       - ./backend/htmlcov:/app/backend/htmlcov
-      - ./backend:/app/backend           # 同步后端代码
-      - ./.venv:/app/.venv               # ！！！关键：把宿主机根目录的环境投影进去
     environment:
       SMTP_HOST: "mailcatcher"
       SMTP_PORT: "1025"

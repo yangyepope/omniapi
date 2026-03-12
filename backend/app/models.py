@@ -54,6 +54,7 @@ class User(UserBase, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore
     )
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+    api_keys: list["ApiKey"] = Relationship(back_populates="user", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
@@ -127,3 +128,65 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# API Key Models
+import uuid
+from datetime import datetime
+from sqlmodel import Field, Relationship, SQLModel, DateTime
+from typing import Optional, List
+
+# --- 基类：定义共同字段 ---
+class ApiKeyBase(SQLModel):
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=500) # 👈 新增：备注
+    is_active: bool = True
+    rate_limit: int = Field(default=100) # 👈 新增：每分钟限流次数
+
+# --- 创建用：用户提交时填什么 ---
+class ApiKeyCreate(ApiKeyBase):
+    pass
+
+# --- 更新用：用户修改时能改什么 ---
+class ApiKeyUpdate(ApiKeyBase):
+    is_active: bool | None = None
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+    rate_limit: int | None = None
+
+# --- 数据库模型：真正的表结构 ---
+class ApiKey(ApiKeyBase, table=True):
+    __tablename__ = "apikey"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    key: str = Field(unique=True, index=True, max_length=64)
+    
+    # 统计类字段（不需要用户填，数据库自维护）
+    total_calls: int = Field(default=0) # 👈 新增：总调用次数
+    last_used_at: datetime | None = Field(
+        default=None, 
+        sa_type=DateTime(timezone=True)
+    ) # 👈 新增：最后使用时间
+    
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+    
+    # 关联关系
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
+    user: User | None = Relationship(back_populates="api_keys")
+
+# --- 输出用：API 返回给前端展示什么 ---
+class ApiKeyPublic(ApiKeyBase):
+    id: uuid.UUID
+    key: str
+    total_calls: int # 👈 展示给客户看他跑了多少流量
+    last_used_at: datetime | None = None
+    created_at: datetime | None = None
+    user_id: uuid.UUID
+
+class ApiKeysPublic(SQLModel):
+    data: list[ApiKeyPublic]
+    count: int

@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
 
+    TIKHUB_API_URL: str = "https://api.tikhub.io/api/v1/douyin/app/v3/fetch_one_video_by_share_url"
+    TIKHUB_API_TOKEN: str = "your_default_token_here_or_load_from_env"
+    SUPPORT_CONTACT: str = "寻求技术支持请关注 13076908699"
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
