@@ -85,7 +85,6 @@ services:
     volumes:
       - ./backend/htmlcov:/app/backend/htmlcov
       - ./backend:/app/backend           # 同步后端代码
-      - ./.venv:/app/.venv               # ！！！关键：把宿主机根目录的环境投影进去
     environment:
       SMTP_HOST: "mailcatcher"
       SMTP_PORT: "1025"

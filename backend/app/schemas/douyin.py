@@ -1,5 +1,7 @@
 from typing import Any
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 
 class VideoRequest(BaseModel):
     link: str = Field(..., description="Douyin share link")
@@ -37,7 +39,7 @@ class TikhubRawResponse(BaseModel):
     def aweme_detail(self) -> AwemeDetail | None:
         if not self.data:
             return None
-        
+
         detail_data = self.data.get("aweme_detail")
         if detail_data:
             return AwemeDetail(**detail_data)

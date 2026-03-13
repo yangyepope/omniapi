@@ -1,10 +1,13 @@
 import sys
+
 from loguru import logger
+
 from app.core.config import settings
+
 
 def setup_logger():
     logger.remove()  # Remove default handler
-    
+
     # Custom format
     # Time | Level | File:Line | Message
     log_format = (
@@ -13,7 +16,7 @@ def setup_logger():
         "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
         "<level>{message}</level>"
     )
-    
+
     # Add console handler
     logger.add(
         sys.stderr,
@@ -22,7 +25,7 @@ def setup_logger():
         enqueue=True,
         colorize=True
     )
-    
+
     # Optional: Add file handler for persistence
     # logger.add(
     #     "logs/app.log",

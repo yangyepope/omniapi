@@ -1,7 +1,9 @@
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from fastapi.testclient import TestClient
+
 from app.core.config import settings
-from app.schemas.douyin import VideoResponse
+
 
 def test_fetch_video_success(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
     mock_response_data = {
@@ -37,7 +39,7 @@ def test_fetch_video_success(client: TestClient, normal_user_token_headers: dict
     # Patch get_client in the service module
     with patch("app.services.douyin_service.get_client", new_callable=AsyncMock) as mock_get_client:
         mock_get_client.return_value = mock_client_instance
-        
+
         # Ensure TIKHUB_API_TOKEN is set for test
         with patch("app.core.config.settings.TIKHUB_API_TOKEN", "test_server_token"):
             response = client.post(
@@ -45,7 +47,7 @@ def test_fetch_video_success(client: TestClient, normal_user_token_headers: dict
                 headers=normal_user_token_headers,
                 json={"link": "http://douyin.com/video/123"}
             )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["data"]["title"] == "Test Video"
@@ -61,7 +63,7 @@ def test_fetch_video_missing_params(client: TestClient, normal_user_token_header
         headers=normal_user_token_headers,
         json={"link": ""}
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "视频链接不能为空" in data["message"]
@@ -81,7 +83,7 @@ def test_fetch_video_with_api_key(client: TestClient, normal_user_token_headers:
         json={"name": "Douyin Test Key"}
     )
     api_key = key_resp.json()["key"]
-    
+
     # 2. Use API Key to fetch video
     mock_response_data = {
         "code": 200,
@@ -117,7 +119,7 @@ def test_fetch_video_with_api_key(client: TestClient, normal_user_token_headers:
                 headers=headers,
                 json={"link": "http://douyin.com/video/apikey"}
             )
-            
+
     assert response.status_code == 200
     data = response.json()
     assert data["data"]["title"] == "API Key Video"

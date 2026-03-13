@@ -6,11 +6,10 @@ from app.core.config import settings
 from app.core.http_client import get_client
 from app.core.logger import logger
 from app.schemas.douyin import (
-    VideoRequest,
-    VideoResponse,
-    VideoData,
-    TikhubRawResponse,
     Statistics,
+    TikhubRawResponse,
+    VideoData,
+    VideoResponse,
 )
 
 
@@ -41,7 +40,7 @@ async def fetch_video_data(link: str) -> VideoResponse:
     """
     try:
         api_token = settings.TIKHUB_API_TOKEN
-        
+
         logger.info(f"【前置校验】link: {link}, using system api_token")
         if not link:
             logger.error("【前置校验失败】link为空")
@@ -58,13 +57,13 @@ async def fetch_video_data(link: str) -> VideoResponse:
         url = settings.TIKHUB_API_URL
         headers = {"accept": "application/json", "Authorization": f"Bearer {api_token}"}
         params = {"share_url": share_url}
-        
+
         logger.info(f"【即将发起请求】URL: {url}")
         logger.info("【请求中】已发送请求，等待响应")
-        
+
         client = await get_client()
         response = await client.get(url, headers=headers, params=params, timeout=30.0)
-        
+
         logger.info(f"【请求完成】响应状态码: {response.status_code}")
 
         if response.status_code != 200:
@@ -81,7 +80,7 @@ async def fetch_video_data(link: str) -> VideoResponse:
         # raw_resp = TikhubRawResponse(**payload)
         # Manually validate to avoid double expansion if payload is nested strangely or has extra fields
         raw_resp = TikhubRawResponse.model_validate(payload)
-        
+
         # Check API specific error codes
         if raw_resp.code not in (None, 0, 200):
              msg = raw_resp.msg or "API Error"
@@ -95,14 +94,14 @@ async def fetch_video_data(link: str) -> VideoResponse:
 
         # Extract fields using safer navigation
         aweme_detail = data_root.get("aweme_detail", {})
-        
+
         # Helper to safely extract nested
         def get_safe(root, path):
              return _get_nested(root, path)
 
         create_time_raw = (
-            aweme_detail.get("create_time") or 
-            data_root.get("create_time") or 
+            aweme_detail.get("create_time") or
+            data_root.get("create_time") or
             data_root.get("create_time_str")
         )
 
@@ -113,7 +112,7 @@ async def fetch_video_data(link: str) -> VideoResponse:
             get_safe(aweme_detail, ["video", "play_addr_h264", "url_list", 0]) or
             get_safe(aweme_detail, ["video", "play_addr", "url_list", 0])
         )
-        
+
         cover_url = get_safe(aweme_detail, ["author", "cover_url", 0, "url_list", 0])
         audio_url = get_safe(aweme_detail, ["music", "play_url", "url_list", 0])
         desc = aweme_detail.get("desc") or data_root.get("desc") or data_root.get("description")
@@ -136,7 +135,7 @@ async def fetch_video_data(link: str) -> VideoResponse:
              return VideoResponse(message="链接可能无效或已过期，视频可能已失效或下架")
 
         return VideoResponse(
-            data=result_data, 
+            data=result_data,
             message=settings.SUPPORT_CONTACT
         )
 

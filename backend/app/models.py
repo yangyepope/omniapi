@@ -131,10 +131,7 @@ class NewPassword(SQLModel):
 
 
 # API Key Models
-import uuid
-from datetime import datetime
-from sqlmodel import Field, Relationship, SQLModel, DateTime
-from typing import Optional, List
+
 
 # --- 基类：定义共同字段 ---
 class ApiKeyBase(SQLModel):
@@ -159,19 +156,18 @@ class ApiKey(ApiKeyBase, table=True):
     __tablename__ = "apikey"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     key: str = Field(unique=True, index=True, max_length=64)
-    
+
     # 统计类字段（不需要用户填，数据库自维护）
     total_calls: int = Field(default=0) # 👈 新增：总调用次数
     last_used_at: datetime | None = Field(
-        default=None, 
+        default=None,
         sa_type=DateTime(timezone=True)
     ) # 👈 新增：最后使用时间
-    
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),
     )
-    
+
     # 关联关系
     user_id: uuid.UUID = Field(
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
@@ -190,3 +186,4 @@ class ApiKeyPublic(ApiKeyBase):
 class ApiKeysPublic(SQLModel):
     data: list[ApiKeyPublic]
     count: int
+

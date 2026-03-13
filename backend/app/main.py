@@ -1,19 +1,20 @@
-import sentry_sdk
 from contextlib import asynccontextmanager
+
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
 from app.core.config import settings
-from app.core.http_client import get_client, close_client
+from app.core.http_client import close_client, get_client
 from app.core.logger import setup_logger
 
 # Initialize custom logger
 setup_logger()
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     # Initialize HTTP client
     await get_client()
     yield

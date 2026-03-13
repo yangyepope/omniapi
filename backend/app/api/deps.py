@@ -3,18 +3,19 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+    OAuth2PasswordBearer,
+)
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User, ApiKey
-from app.schemas.douyin import VideoRequest
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlmodel import select
+from app.models import ApiKey, TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -70,11 +71,11 @@ def get_current_user_or_apikey(
     Get user from either OAuth2 JWT token or API Key.
     """
     token = token_oauth
-    
+
     # If not from OAuth2, try Bearer scheme
     if not token and token_bearer:
         token = token_bearer.credentials
-        
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -93,17 +94,17 @@ def get_current_user_or_apikey(
             return user
     except (InvalidTokenError, ValidationError):
         pass # Not a valid JWT, proceed to check as API Key
-        
+
     # 2. Try as API Key
     # API Keys are usually unique strings
-    statement = select(ApiKey).where(ApiKey.key == token).where(ApiKey.is_active == True)
+    statement = select(ApiKey).where(ApiKey.key == token).where(ApiKey.is_active)
     api_key_obj = session.exec(statement).first()
-    
+
     if api_key_obj:
         user = session.get(User, api_key_obj.user_id)
         if user and user.is_active:
             return user
-            
+
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Could not validate credentials",

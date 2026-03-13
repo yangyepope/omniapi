@@ -1,5 +1,5 @@
-import uuid
 import secrets
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -46,9 +46,9 @@ def create_api_key(
     # Generate a random key
     # Using a prefix like "sk-" is common practice
     key_content = f"sk-{secrets.token_urlsafe(32)}"
-    
+
     api_key = ApiKey.model_validate(
-        api_key_in, 
+        api_key_in,
         update={"user_id": current_user.id, "key": key_content}
     )
     session.add(api_key)
@@ -68,7 +68,7 @@ def delete_api_key(
         raise HTTPException(status_code=404, detail="API key not found")
     if api_key.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    
+
     session.delete(api_key)
     session.commit()
     return Message(message="API key deleted successfully")

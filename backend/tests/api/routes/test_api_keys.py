@@ -1,9 +1,7 @@
-import uuid
 from fastapi.testclient import TestClient
-from sqlmodel import Session
 
 from app.core.config import settings
-from app.models import ApiKey
+
 
 def test_create_api_key(
     client: TestClient, normal_user_token_headers: dict[str, str]
@@ -30,7 +28,7 @@ def test_read_api_keys(
         headers=normal_user_token_headers,
         json=data,
     )
-    
+
     r = client.get(
         f"{settings.API_V1_STR}/api-keys/",
         headers=normal_user_token_headers,
@@ -51,7 +49,7 @@ def test_delete_api_key(
         json=data,
     )
     key_id = r.json()["id"]
-    
+
     # Delete it
     r = client.delete(
         f"{settings.API_V1_STR}/api-keys/{key_id}",
@@ -59,7 +57,7 @@ def test_delete_api_key(
     )
     assert r.status_code == 200
     assert r.json()["message"] == "API key deleted successfully"
-    
+
     # Verify it's gone (or at least not in the list if we filtered by active, but here it's hard delete)
     # The current implementation does a hard delete
     r = client.delete(
