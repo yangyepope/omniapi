@@ -6,12 +6,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class VideoRequest(BaseModel):
     link: str = Field(..., description="Douyin share link")
 
+
 class Statistics(BaseModel):
     collect_count: int | None = Field(default=None, description="Number of collects")
     comment_count: int | None = Field(default=None, description="Number of comments")
     digg_count: int | None = Field(default=None, description="Number of likes")
     download_count: int | None = Field(default=None, description="Number of downloads")
     share_count: int | None = Field(default=None, description="Number of shares")
+
 
 class AwemeDetail(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -30,6 +32,7 @@ class AwemeDetail(BaseModel):
     def validate_desc(cls, v: Any) -> str | None:
         return str(v) if v is not None else None
 
+
 class TikhubRawResponse(BaseModel):
     code: int | None = None
     msg: str | None = None
@@ -45,6 +48,7 @@ class TikhubRawResponse(BaseModel):
             return AwemeDetail(**detail_data)
         return None
 
+
 class VideoData(BaseModel):
     audio_url: str | None = None
     aweme_id: str | None = None
@@ -55,6 +59,7 @@ class VideoData(BaseModel):
     statistics: Statistics | None = None
     title: str | None = None
     video_url: str | None = None
+
 
 class VideoResponse(BaseModel):
     message: str | None = None

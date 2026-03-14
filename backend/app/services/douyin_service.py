@@ -1,16 +1,17 @@
+import logging  # 标准库日志：用于输出 402 等可预期异常的告警信息
 import re
 from datetime import datetime
 from typing import Any
 
-from app.core.config import settings
 from app.core.http_client import get_client
-from app.core.logger import logger
+from app.core.third_party_config import third_party_settings
 from app.schemas.douyin import (
     Statistics,
-    TikhubRawResponse,
     VideoData,
     VideoResponse,
 )
+
+logger = logging.getLogger(__name__)  # 模块级 logger：继承应用/uvicorn 的 logging 配置输出
 
 
 def _format_time(value: int | float | None) -> str | None:
@@ -22,12 +23,16 @@ def _format_time(value: int | float | None) -> str | None:
         return str(value)
 
 
-def _get_nested(data: dict | list | Any, path: list[str | int]) -> Any:
+def _get_nested(data: dict[str, Any] | list[Any] | Any, path: list[str | int]) -> Any:
     current = data
     for key in path:
-        if isinstance(current, dict) and key in current:
+        if isinstance(current, dict) and isinstance(key, str) and key in current:
             current = current[key]
-        elif isinstance(current, list) and isinstance(key, int) and 0 <= key < len(current):
+        elif (
+            isinstance(current, list)
+            and isinstance(key, int)
+            and 0 <= key < len(current)
+        ):
             current = current[key]
         else:
             return None
@@ -36,109 +41,105 @@ def _get_nested(data: dict | list | Any, path: list[str | int]) -> Any:
 
 async def fetch_video_data(link: str) -> VideoResponse:
     """
-    Service logic to fetch and process Douyin video data.
+    获取抖音视频数据的核心逻辑
     """
     try:
-        api_token = settings.TIKHUB_API_TOKEN
+        # 获取系统配置的 Tikhub API Token
+        api_token = third_party_settings.TIKHUB_API_TOKEN
 
-        logger.info(f"【前置校验】link: {link}, using system api_token")
+        # 校验: 链接不能为空
         if not link:
-            logger.error("【前置校验失败】link为空")
-            return VideoResponse(message="link不能为空")
+            return VideoResponse(message="请输入有效的视频链接")
 
+        # 校验: 系统是否配置了 API Token
         if not api_token or api_token == "your_default_token_here_or_load_from_env":
-            logger.error("【配置错误】系统未配置 TIKHUB_API_TOKEN")
-            return VideoResponse(message="系统配置错误：未配置API Token")
+            return VideoResponse(message="系统维护中，请稍后再试 (Token未配置)")
 
+        # 1. 提取分享文本中的 URL (兼容复制的整段文案)
+        # 正则匹配 http/https 开头的链接
         match = re.search(r"https?://[^\s<>\"']+", str(link))
         share_url = match.group(0) if match else str(link).strip()
-        logger.info(f"【链接提取】最终请求的share_url: {share_url}")
 
-        url = settings.TIKHUB_API_URL
+        # 2. 准备请求 Tikhub 的参数
+        # 使用新配置拼接完整的请求地址
+        url = third_party_settings.TIKHUB_DOUYIN_VIDEO_URL
         headers = {"accept": "application/json", "Authorization": f"Bearer {api_token}"}
-        params = {"share_url": share_url}
+        # Tikhub 接口参数: share_url
+        params = {"url": share_url}
 
-        logger.info(f"【即将发起请求】URL: {url}")
-        logger.info("【请求中】已发送请求，等待响应")
-
+        # 3. 发起 HTTP GET 请求
         client = await get_client()
         response = await client.get(url, headers=headers, params=params, timeout=30.0)
 
-        logger.info(f"【请求完成】响应状态码: {response.status_code}")
-
+        # 4. 处理 HTTP 错误状态码
         if response.status_code != 200:
-            logger.warning(f"【请求失败】状态码: {response.status_code}")
-            return VideoResponse(message=f"请求失败，状态码: {response.status_code}")
+            if response.status_code == 402:  # 402 Payment Required：常见于第三方接口额度/余额不足
+                logger.warning("Tikhub API 服务余额不足 (402 Payment Required)")
+            return VideoResponse(
+                message=f"解析失败，服务响应异常 (Status: {response.status_code})"
+            )
 
+        # 5. 解析响应 JSON
         try:
             payload = response.json()
-        except Exception as e:
-            logger.error(f"【响应解析失败】: {str(e)}")
-            return VideoResponse(message="响应解析失败")
+        except Exception:
+            return VideoResponse(message="解析失败，服务返回数据格式错误")
 
-        # Validate raw response with Pydantic
-        # raw_resp = TikhubRawResponse(**payload)
-        # Manually validate to avoid double expansion if payload is nested strangely or has extra fields
-        raw_resp = TikhubRawResponse.model_validate(payload)
+        # 6. 校验业务状态码 (根据 Tikhub 返回结构调整，这里假设 code=200 为成功)
+        # 注意：不同服务商字段可能不同，需根据实际情况调整
+        if payload.get("code") != 200:
+            error_msg = payload.get("msg") or "解析失败，请检查链接是否正确"
+            return VideoResponse(message=error_msg)
 
-        # Check API specific error codes
-        if raw_resp.code not in (None, 0, 200):
-             msg = raw_resp.msg or "API Error"
-             return VideoResponse(message=msg)
+        # 7. 提取核心数据
+        data = payload.get("data", {})
 
-        # Extract data
-        # Handle case where 'data' might be the root or inside 'data' field
-        data_root = payload.get("data") if isinstance(payload, dict) and "data" in payload else payload
-        if data_root is None:
-             data_root = {}
+        # 提取视频标题/描述
+        desc = data.get("title") or data.get("desc") or ""
 
-        # Extract fields using safer navigation
-        aweme_detail = data_root.get("aweme_detail", {})
+        # 提取视频地址 (优先取无水印)
+        video_url = data.get("play_url") or data.get("wm_play_url")
 
-        # Helper to safely extract nested
-        def get_safe(root, path):
-             return _get_nested(root, path)
+        # 提取封面图
+        cover_url = data.get("cover_url")
 
-        create_time_raw = (
-            aweme_detail.get("create_time") or
-            data_root.get("create_time") or
-            data_root.get("create_time_str")
+        # 提取音频地址
+        audio_url = data.get("music_url")
+
+        # 提取统计数据 (点赞、评论等)
+        # 注意：需确认 Tikhub 返回结构是否有这些字段，这里做防御性处理
+        statistics = Statistics(
+            collect_count=data.get("collect_count", 0),
+            comment_count=data.get("comment_count", 0),
+            digg_count=data.get("digg_count", 0),
+            download_count=data.get("download_count", 0),
+            share_count=data.get("share_count", 0),
         )
 
-        statistics_raw = aweme_detail.get("statistics", {})
-        statistics = Statistics(**statistics_raw) if statistics_raw else None
-
-        video_url = (
-            get_safe(aweme_detail, ["video", "play_addr_h264", "url_list", 0]) or
-            get_safe(aweme_detail, ["video", "play_addr", "url_list", 0])
-        )
-
-        cover_url = get_safe(aweme_detail, ["author", "cover_url", 0, "url_list", 0])
-        audio_url = get_safe(aweme_detail, ["music", "play_url", "url_list", 0])
-        desc = aweme_detail.get("desc") or data_root.get("desc") or data_root.get("description")
-        title = aweme_detail.get("desc") # Original logic mapped title to desc as well
-
+        # 8. 组装返回数据对象
         result_data = VideoData(
-            audio_url=audio_url,
-            aweme_id=aweme_detail.get("aweme_id"),
+            aweme_id=str(data.get("aweme_id") or ""),
+            video_url=video_url,
             cover_url=cover_url,
-            create_time=_format_time(create_time_raw),
+            audio_url=audio_url,
             desc=desc,
-            duration=aweme_detail.get("duration"),
+            title=desc,  # 抖音通常只有一个文案，标题即描述
+            create_time=_format_time(data.get("create_time")),
+            duration=data.get("duration", 0),
             statistics=statistics,
-            title=title,
-            video_url=video_url
         )
 
-        # Basic validation if result is empty
-        if not any([result_data.video_url, result_data.desc, result_data.aweme_id]):
-             return VideoResponse(message="链接可能无效或已过期，视频可能已失效或下架")
+        # 9. 最终校验：如果没有视频地址，视为解析失败
+        if not video_url:
+            return VideoResponse(
+                message="解析成功，但未获取到视频地址，可能视频已被删除或设为私密"
+            )
 
-        return VideoResponse(
-            data=result_data,
-            message=settings.SUPPORT_CONTACT
-        )
+        # 10. 返回成功结果
+        return VideoResponse(message="解析成功", data=result_data)
 
-    except Exception as e:
-        logger.error(f"【代码执行崩溃】: {str(e)}")
-        return VideoResponse(message=f"代码执行出错：{str(e)}")
+    except Exception:
+        # 捕获所有未预料的异常，避免接口崩溃
+        # 在生产环境中，建议保留日志记录以便排查问题
+        # logger.error(f"解析异常: {str(e)}")
+        return VideoResponse(message="系统繁忙，请稍后重试")

@@ -1,63 +1,65 @@
-services:
+# Docker Compose 主配置文件：定义服务、网络与数据卷（只加注释，不改变任何配置行为）
+# 约定：变量多数从同目录的 .env 注入；带 “?Variable not set” 的变量必须提供，否则 compose 会直接报错
+services:  # 所有服务定义入口（db/backend/frontend 等都在此声明）
 
-  db:
-    image: postgres:18
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
-    volumes:
-      - app-db-data:/var/lib/postgresql/data/pgdata
-    env_file:
+  db:  # PostgreSQL 数据库服务（存储用户、业务数据等）
+    image: postgres:18  # 数据库镜像版本：PostgreSQL 18
+    restart: always  # 容器异常退出时自动重启（提升可用性）
+    healthcheck:  # 健康检查：用于 depends_on.condition=service_healthy 等场景
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]  # 使用 pg_isready 探活
+      interval: 10s  # 检查间隔
+      retries: 5  # 失败重试次数
+      start_period: 30s  # 启动宽限期：容器刚启动时允许暂时不健康
+      timeout: 10s  # 单次检查超时时间
+    volumes:  # 数据持久化：把数据库数据目录挂到命名卷
+      - app-db-data:/var/lib/postgresql/data/pgdata  # PGDATA 对应的数据目录（避免容器重建丢数据）
+    env_file:  # 从 .env 文件加载环境变量（同目录）
       - .env
-    environment:
-      - PGDATA=/var/lib/postgresql/data/pgdata
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
-      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
-      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+    environment:  # 显式声明数据库关键环境变量（部分带强制校验）
+      - PGDATA=/var/lib/postgresql/data/pgdata  # Postgres 数据目录（与上面的 volume 对齐）
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}  # 数据库密码（必须提供）
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}  # 数据库用户名（必须提供）
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}  # 数据库名（必须提供）
 
-  adminer:
-    image: adminer
-    restart: always
-    networks:
+  adminer:  # Adminer：轻量级数据库管理面板（用于查看/管理 Postgres）
+    image: adminer  # 官方 Adminer 镜像
+    restart: always  # 容器异常退出时自动重启
+    networks:  # 加入 traefik-public 以便 Traefik 反代访问，同时保留默认网络与 db 通信
       - traefik-public
       - default
-    depends_on:
+    depends_on:  # 启动顺序：确保 db 先启动（不保证 db 已就绪）
       - db
-    environment:
-      - ADMINER_DESIGN=pepa-linha-dark
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=traefik-public
-      - traefik.constraint-label=traefik-public
-      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.rule=Host(`adminer.${DOMAIN?Variable not set}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.entrypoints=http
-      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.middlewares=https-redirect
-      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.rule=Host(`adminer.${DOMAIN?Variable not set}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.entrypoints=https
-      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.tls=true
-      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.tls.certresolver=le
-      - traefik.http.services.${STACK_NAME?Variable not set}-adminer.loadbalancer.server.port=8080
+    environment:  # Adminer 的外观主题等配置
+      - ADMINER_DESIGN=pepa-linha-dark  # Adminer UI 主题
+    labels:  # Traefik 动态配置：为 Adminer 配置路由/证书/服务端口
+      - traefik.enable=true  # 启用 Traefik 发现该容器
+      - traefik.docker.network=traefik-public  # 指定 Traefik 使用的 Docker 网络
+      - traefik.constraint-label=traefik-public  # 约束：只让指定的 Traefik 实例处理
+      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.rule=Host(`adminer.${DOMAIN?Variable not set}`)  # HTTP 域名规则
+      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.entrypoints=http  # 绑定 http entrypoint
+      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-http.middlewares=https-redirect  # HTTP -> HTTPS 重定向
+      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.rule=Host(`adminer.${DOMAIN?Variable not set}`)  # HTTPS 域名规则
+      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.entrypoints=https  # 绑定 https entrypoint
+      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.tls=true  # 启用 TLS
+      - traefik.http.routers.${STACK_NAME?Variable not set}-adminer-https.tls.certresolver=le  # 证书签发器（Let's Encrypt）
+      - traefik.http.services.${STACK_NAME?Variable not set}-adminer.loadbalancer.server.port=8080  # 容器内服务端口（Adminer 默认 8080）
 
-  prestart:
-    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
-    build:
+  prestart:  # 预启动任务：通常用于等待 DB、跑迁移、初始化数据等（一次性任务）
+    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'  # 与 backend 同镜像（复用同一运行环境）
+    build:  # 如本地不存在镜像，可按 Dockerfile 构建（context 为项目根目录）
       context: .
       dockerfile: backend/Dockerfile
-    networks:
+    networks:  # 需要能访问 db；同时在 traefik-public 中便于与其他服务保持一致网络环境
       - traefik-public
       - default
-    depends_on:
+    depends_on:  # 依赖 db 健康后再执行（condition=service_healthy）
       db:
         condition: service_healthy
         restart: true
-    command: bash scripts/prestart.sh
-    env_file:
+    command: bash scripts/prestart.sh  # 执行预启动脚本（通常包含迁移/初始化）
+    env_file:  # 统一从 .env 注入配置
       - .env
-    environment:
+    environment:  # 显式透传关键变量（便于脚本/应用读取）
       - DOMAIN=${DOMAIN}
       - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
       - ENVIRONMENT=${ENVIRONMENT}
@@ -76,21 +78,21 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - SENTRY_DSN=${SENTRY_DSN}
 
-  backend:
-    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
-    restart: always
-    networks:
+  backend:  # 后端 API 服务（FastAPI）
+    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'  # 后端镜像（可由 CI/CD 推送）
+    restart: always  # 容器异常退出时自动重启
+    networks:  # 加入 traefik-public 供 Traefik 反代；default 用于与 db 等服务内部通信
       - traefik-public
       - default
-    depends_on:
+    depends_on:  # 启动依赖：db 必须健康；prestart 必须成功完成
       db:
         condition: service_healthy
         restart: true
       prestart:
         condition: service_completed_successfully
-    env_file:
+    env_file:  # 加载 .env
       - .env
-    environment:
+    environment:  # 显式透传应用配置（与 app/core/config.py 对应）
       - DOMAIN=${DOMAIN}
       - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
       - ENVIRONMENT=${ENVIRONMENT}
@@ -109,68 +111,68 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - SENTRY_DSN=${SENTRY_DSN}
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
+    healthcheck:  # 健康检查：用于判断后端是否对外可用（Traefik/depends_on 可用）
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]  # 调用健康检查接口
+      interval: 30s  # 检查间隔
+      timeout: 5s  # 单次检查超时
+      retries: 5  # 失败重试次数
 
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=traefik-public
-      - traefik.constraint-label=traefik-public
+    build:  # 本地构建后端镜像（与 image 字段配合，必要时会构建）
+      context: .  # 构建上下文为仓库根目录
+      dockerfile: backend/Dockerfile  # 后端 Dockerfile 路径
+    labels:  # Traefik 路由/服务配置：把 backend 暴露到 api.${DOMAIN} 等域名
+      - traefik.enable=true  # 让 Traefik 发现该服务
+      - traefik.docker.network=traefik-public  # Traefik 选择的网络
+      - traefik.constraint-label=traefik-public  # 约束：只被带该 label 的 Traefik 实例接管
 
-      - traefik.http.services.${STACK_NAME?Variable not set}-backend.loadbalancer.server.port=8000
+      - traefik.http.services.${STACK_NAME?Variable not set}-backend.loadbalancer.server.port=8000  # 容器内 FastAPI 监听端口
 
      # - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.rule=Host(`api.${DOMAIN?Variable not set}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.rule=Host(`api.${DOMAIN}`, `43.139.110.64`, `${DOMAIN}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.rule=Host(`api.${DOMAIN}`, `43.139.110.64`, `${DOMAIN}`)  # HTTP 域名/主机规则（包含 IP/DOMAIN 等）
+      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.entrypoints=http  # 路由绑定 http 入口
 
      # - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.rule=Host(`api.${DOMAIN?Variable not set}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.rule=Host(`api.${DOMAIN}`, `43.139.110.64`, `${DOMAIN}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.entrypoints=https
-      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.tls=true
-      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.tls.certresolver=le
+      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.rule=Host(`api.${DOMAIN}`, `43.139.110.64`, `${DOMAIN}`)  # HTTPS 域名/主机规则
+      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.entrypoints=https  # 路由绑定 https 入口
+      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.tls=true  # 启用 TLS
+      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.tls.certresolver=le  # 使用 le 证书解析器自动签发
 
       # Enable redirection for HTTP and HTTPS
-      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.middlewares=https-redirect
+      - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.middlewares=https-redirect  # HTTP 请求走中间件重定向到 HTTPS
 
-  frontend:
-    image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'
-    restart: always
-    networks:
+  frontend:  # 前端 Web 服务（静态资源/SPA）
+    image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'  # 前端镜像（可由 CI/CD 推送）
+    restart: always  # 容器异常退出时自动重启
+    networks:  # 通过 traefik-public 对外暴露；default 与内部服务保持一致
       - traefik-public
       - default
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      args:
-        - VITE_API_URL=https://api.${DOMAIN?Variable not set}
-        - NODE_ENV=production
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=traefik-public
-      - traefik.constraint-label=traefik-public
+    build:  # 本地构建前端镜像（Vite 等前端构建在 Dockerfile 内完成）
+      context: .  # 构建上下文为仓库根目录
+      dockerfile: frontend/Dockerfile  # 前端 Dockerfile 路径
+      args:  # 构建时注入参数：前端会把 API 地址打包进产物（注意：改这里通常需要 rebuild）
+        - VITE_API_URL=https://api.${DOMAIN?Variable not set}  # 前端调用后端 API 的基地址
+        - NODE_ENV=production  # 构建环境标识
+    labels:  # Traefik 路由/服务配置：把前端暴露到 dashboard.${DOMAIN}
+      - traefik.enable=true  # 启用 Traefik
+      - traefik.docker.network=traefik-public  # 指定 Traefik 连接网络
+      - traefik.constraint-label=traefik-public  # 约束：只让对应的 Traefik 实例接管
 
-      - traefik.http.services.${STACK_NAME?Variable not set}-frontend.loadbalancer.server.port=80
+      - traefik.http.services.${STACK_NAME?Variable not set}-frontend.loadbalancer.server.port=80  # 容器内 Web 服务器端口（通常为 80）
 
-      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.rule=Host(`dashboard.${DOMAIN?Variable not set}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.rule=Host(`dashboard.${DOMAIN?Variable not set}`)  # HTTP 域名规则
+      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.entrypoints=http  # 绑定 http 入口
 
-      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.rule=Host(`dashboard.${DOMAIN?Variable not set}`)
-      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.entrypoints=https
-      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.tls=true
-      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.tls.certresolver=le
+      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.rule=Host(`dashboard.${DOMAIN?Variable not set}`)  # HTTPS 域名规则
+      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.entrypoints=https  # 绑定 https 入口
+      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.tls=true  # 启用 TLS
+      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-https.tls.certresolver=le  # 使用 le 证书解析器自动签发
 
       # Enable redirection for HTTP and HTTPS
-      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect
-volumes:
-  app-db-data:
+      - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect  # HTTP -> HTTPS 重定向中间件
+volumes:  # 命名卷定义区：集中声明可被 services.volumes 引用的卷
+  app-db-data:  # PostgreSQL 数据卷（见 db.volumes）
 
-networks:
-  traefik-public:
-    # Allow setting it to false for testing
-    external: true
+networks:  # 网络定义区：声明/引用 compose 网络
+  traefik-public:  # 外部网络：通常由独立 Traefik Stack 创建并复用
+    # Allow setting it to false for testing  # 备注：测试环境可改为非 external（但此处不改配置）
+    external: true  # 标记为外部网络：compose 不负责创建，只负责引用

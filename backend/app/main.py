@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import sentry_sdk
@@ -13,8 +14,9 @@ from app.core.logger import setup_logger
 # Initialize custom logger
 setup_logger()
 
+
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Initialize HTTP client
     await get_client()
     yield

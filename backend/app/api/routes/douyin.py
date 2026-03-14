@@ -1,20 +1,20 @@
 from fastapi import APIRouter
 
-from app.api.deps import CurrentUserOrApiKey
+from app.api.deps import CurrentUserByApiKey
 from app.schemas.douyin import VideoRequest, VideoResponse
 from app.services.douyin_service import fetch_video_data
 
 router = APIRouter(prefix="/douyin", tags=["douyin"])
 
+
 @router.post("/fetch-video", response_model=VideoResponse)
 async def fetch_video(
-    request: VideoRequest,
-    _user: CurrentUserOrApiKey
+    request: VideoRequest, _user: CurrentUserByApiKey
 ) -> VideoResponse:
     """
     Fetch Douyin video details by share URL.
     Full URL: /api/v1/douyin/fetch-video
-    Requires Authentication (Supports OAuth2 JWT or API Key).
+    Requires Authentication (API Key only, via X-API-Key header).
     """
     # 简单的参数预检查
     if not request.link.strip():
