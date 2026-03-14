@@ -9,9 +9,9 @@ from fastapi.routing import APIRoute
 from app.main import app
 
 
-def print_routes():
-    print(f"{'Method':<10} {'Path':<50} {'Name':<30}")
-    print("-" * 90)
+def print_routes() -> None:
+    sys.stdout.write(f"{'Method':<10} {'Path':<50} {'Name':<30}\n")
+    sys.stdout.write(f"{'-' * 90}\n")
 
     # Filter and sort routes
     routes = []
@@ -23,7 +23,8 @@ def print_routes():
     routes.sort(key=lambda x: x[1])  # Sort by path
 
     for methods, path, name in routes:
-        print(f"{methods:<10} {path:<50} {name:<30}")
+        sys.stdout.write(f"{methods:<10} {path:<50} {name:<30}\n")
+
 
 if __name__ == "__main__":
     print_routes()

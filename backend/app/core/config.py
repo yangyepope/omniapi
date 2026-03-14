@@ -25,7 +25,9 @@ from typing_extensions import (
 
 
 def parse_cors(v: Any) -> list[str] | str:
-    if isinstance(v, str) and not v.startswith("["):  # 兼容 "a,b,c" 形式（不是 JSON 数组字符串）
+    if isinstance(v, str) and not v.startswith(
+        "["
+    ):  # 兼容 "a,b,c" 形式（不是 JSON 数组字符串）
         return [i.strip() for i in v.split(",") if i.strip()]  # 按逗号拆分并去除空白项
     elif isinstance(v, list | str):  # 已经是 list 或 JSON 数组字符串形式则直接返回
         return v  # 让 Pydantic 继续做后续解析/校验
@@ -40,11 +42,15 @@ class Settings(BaseSettings):
         extra="ignore",  # 额外的环境变量忽略：避免启动时因多余变量报错
     )
     API_V1_STR: str = "/api/v1"  # API 路由统一前缀（FastAPI include_router 会使用）
-    SECRET_KEY: str = secrets.token_urlsafe(32)  # JWT/安全相关的默认密钥（生产应显式配置）
+    SECRET_KEY: str = secrets.token_urlsafe(
+        32
+    )  # JWT/安全相关的默认密钥（生产应显式配置）
     # 60 minutes * 24 hours * 8 days = 8 days  # token 过期时间默认 8 天
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # JWT access token 的有效期（分钟）
     FRONTEND_HOST: str = "http://localhost:5173"  # 前端默认地址（用于 CORS 拼接）
-    ENVIRONMENT: Literal["local", "staging", "production"] = "local"  # 环境标识：影响日志/安全策略
+    ENVIRONMENT: Literal["local", "staging", "production"] = (
+        "local"  # 环境标识：影响日志/安全策略
+    )
 
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyUrl] | str,  # 允许 list 或字符串（逗号分隔/JSON 数组字符串）
@@ -66,7 +72,9 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = ""  # 数据库密码（生产必须配置）
     POSTGRES_DB: str = ""  # 数据库名（可为空，由环境决定）
 
-    SUPPORT_CONTACT: str = "寻求技术支持请关注 13076908699"  # 对外展示的技术支持联系方式
+    SUPPORT_CONTACT: str = (
+        "寻求技术支持请关注 13076908699"  # 对外展示的技术支持联系方式
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -115,14 +123,20 @@ class Settings(BaseSettings):
                 "for security, please change it, at least for deployments."  # 提醒部署时务必更改
             )
             if self.ENVIRONMENT == "local":  # 本地环境：不阻断启动，用 warning 提醒即可
-                warnings.warn(message, stacklevel=1)  # 发出警告，stacklevel=1 让调用点更清晰
+                warnings.warn(
+                    message, stacklevel=1
+                )  # 发出警告，stacklevel=1 让调用点更清晰
             else:  # 非本地环境：直接抛错，阻止使用不安全配置上线
                 raise ValueError(message)  # 抛出 ValueError 让启动失败
 
     @model_validator(mode="after")
     def _enforce_non_default_secrets(self) -> Self:
-        self._check_default_secret("SECRET_KEY", self.SECRET_KEY)  # 校验 SECRET_KEY 是否仍为占位符
-        self._check_default_secret("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)  # 校验数据库密码是否仍为占位符
+        self._check_default_secret(
+            "SECRET_KEY", self.SECRET_KEY
+        )  # 校验 SECRET_KEY 是否仍为占位符
+        self._check_default_secret(
+            "POSTGRES_PASSWORD", self.POSTGRES_PASSWORD
+        )  # 校验数据库密码是否仍为占位符
         self._check_default_secret(  # 校验首个超管密码是否仍为占位符
             "FIRST_SUPERUSER_PASSWORD",  # 变量名（用于提示）
             self.FIRST_SUPERUSER_PASSWORD,  # 实际值

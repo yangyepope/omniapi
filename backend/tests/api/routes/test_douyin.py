@@ -37,10 +37,10 @@ def test_fetch_video_success(client: TestClient, normal_user_token_headers: dict
         mock_get_client.return_value = mock_client_instance
 
         with patch.object(third_party_settings, "TIKHUB_API_TOKEN", "test_server_token"):
-            response = client.post(
-                f"{settings.API_V1_STR}/douyin/fetch-video",
+            response = client.get(
+                f"{settings.API_V1_STR}/douyin/fetch_one_video_by_share_url",
                 headers={"X-API-Key": api_key},
-                json={"link": "http://douyin.com/video/123"},
+                params={"share_url": "http://douyin.com/video/123"},
             )
 
     assert response.status_code == 200
@@ -58,10 +58,10 @@ def test_fetch_video_missing_params(client: TestClient, normal_user_token_header
     )
     api_key = key_resp.json()["key"]
 
-    response = client.post(
-        f"{settings.API_V1_STR}/douyin/fetch-video",
+    response = client.get(
+        f"{settings.API_V1_STR}/douyin/fetch_one_video_by_share_url",
         headers={"X-API-Key": api_key},
-        json={"link": ""},
+        params={"share_url": ""},
     )
 
     assert response.status_code == 200
@@ -69,9 +69,9 @@ def test_fetch_video_missing_params(client: TestClient, normal_user_token_header
     assert "视频链接不能为空" in data["message"]
 
 def test_fetch_video_unauthorized(client: TestClient) -> None:
-    response = client.post(
-        f"{settings.API_V1_STR}/douyin/fetch-video",
-        json={"link": "http://douyin.com/video/123"}
+    response = client.get(
+        f"{settings.API_V1_STR}/douyin/fetch_one_video_by_share_url",
+        params={"share_url": "http://douyin.com/video/123"},
     )
     assert response.status_code == 401
 
@@ -105,10 +105,10 @@ def test_fetch_video_with_api_key(client: TestClient, normal_user_token_headers:
         mock_get_client.return_value = mock_client_instance
         with patch.object(third_party_settings, "TIKHUB_API_TOKEN", "test_server_token"):
             headers = {"X-API-Key": api_key}
-            response = client.post(
-                f"{settings.API_V1_STR}/douyin/fetch-video",
+            response = client.get(
+                f"{settings.API_V1_STR}/douyin/fetch_one_video_by_share_url",
                 headers=headers,
-                json={"link": "http://douyin.com/video/apikey"},
+                params={"share_url": "http://douyin.com/video/apikey"},
             )
 
     assert response.status_code == 200

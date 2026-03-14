@@ -15,14 +15,16 @@ class ThirdPartySettings(BaseSettings):
 
     # --- Tikhub API 配置 ---
     # 基础域名，例如: https://api.tikhub.io
-    TIKHUB_API_DOMAIN: str = "https://api.tikhub.io"  # Tikhub 服务域名（可通过环境变量覆盖）
+    TIKHUB_API_DOMAIN: str = (
+        "https://api.tikhub.io"  # Tikhub 服务域名（可通过环境变量覆盖）
+    )
     # 具体接口路径，例如: /api/v1/douyin/app/v3/fetch_one_video_by_share_url
     TIKHUB_DOUYIN_VIDEO_PATH: str = (  # 抖音视频解析接口路径（相对域名）
         "/api/v1/douyin/app/v3/fetch_one_video_by_share_url"
     )
     # 认证 Token
     TIKHUB_API_TOKEN: str = Field(  # 访问令牌：用于调用第三方接口的鉴权
-        default="1M1dUZ0o4g6aoH/LJI3J/D7tKiGhf8hdwUb7iWOOYfqA1W2zGHzTT2mwAQ==",  # 默认值（建议用 .env 覆盖）
+        default="yb8ODpIA7U+5pHKUI9KLySrTKzmXcJ1y2TXZjkGibaejp026fWWsVx3EbA==",  # 默认值（建议用 .env 覆盖）
         description="Tikhub API 访问令牌",  # 字段描述（用于文档/自解释）
     )  # Field 结束
 
@@ -34,4 +36,6 @@ class ThirdPartySettings(BaseSettings):
         )
 
 
-third_party_settings = ThirdPartySettings()  # 模块级单例：应用启动时加载一次配置（reload/重启会重新加载）
+third_party_settings = (
+    ThirdPartySettings()
+)  # 模块级单例：应用启动时加载一次配置（reload/重启会重新加载）

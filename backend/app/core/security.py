@@ -26,8 +26,13 @@ ALGORITHM = "HS256"  # JWT 签名算法：HMAC-SHA256（对称密钥）
 
 
 def create_access_token(subject: str | Any, expires_delta: timedelta) -> str:
-    expire = datetime.now(timezone.utc) + expires_delta  # 计算过期时间（UTC，避免时区偏差）
-    to_encode = {"exp": expire, "sub": str(subject)}  # JWT payload：exp 过期时间、sub 主体（用户标识）
+    expire = (
+        datetime.now(timezone.utc) + expires_delta
+    )  # 计算过期时间（UTC，避免时区偏差）
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+    }  # JWT payload：exp 过期时间、sub 主体（用户标识）
     encoded_jwt = jwt.encode(  # 使用 SECRET_KEY 对 payload 进行签名生成 JWT 字符串
         to_encode,  # 待编码的 payload
         settings.SECRET_KEY,  # 签名密钥（必须保密）
