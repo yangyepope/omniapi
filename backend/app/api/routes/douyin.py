@@ -18,15 +18,6 @@ router = APIRouter(
 )  # 路由前缀：最终路径以 /api/v1/douyin 开头
 
 
-@router.get("/fetch_one_video_by_share_url", response_model=VideoResponse)
-async def fetch_one_video_by_share_url_v3(
-    _user: CurrentUserByApiKey,
-    share_url: str = Query(..., description="Douyin share URL"),
-) -> VideoResponse:
-    if not share_url.strip():
-        return VideoResponse(message="视频链接不能为空")
-    return await fetch_video_data(share_url)
-
 
 @router.get("/fetch_one_video_by_share_url", response_model=VideoResponse)
 async def fetch_one_video_by_share_url(
