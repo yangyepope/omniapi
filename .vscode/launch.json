@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "Python: Docker Attach",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "43.139.110.64", // 你的服务器IP
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/backend", // Trae 看到的路径
+                    "remoteRoot": "/app/backend"               // 容器内部的路径
+                }
+            ],
+            "justMyCode": true
+        }
+    ]
+}

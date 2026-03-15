@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # 预编译正则，提升高频调用性能
 URL_PATTERN = re.compile(r"https?://[^\s<>\"']+")
 
+
 def _format_time(timestamp: int | None) -> str | None:
     """格式化时间戳"""
     if timestamp is None:
@@ -20,6 +21,7 @@ def _format_time(timestamp: int | None) -> str | None:
         return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
     except Exception:
         return str(timestamp)
+
 
 def _safe_get(data: Any, *paths: list[Any]) -> Any:
     """
@@ -36,6 +38,7 @@ def _safe_get(data: Any, *paths: list[Any]) -> Any:
         except (KeyError, IndexError, TypeError):
             continue
     return None
+
 
 async def fetch_video_data(link: str) -> VideoResponse:
     try:
@@ -55,7 +58,9 @@ async def fetch_video_data(link: str) -> VideoResponse:
         headers = {"accept": "application/json", "Authorization": f"Bearer {api_token}"}
 
         client = await get_client()
-        response = await client.get(url, headers=headers, params={"share_url": share_url}, timeout=30.0)
+        response = await client.get(
+            url, headers=headers, params={"share_url": share_url}, timeout=30.0
+        )
 
         # 3. 状态检查
         if response.status_code == 402:
@@ -63,7 +68,9 @@ async def fetch_video_data(link: str) -> VideoResponse:
             return VideoResponse(message="解析服务额度已耗尽，请稍后再试")
 
         if response.status_code != 200:
-            return VideoResponse(message=f"服务响应异常 (Status: {response.status_code})")
+            return VideoResponse(
+                message=f"服务响应异常 (Status: {response.status_code})"
+            )
 
         payload = response.json()
         if payload.get("code") != 200:
@@ -91,9 +98,10 @@ async def fetch_video_data(link: str) -> VideoResponse:
             # 复杂的嵌套路径使用 _safe_get
             audio_url=_safe_get(item, ["music", "play_url", "url_list", 0]),
             cover_url=_safe_get(item, ["author", "cover_url", 0, "url_list", 0]),
-            video_url=_safe_get(item,
+            video_url=_safe_get(
+                item,
                 ["video", "play_addr_h264", "url_list", 0],
-                ["video", "play_addr", "url_list", 0]
+                ["video", "play_addr", "url_list", 0],
             ),
             statistics=statistics,
         )
