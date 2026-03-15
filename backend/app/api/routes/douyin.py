@@ -21,6 +21,7 @@ router = APIRouter(
 
 @router.get("/fetch_one_video_by_share_url", response_model=VideoResponse)
 async def fetch_one_video_by_share_url(
+    # 仅允许 API Key 鉴权：通过 X-API-Key header 调用
     _user: CurrentUserByApiKey,
     share_url: str = Query(..., description="Douyin share URL"),
 ) -> VideoResponse:
