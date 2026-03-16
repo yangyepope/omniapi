@@ -11,7 +11,7 @@ description: "Trae 全局技能：写代码/改配置时默认补充详细中文
 ## 职责边界（避免与 Rules 重复）
 
 - Skill 只负责约定“默认要做什么”：当我新增/修改任何代码或配置时，默认必须补充详细中文注释与说明。
-- 具体到“注释块长什么样、哪些文件必须解释、后端/校验/错误处理的细则”，统一以 `.cursor/rules/` 目录下的 Rules 为准（这里便于 pack 化与按目录生效）。
+- 具体到“后端注释规范 / Pydantic 校验 / 错误处理”这类可复用细则，拆分为独立的 Trae Skills（见下方“配套 Skills”），避免所有规则都塞进一个文件里难维护。
 - 如果用户明确说“不要注释/保持无注释”，则本 Skill 不触发。
 
 ## 能力覆盖（你关心的 Python / Dockerfile 都在）
@@ -24,19 +24,75 @@ description: "Trae 全局技能：写代码/改配置时默认补充详细中文
 - 架构：新增文件必须写文件头说明（职责、与目录结构关系、接入方式）
 - 安全：注释/示例/日志不泄露 token/secret/连接串；对外 message 不暴露内部堆栈
 
-## Rules 细则来源（单一真相）
+## Trae 生效范围（关键）
 
-以下文件为细则（Rules），需要时以它们的内容为准：
+你现在只用 Trae：因此“规则是否生效”只取决于 `.trae/skills/*` 的内容与 Trae 的技能触发机制；不依赖 `.cursor/rules/*`。
 
-- `.cursor/rules/001-Auto-Comment-Protocol.mdc`：全局总纲
-- `.cursor/rules/010-comment-expert.mdc`：后端注释专家（backend/**）
-- `.cursor/rules/020-pydantic-validator.mdc`：后端 Pydantic 校验规范（backend/**）
-- `.cursor/rules/030-error-handler-standard.mdc`：后端错误处理与返回标准（backend/**）
+本 Skill 定义的是仓库级默认行为（P0）：写代码/改配置时默认补充详细中文注释与说明，并遵守安全与隐私底线。
+
+## 配套 Skills（把细则做成 Trae 可执行的“规则集”）
+
+当你在 Trae 中做后端开发时，以下 Skills 共同组成“后端规则集”（建议在后端任务中优先触发）：
+
+- `backend-standards`：后端注释与结构说明规范（含函数三行注释块、复杂逻辑行内注释、新增文件头说明、配置/Dockerfile 说明）
+- `pydantic-validator`：Pydantic/FastAPI schema 校验规范
+- `error-handler-standard`：错误分类、HTTPException 使用、对外返回一致性与不泄露堆栈
+
+## 全局细则（Trae 直接执行）
+
+以下是 Trae 环境下的“可执行细则”。你不需要 Cursor，也不需要依赖 `.cursor/rules` 自动加载；只要启用本 Skill，就按此执行。
+
+### 1) Python（新增/修改函数）
+
+对每个新增/修改的函数/方法，必须紧贴函数定义上方写中文注释块，且必须包含以下三行（可扩展，但三行必须存在）：
+
+```python
+# [设计意图]：解释为什么要引入这个逻辑/函数，解决什么问题，替代方案为什么不选
+# [参数说明]：逐个说明输入参数的含义、格式、示例、边界条件
+# [注意]：指出潜在的并发/性能/安全坑点，以及错误分支的处理策略
+```
+
+并且：
+- FastAPI 路由/依赖：说明鉴权方式、输入来源（body/query/path/header）、返回结构/response_model。
+- 第三方请求：说明上游域名/路径、鉴权方式、超时策略、失败分支与降级策略。
+- 数据解析：说明关键字段来源、缺失字段如何处理、容错策略的理由与风险。
+
+### 2) 复杂逻辑（必须行内注释解释“为什么”）
+
+出现任一情况必须加行内注释解释“为什么这样做/失败时如何处理”：
+- 多层 if/else、try/except 嵌套
+- dict/list 深层路径访问
+- 重试、超时、降级、fallback
+- 循环内 I/O、N+1、全量加载等潜在性能问题
+
+### 3) 新增文件（必须文件头说明）
+
+新增任何文件时，必须在文件顶部写多行中文说明（注释/模块 docstring 均可），至少包含：
+- 文件职责（做什么）
+- 放在当前目录的原因（与 api/routes/services/core/config 的关系）
+- 被谁调用/如何接入（入口、路由、依赖注入链路）
+
+### 4) 配置与脚本（.env / Settings / third_party_config / Dockerfile）
+
+- 每个新增配置项必须说明：用途、格式、默认值风险、依赖模块。
+- URL/接口必须使用“域名 + URI（路径）”拆分管理，并写清拼接规则（例如 `rstrip('/')` 的原因）。
+- Dockerfile 每一层指令都要用中文解释其目的与优化点（缓存、体积、安全、构建速度等）。
+
+### 5) 错误处理与安全（不可违反）
+
+- 注释/示例/日志中不得出现真实密钥、Token、连接串；示例一律使用占位符。
+- 对外 message/detail 必须可读可操作；不得回传内部异常堆栈/内部路径。
+- 后端错误分类建议：
+  - 400/422：参数问题（指出哪个参数不合法、期望格式）
+  - 401/403：鉴权问题（不做用户枚举）
+  - 404：资源不存在
+  - 502/503/504：上游异常/超时（不附 token/原始响应全文）
+  - 500：内部错误（通用提示）
 
 ## 速查：改哪里
 
-- 想加强/修改 Python、Dockerfile、配置等“具体要求/模板”：改 `.cursor/rules/*.mdc`（Rules）
-- 想调整“默认是否开启、何时允许跳过”：改本文件（Skill）
+- 想调整“全仓库默认是否开启、何时允许跳过”：改本文件（global-commenter）
+- 想调整“后端细则（注释/校验/错误处理）”：改对应的 Trae Skills（backend-standards / pydantic-validator / error-handler-standard）
 
 ## 维护原则
 

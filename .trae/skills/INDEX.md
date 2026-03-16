@@ -35,6 +35,12 @@ title: "Trae Skills Index"
 - `work-reporter`：输出“改动清单/原因/影响/验证/回滚”
 - `line-commenter`：对指定文件做逐行中文注释（仅加注释，不改逻辑）
 
+### P1（后端规则集：后端任务优先触发）
+
+- `backend-standards`：后端注释与结构说明规范（backend/**）
+- `pydantic-validator`：Pydantic/FastAPI schema 校验规范（backend/**）
+- `error-handler-standard`：错误处理与对外返回标准（backend/**）
+
 ### P2（按任务类型触发：文件/产物导向）
 
 - 办公文档/表格/幻灯片：`docx` / `xlsx` / `pptx` / `pdf`
@@ -63,7 +69,8 @@ title: "Trae Skills Index"
   - Skill：`global-commenter`
   - Rule：`001-Auto-Comment-Protocol.mdc`
 - 后端开发模式（P1，仅 backend/**）：
-  - Rules：`010` / `020` / `030`
+  - Skills：`backend-standards` / `pydantic-validator` / `error-handler-standard`
+  - Rules（仅 Cursor 环境需要）：`010` / `020` / `030`
 - 其他 Skills：保持“按需触发”，不要全局默认（例如 `pdf/docx/pptx/xlsx` 只在涉及对应文件时触发）
 
 ## 6) Skill Packs（建议用法示例）
