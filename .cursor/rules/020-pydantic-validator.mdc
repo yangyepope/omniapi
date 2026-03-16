@@ -1,0 +1,46 @@
+---
+name: "pydantic_validator (backend)"
+version: "1.0"
+globs:
+  - "backend/**/*.py"
+alwaysApply: true
+---
+
+# 后端开发模式 · Pydantic 校验规范（pydantic_validator）
+
+【类型】RULE（Cursor 规则文件），用于后端开发模式；仅对 `backend/**` 范围生效（由本文件的 globs 决定），不是 Trae Skill。
+【优先级】P1（后端模式细则）：在不违反 P0（安全/隐私/全局协议）的前提下执行。
+
+本规则用于确保 backend 的 Pydantic/SQLModel/FastAPI 入参出参一致、可验证、可演进，避免“字段随手改、接口悄悄坏”。
+
+## 1) 入参/出参模型（强制）
+
+- FastAPI 路由必须显式声明 `response_model`（除非明确不需要返回结构约束）。
+- request body 必须使用 Pydantic Model（不要用 `dict[str, Any]` 直接裸接）。
+- 对外响应必须稳定：字段名、类型、可选性要明确，避免同字段返回 str/obj 混用。
+
+## 2) 字段定义（强制）
+
+- 对外字段必须写清楚：`Field(..., description="...")`（至少对核心字段）。
+- 能枚举的字段用 `Literal[...]` 或 Enum，减少“任意字符串”导致的脏数据。
+- 对外返回中，尽量避免把上游原始字段透传；需要映射时写注释说明映射规则。
+
+## 3) 校验与容错（强制）
+
+- 如果字段需要格式化/清洗：使用 `field_validator`（Pydantic v2）并写明：
+  - 允许的输入格式
+  - 失败时如何处理（抛错/返回 None/回退默认值）
+- 对第三方响应解析：优先使用 `model_validate` 做结构校验；如果上游结构不稳定，采用“最小必要字段校验 + 容错提取”，并在注释中说明原因与风险。
+
+## 4) 版本与迁移（建议但优先）
+
+- 对外接口字段变更（改名/类型变化/必填变化）必须在注释中说明兼容策略：
+  - 是否保留旧字段（deprecated）
+  - 是否提供 alias（如 `Field(validation_alias=...)`）
+  - 是否需要前端/调用方同步升级
+
+## 5) 常见错误禁止项（强制）
+
+- 禁止在 schema 中返回 `Any` 作为对外字段（除非是明确的透传容器，并写清结构）。
+- 禁止把异常对象/traceback 放进响应模型字段。
+- 禁止把敏感字段（token/secret/password/connection string）放进响应模型或示例中。
