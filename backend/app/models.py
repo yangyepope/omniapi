@@ -11,6 +11,7 @@ from typing import (  # Any：放宽类型以兼容第三方库；cast：显式�
 from pydantic import (
     EmailStr,  # EmailStr：带 email 格式校验的字符串类型（请求体/模型字段）
 )
+import sqlalchemy
 from sqlalchemy import (
     DateTime,  # DateTime：SQLAlchemy 的时间列类型（这里用于带时区的时间）
 )
@@ -275,4 +276,239 @@ class ApiKeysPublic(SQLModel):
     # 包含 ApiKeyPublic 对象列表的数据字段
     data: list[ApiKeyPublic]
     # 总数量，用于分页等显示
+    count: int
+
+
+from enum import Enum
+
+# -----------------------------------------------------------------------------
+# Common Enums
+# -----------------------------------------------------------------------------
+class SourceType(str, Enum):
+    auto_discovered = "auto_discovered"  # 由流量自动发现
+    documented = "documented"            # 从标准文档导入
+    mocked = "mocked"                    # 模拟/测试数据
+    zombie = "zombie"                    # 长期无流量的僵尸接口
+
+# -----------------------------------------------------------------------------
+# API Directory & Traffic Models (DDD)
+# -----------------------------------------------------------------------------
+
+# 1. System Module (上游系统模块)
+class SystemModuleBase(SQLModel):
+    # 模块的名称（对应微服务名称，例如 'sts', 'authz'），建立索引以便快速查询
+    name: str = Field(max_length=255, index=True)
+    # 微服务路由前缀，例如 '/sts'
+    service_prefix: str | None = Field(default=None, max_length=100)
+    # 模块的可选描述信息
+    description: str | None = Field(default=None, max_length=1024)
+
+class SystemModule(SystemModuleBase, table=True):
+    # 系统模块的主键 UUID
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 模块创建的时间戳，默认为当前 UTC 时间
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
+    # 与 API 接口定义的关联关系，如果模块被删除则级联删除关联的接口
+    endpoints: list["ApiEndpoint"] = Relationship(
+        back_populates="module",
+        cascade_delete=True,
+    )
+
+class SystemModulePublic(SystemModuleBase):
+    # 在公共 API 响应中暴露的 ID
+    id: uuid.UUID
+    # 在公共 API 响应中暴露的创建时间戳
+    created_at: datetime | None
+
+class SystemModulesPublic(SQLModel):
+    # 公共模块表示的列表
+    data: list[SystemModulePublic]
+    # 用于分页的总模块数量
+    count: int
+
+# 2. API Endpoint (接口定义)
+class ApiEndpointBase(SQLModel):
+    # HTTP 方法（例如 GET, POST），建立索引以便查询
+    method: str = Field(max_length=10, index=True)
+    # 泛化后的 URI 路径（例如 /api/v1/users/{id}），建立索引以便匹配
+    path: str = Field(max_length=512, index=True) 
+    # API 接口的可选名称或摘要
+    name: str | None = Field(default=None, max_length=255)
+    # API 接口的可选详细描述
+    description: str | None = Field(default=None, max_length=1024)
+    # 归属的微服务名称，通过请求路径（如 /sts/...）反推提取
+    service_name: str | None = Field(default=None, max_length=100, index=True)
+    # 接口的来源状态：限制为 SourceType 枚举中的值
+    source_type: SourceType = Field(default=SourceType.auto_discovered, index=True)
+    # 将此接口链接到特定 SystemModule 的外键
+    module_id: uuid.UUID | None = Field(default=None, foreign_key="systemmodule.id")
+
+class ApiEndpoint(ApiEndpointBase, table=True):
+    # API 接口定义的主键 UUID
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 接口定义创建的时间戳，默认为当前 UTC 时间
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
+    # 指向父模块的反向关联关系
+    module: SystemModule | None = Relationship(back_populates="endpoints")
+    # 与该接口关联的所有流量记录的关系，允许级联删除
+    traffic_records: list["TrafficRecord"] = Relationship(
+        back_populates="endpoint",
+        cascade_delete=True,
+    )
+
+class ApiEndpointPublic(ApiEndpointBase):
+    # 在公共 API 响应中暴露的 ID
+    id: uuid.UUID
+    # 在公共 API 响应中暴露的创建时间戳
+    created_at: datetime | None
+
+class ApiEndpointsPublic(SQLModel):
+    # 公共接口表示的列表
+    data: list[ApiEndpointPublic]
+    # 用于分页的总接口数量
+    count: int
+
+# 3. Traffic Record (单次流量快照)
+class TrafficRecordBase(SQLModel):
+    # 将此流量记录链接到其定义的 ApiEndpoint 的外键
+    endpoint_id: uuid.UUID | None = Field(default=None, foreign_key="apiendpoint.id")
+    # 此特定请求中使用的 HTTP 方法
+    method: str = Field(max_length=10)
+    # 实际请求的真实 URI（例如 /api/v1/users/123）
+    real_uri: str = Field(max_length=1024)
+    # 在数据库中作为 JSON 列存储的请求头
+    headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    # 作为文本列存储的请求体，以容纳大型 Payload
+    body: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 发起请求的客户端的真实 IP 地址
+    source_ip: str | None = Field(default=None, max_length=50)
+
+class TrafficRecord(TrafficRecordBase, table=True):
+    # 流量记录的主键 UUID
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 捕获流量记录的时间戳，默认为当前 UTC 时间
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
+    # 指向匹配的 ApiEndpoint 的反向关联关系
+    endpoint: ApiEndpoint | None = Relationship(back_populates="traffic_records")
+
+class TrafficRecordPublic(TrafficRecordBase):
+    # 在公共 API 响应中暴露的 ID
+    id: uuid.UUID
+    # 在公共 API 响应中暴露的创建时间戳
+    created_at: datetime | None
+
+class TrafficRecordsPublic(SQLModel):
+    # 公共流量记录表示的列表
+    data: list[TrafficRecordPublic]
+    # 用于分页的总流量记录数量
+    count: int
+
+# 4. Global Config (全局配置，如流量采集开关)
+class GlobalConfigBase(SQLModel):
+    # 唯一的配置键，建立索引以便快速查找
+    key: str = Field(max_length=255, unique=True, index=True)
+    # 作为字符串存储的配置值
+    value: str = Field(max_length=1024)
+    # 说明此配置键控制什么内容的可选描述
+    description: str | None = Field(default=None, max_length=512)
+
+class GlobalConfig(GlobalConfigBase, table=True):
+    # 配置记录的主键 UUID
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 最后更新配置的时间戳，默认为当前 UTC 时间
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
+
+# -----------------------------------------------------------------------------
+# Legacy API Asset & Security Test Models (To be migrated/adapted later)
+# -----------------------------------------------------------------------------
+
+# Shared properties for ApiAsset
+class ApiAssetBase(SQLModel):
+    method: str = Field(max_length=10, index=True)
+    uri_pattern: str = Field(max_length=512, index=True)
+    params_schema: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    header_schema: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    last_seen_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True), # type: ignore
+    )
+
+class ApiAssetCreate(ApiAssetBase):
+    pass
+
+class ApiAssetUpdate(SQLModel):
+    params_schema: dict[str, Any] | None = None
+    header_schema: dict[str, Any] | None = None
+    last_seen_at: datetime | None = None
+
+class ApiAsset(ApiAssetBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True), # type: ignore
+    )
+
+class ApiAssetPublic(ApiAssetBase):
+    id: uuid.UUID
+    created_at: datetime | None
+
+class ApiAssetsPublic(SQLModel):
+    data: list[ApiAssetPublic]
+    count: int
+
+# Shared properties for SecurityTestTask
+class SecurityTestTaskBase(SQLModel):
+    target_asset_id: uuid.UUID = Field(foreign_key="apiasset.id")
+    status: str = Field(default="pending", max_length=50) # pending, running, completed, failed
+    payload_type: str = Field(max_length=50) # sqli, xss, etc.
+
+class SecurityTestTaskCreate(SecurityTestTaskBase):
+    pass
+
+class SecurityTestTask(SecurityTestTaskBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True), # type: ignore
+    )
+    finished_at: datetime | None = Field(
+        default=None,
+        sa_type=DateTime(timezone=True), # type: ignore
+    )
+
+# Shared properties for SecurityTestReport
+class SecurityTestReportBase(SQLModel):
+    task_id: uuid.UUID = Field(foreign_key="securitytesttask.id")
+    asset_id: uuid.UUID = Field(foreign_key="apiasset.id")
+    vulnerability_found: bool = Field(default=False)
+    details: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+
+class SecurityTestReportCreate(SecurityTestReportBase):
+    pass
+
+class SecurityTestReport(SecurityTestReportBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True), # type: ignore
+    )
+
+class SecurityTestReportPublic(SecurityTestReportBase):
+    id: uuid.UUID
+    created_at: datetime | None
+
+class SecurityTestReportsPublic(SQLModel):
+    data: list[SecurityTestReportPublic]
     count: int

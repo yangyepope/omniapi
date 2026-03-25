@@ -1,0 +1,17 @@
+{
+  "paths": {
+    "/authz/api/v1/pep-instances/report": {
+      "post": {
+        "tags": ["Authz Module"],
+        "summary": "Report PEP instances",
+        "description": "Report running PEP instances to the authz server"
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "tags": ["User Module"],
+        "summary": "Get User by ID"
+      }
+    }
+  }
+}

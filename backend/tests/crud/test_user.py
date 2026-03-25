@@ -1,3 +1,7 @@
+"""
+本文件包含与当前模块相关的测试用例或脚本逻辑。
+主要用于验证核心功能或提供辅助工具。
+"""
 from fastapi.encoders import jsonable_encoder
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlmodel import Session

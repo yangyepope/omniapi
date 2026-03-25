@@ -1,3 +1,7 @@
+"""
+本文件包含与当前模块相关的测试用例或脚本逻辑。
+主要用于验证核心功能或提供辅助工具。
+"""
 import os  # os.getenv：读取环境变量开关（例如是否允许在 production 环境跑测试）
 from collections.abc import (
     Generator,  # Generator：用于 pytest fixture 的 yield 形式返回类型

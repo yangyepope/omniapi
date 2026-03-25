@@ -4,47 +4,35 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# 获取 Alembic 配置对象
+# 它提供了对正在使用的 .ini 文件中值的访问。
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# 根据配置文件解释 Python 日志记录。
+# 这行代码基本上设置了日志记录器。
 assert config.config_file_name is not None
 fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-# target_metadata = None
-
+# 导入应用的 SQLModel 和配置
 from app.models import SQLModel  # noqa
 from app.core.config import settings # noqa
 
+# 将目标元数据设置为 SQLModel 的元数据，用于支持“自动生成”迁移
 target_metadata = SQLModel.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
-
-
 def get_url():
+    # 从应用配置中获取数据库连接 URL
     return str(settings.SQLALCHEMY_DATABASE_URI)
 
 
 def run_migrations_offline():
-    """Run migrations in 'offline' mode.
+    """在“离线”模式下运行迁移。
 
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
+    这仅使用一个 URL 来配置上下文，而不是一个引擎 (Engine)，
+    尽管在这里使用引擎也是可以接受的。通过跳过引擎的创建，
+    我们甚至不需要 DBAPI 可用。
 
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    这里对 context.execute() 的调用会将给定的字符串输出到脚本输出中。
     """
     url = get_url()
     context.configure(
@@ -56,11 +44,10 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """Run migrations in 'online' mode.
+    """在“在线”模式下运行迁移。
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    在这种情况下，我们需要创建一个引擎 (Engine)
+    并将连接与上下文相关联。
     """
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = get_url()
@@ -79,7 +66,9 @@ def run_migrations_online():
             context.run_migrations()
 
 
+# 判断当前是离线还是在线模式，并执行相应的迁移函数
 if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+

@@ -1,3 +1,4 @@
+# 数据库迁移版本文件
 """initial_schema_v2
 
 Revision ID: 21182fe6e3a5

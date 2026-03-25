@@ -17,6 +17,7 @@ from app.utils import (
     verify_password_reset_token,
 )
 
+# 创建登录相关路由组
 router = APIRouter(tags=["login"])
 
 
@@ -25,16 +26,20 @@ def login_access_token(
     session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ) -> Token:
     """
-    OAuth2 compatible token login, get an access token for future requests
+    兼容 OAuth2 的 Token 登录接口，获取供后续请求使用的访问令牌（Access Token）。
     """
+    # 验证用户名（邮箱）和密码
     user = crud.authenticate(
         session=session, email=form_data.username, password=form_data.password
     )
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+        raise HTTPException(status_code=400, detail="邮箱或密码不正确")
     elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail="用户未激活")
+    
+    # 设置 Token 过期时间
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # 返回生成的 Token
     return Token(
         access_token=security.create_access_token(
             user.id, expires_delta=access_token_expires
@@ -45,7 +50,7 @@ def login_access_token(
 @router.post("/login/test-token", response_model=UserPublic)
 def test_token(current_user: CurrentUser) -> Any:
     """
-    Test access token
+    测试访问令牌是否有效。如果有效则返回当前用户信息。
     """
     return current_user
 
@@ -53,12 +58,12 @@ def test_token(current_user: CurrentUser) -> Any:
 @router.post("/password-recovery/{email}")
 def recover_password(email: str, session: SessionDep) -> Message:
     """
-    Password Recovery
+    密码恢复接口。向指定邮箱发送重置密码的邮件。
     """
     user = crud.get_user_by_email(session=session, email=email)
 
-    # Always return the same response to prevent email enumeration attacks
-    # Only send email if user actually exists
+    # 始终返回相同的响应以防止恶意枚举邮箱攻击
+    # 仅当用户确实存在时才实际发送邮件
     if user:
         password_reset_token = generate_password_reset_token(email=email)
         email_data = generate_reset_password_email(
@@ -70,31 +75,35 @@ def recover_password(email: str, session: SessionDep) -> Message:
             html_content=email_data.html_content,
         )
     return Message(
-        message="If that email is registered, we sent a password recovery link"
+        message="如果该邮箱已注册，我们将向其发送密码恢复链接"
     )
 
 
 @router.post("/reset-password/")
 def reset_password(session: SessionDep, body: NewPassword) -> Message:
     """
-    Reset password
+    重置密码接口。需要提供有效的重置 Token 和新密码。
     """
+    # 验证 Token 并解析出邮箱
     email = verify_password_reset_token(token=body.token)
     if not email:
-        raise HTTPException(status_code=400, detail="Invalid token")
+        raise HTTPException(status_code=400, detail="无效的 Token")
+    
     user = crud.get_user_by_email(session=session, email=email)
     if not user:
-        # Don't reveal that the user doesn't exist - use same error as invalid token
-        raise HTTPException(status_code=400, detail="Invalid token")
+        # 不要暴露用户不存在的事实 - 统一返回无效的 Token 错误
+        raise HTTPException(status_code=400, detail="无效的 Token")
     elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail="用户未激活")
+        
+    # 更新用户密码
     user_in_update = UserUpdate(password=body.new_password)
     crud.update_user(
         session=session,
         db_user=user,
         user_in=user_in_update,
     )
-    return Message(message="Password updated successfully")
+    return Message(message="密码更新成功")
 
 
 @router.post(
@@ -104,14 +113,14 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
 )
 def recover_password_html_content(email: str, session: SessionDep) -> Any:
     """
-    HTML Content for Password Recovery
+    获取密码恢复邮件的 HTML 内容（仅超级管理员可调用，用于调试）。
     """
     user = crud.get_user_by_email(session=session, email=email)
 
     if not user:
         raise HTTPException(
             status_code=404,
-            detail="The user with this username does not exist in the system.",
+            detail="系统中不存在该用户。",
         )
     password_reset_token = generate_password_reset_token(email=email)
     email_data = generate_reset_password_email(
@@ -121,3 +130,4 @@ def recover_password_html_content(email: str, session: SessionDep) -> Any:
     return HTMLResponse(
         content=email_data.html_content, headers={"subject:": email_data.subject}
     )
+

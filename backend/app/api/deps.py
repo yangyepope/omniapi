@@ -54,25 +54,34 @@ TokenDep = Annotated[
 ]  # 依赖别名：注入必填的 OAuth2 Bearer token
 
 
-def get_current_user(session: SessionDep, token: TokenDep) -> User:
-    try:  # 尝试解码/校验 JWT（签名、算法、过期等）
-        payload = jwt.decode(  # 解码 JWT：成功会得到 payload 字典
-            token,  # 从 Authorization Bearer 里拿到的 token 字符串
-            settings.SECRET_KEY,  # 服务端签名密钥：必须与签发时一致
-            algorithms=[security.ALGORITHM],  # 允许的算法列表：防止算法降级攻击
-        )
-        token_data = TokenPayload(**payload)  # 载荷结构化：校验 sub/exp 等字段类型
-    except (InvalidTokenError, ValidationError):  # JWT 无效或载荷结构不符合预期
-        raise HTTPException(  # 统一返回 403：凭证无效（不泄露细节）
-            status_code=status.HTTP_403_FORBIDDEN,  # 403 Forbidden
-            detail="Could not validate credentials",  # 错误详情
-        )
-    user = session.get(User, token_data.sub)  # 通过 sub（用户 ID）查询数据库用户
-    if not user:  # 用户不存在（例如被删除）
-        raise HTTPException(status_code=404, detail="User not found")  # 404 Not Found
-    if not user.is_active:  # 用户被禁用
-        raise HTTPException(status_code=400, detail="Inactive user")  # 400 Bad Request
-    return user  # 返回当前登录用户对象
+def get_current_user(session: SessionDep) -> User:
+    """
+    【开发环境临时修改】跳过鉴权，直接返回首个超级管理员或第一个用户。
+    """
+    user = session.exec(select(User).where(User.email == settings.FIRST_SUPERUSER)).first()
+    if not user:
+        user = session.exec(select(User)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No users found in database")
+    return user
+
+    # --- 原鉴权逻辑（开发阶段暂时注释） ---
+    # try:
+    #     payload = jwt.decode(
+    #         token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+    #     )
+    #     token_data = TokenPayload(**payload)
+    # except (InvalidTokenError, ValidationError):
+    #     raise HTTPException(
+    #         status_code=status.HTTP_403_FORBIDDEN,
+    #         detail="Could not validate credentials",
+    #     )
+    # user = session.get(User, token_data.sub)
+    # if not user:
+    #     raise HTTPException(status_code=404, detail="User not found")
+    # if not user.is_active:
+    #     raise HTTPException(status_code=400, detail="Inactive user")
+    # return user
 
 
 CurrentUser = Annotated[
@@ -82,65 +91,43 @@ CurrentUser = Annotated[
 
 def get_current_user_or_apikey(
     session: SessionDep,
-    token_oauth: Annotated[str | None, Depends(reusable_oauth2_optional)] = None,
-    api_key: Annotated[str | None, Depends(api_key_header)] = None,
 ) -> User:
     """
     Get user from either OAuth2 JWT token or API Key.
-    尝试从 OAuth2 JWT 令牌或 API Key 获取当前用户。
+    【开发环境临时修改】跳过鉴权，直接复用 get_current_user。
     """
-    # 优先尝试使用 OAuth2 的 token (通常是登录后的 JWT)  # JWT 登录态优先级高于 API Key
-    token = token_oauth  # 先把可选的 JWT token 取出来
+    return get_current_user(session)
 
-    # 如果没有 OAuth2 token，但有 API Key，则使用 API Key  # 允许第三方通过 X-API-Key 调用
-    if not token and api_key:  # 两种凭证都可能为空，这里做兜底选择
-        token = api_key  # 复用变量 token：后面统一走“先尝试 JWT，再尝试 API Key”的流程
-
-    # 如果两者都没有提供，抛出 401 未认证异常  # 这类错误表示“没带凭证”，不是“凭证无效”
-    if not token:  # token 为空说明既没带 Authorization Bearer，也没带 X-API-Key
-        raise HTTPException(  # 返回 401：要求客户端提供认证信息
-            status_code=status.HTTP_401_UNAUTHORIZED,  # 401 Unauthorized
-            detail="Not authenticated",  # 错误详情
-            headers={
-                "WWW-Authenticate": "Bearer"
-            },  # 兼容 Swagger：提示 Bearer 认证方式
-        )
-
-    # 1. 尝试将 token 解析为 JWT (系统登录用户)
-    try:
-        # 使用密钥解码 token
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
-        )
-        # 验证 payload 格式
-        token_data = TokenPayload(**payload)
-        # 从数据库查找对应用户
-        user = session.get(User, token_data.sub)
-        # 如果用户存在且处于激活状态，验证成功，直接返回用户
-        if user and user.is_active:
-            return user
-    except (InvalidTokenError, ValidationError):  # JWT 校验失败或结构不对
-        pass  # 解析失败，说明不是有效的 JWT，继续尝试检查是否为 API Key
-
-    # 2. 尝试将 token 视为 API Key (第三方调用)
-    # 查找数据库中匹配且激活的 API Key
-    statement = select(ApiKey).where(ApiKey.key == token).where(ApiKey.is_active)
-    api_key_obj = session.exec(statement).first()
-
-    # 如果找到了对应的 API Key
-    if api_key_obj:
-        # 查找该 API Key 归属的用户
-        user = session.get(User, api_key_obj.user_id)
-        # 如果用户存在且处于激活状态，验证成功，返回该用户
-        if user and user.is_active:
-            # TODO: 这里可以增加调用次数统计逻辑
-            return user
-
-    # 如果 JWT 和 API Key 都验证失败，抛出 403 禁止访问异常
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Could not validate credentials",
-    )
+    # --- 原鉴权逻辑（开发阶段暂时注释） ---
+    # token = token_oauth
+    # if not token and api_key:
+    #     token = api_key
+    # if not token:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="Not authenticated",
+    #         headers={"WWW-Authenticate": "Bearer"},
+    #     )
+    # try:
+    #     payload = jwt.decode(
+    #         token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+    #     )
+    #     token_data = TokenPayload(**payload)
+    #     user = session.get(User, token_data.sub)
+    #     if user and user.is_active:
+    #         return user
+    # except (InvalidTokenError, ValidationError):
+    #     pass
+    # statement = select(ApiKey).where(ApiKey.key == token).where(ApiKey.is_active)
+    # api_key_obj = session.exec(statement).first()
+    # if api_key_obj:
+    #     user = session.get(User, api_key_obj.user_id)
+    #     if user and user.is_active:
+    #         return user
+    # raise HTTPException(
+    #     status_code=status.HTTP_403_FORBIDDEN,
+    #     detail="Could not validate credentials",
+    # )
 
 
 CurrentUserOrApiKey = Annotated[
@@ -150,40 +137,31 @@ CurrentUserOrApiKey = Annotated[
 
 def get_current_user_by_apikey(
     session: SessionDep,
-    api_key: Annotated[str | None, Depends(api_key_header)] = None,
 ) -> User:
     """
     Get user from API Key only.
-    仅通过 API Key 获取当前用户。
+    【开发环境临时修改】跳过鉴权，直接复用 get_current_user。
     """
-    if not api_key:  # 没带 X-API-Key 头：直接 401
-        raise HTTPException(  # 返回 401：要求客户端提供 API Key
-            status_code=status.HTTP_401_UNAUTHORIZED,  # 401 Unauthorized
-            detail="Not authenticated",  # 错误详情
-            headers={
-                "WWW-Authenticate": "APIKey"
-            },  # 提示认证方案是 APIKey（非 Bearer）
-        )
+    return get_current_user(session)
 
-    token = api_key  # 统一命名：把 header 的 api_key 当作 token 来校验
-
-    # 查找数据库中匹配且激活的 API Key
-    statement = select(ApiKey).where(ApiKey.key == token).where(ApiKey.is_active)
-    api_key_obj = session.exec(statement).first()
-
-    # 如果找到了对应的 API Key
-    if api_key_obj:
-        # 查找该 API Key 归属的用户
-        user = session.get(User, api_key_obj.user_id)
-        # 如果用户存在且处于激活状态，验证成功，返回该用户
-        if user and user.is_active:
-            # TODO: 这里可以增加调用次数统计逻辑
-            return user
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Could not validate credentials",
-    )
+    # --- 原鉴权逻辑（开发阶段暂时注释） ---
+    # if not api_key:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="Not authenticated",
+    #         headers={"WWW-Authenticate": "APIKey"},
+    #     )
+    # token = api_key
+    # statement = select(ApiKey).where(ApiKey.key == token).where(ApiKey.is_active)
+    # api_key_obj = session.exec(statement).first()
+    # if api_key_obj:
+    #     user = session.get(User, api_key_obj.user_id)
+    #     if user and user.is_active:
+    #         return user
+    # raise HTTPException(
+    #     status_code=status.HTTP_403_FORBIDDEN,
+    #     detail="Could not validate credentials",
+    # )
 
 
 CurrentUserByApiKey = Annotated[
@@ -192,12 +170,18 @@ CurrentUserByApiKey = Annotated[
 
 
 def get_current_active_superuser(current_user: CurrentUser) -> User:
-    if not current_user.is_superuser:  # 当前用户不是超管：禁止访问
-        raise HTTPException(  # 返回 403：权限不足
-            status_code=403,  # 403 Forbidden
-            detail="The user doesn't have enough privileges",  # 错误详情
-        )
-    return current_user  # 超管校验通过：返回当前用户
+    """
+    【开发环境临时修改】跳过超管校验。
+    """
+    return current_user
+
+    # --- 原鉴权逻辑（开发阶段暂时注释） ---
+    # if not current_user.is_superuser:
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="The user doesn't have enough privileges",
+    #     )
+    # return current_user
 
 
 def get_token_validity(token: TokenDep) -> str:

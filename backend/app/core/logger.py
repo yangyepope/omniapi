@@ -33,6 +33,20 @@ class _InterceptHandler(logging.Handler):
         )
 
 
+class EndpointFilter(logging.Filter):
+    """
+    用于过滤特定接口的访问日志，避免被高频请求（如心跳检查、镜像流量收集）刷屏。
+    """
+    def filter(self, record: logging.LogRecord) -> bool:
+        # 如果日志内容包含特定的请求路径，则过滤掉不打印
+        msg = record.getMessage()
+        if "POST /v1/collect" in msg or "GET /v1/collect" in msg:
+            return False
+        if "GET /api/v1/utils/health-check/" in msg:
+            return False
+        return True
+
+
 def setup_logger() -> Any:
     logger.remove()  # 移除 loguru 默认 handler：避免重复输出/格式不一致
     logger.level("TRACE", color="<cyan>")
@@ -94,6 +108,10 @@ def setup_logger() -> Any:
         logging_logger = logging.getLogger(name)  # 取到对应命名空间的 logger
         logging_logger.handlers = [_InterceptHandler()]  # 覆盖 handler：确保走 loguru
         logging_logger.propagate = False  # 禁止向上传播到根 logger，避免重复输出
+        
+        # 专门为 uvicorn.access 增加过滤器，屏蔽不需要打印的接口访问日志
+        if name == "uvicorn.access":
+            logging_logger.addFilter(EndpointFilter())
 
     noisy_level = (  # httpx 底层组件的输出控制：按环境决定是否打开 DEBUG 明细
         logging.WARNING if settings.ENVIRONMENT == "production" else logging.DEBUG

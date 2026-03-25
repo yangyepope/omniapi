@@ -1,0 +1,6 @@
+- [ ] Backend: `ApiAsset`, `SecurityTestTask`, `SecurityTestReport` tables exist in DB.
+- [ ] Backend: Mirror traffic successfully creates or updates `ApiAsset` records (with basic deduplication/normalization).
+- [ ] Backend: A payload injection engine can replace URL parameters or JSON body fields with malicious strings.
+- [ ] Backend: The scanner engine can successfully send HTTP requests to the target using `httpx`.
+- [ ] Backend: The system correctly identifies a simple vulnerability (e.g. matching a specific error string in the response).
+- [ ] Backend: API endpoints for Assets and Scan Reports are protected and functional.
