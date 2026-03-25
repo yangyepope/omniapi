@@ -7,6 +7,8 @@ import {
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
+import { useTranslation } from "react-i18next"
+
 import type { Body_login_login_access_token as AccessToken } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
@@ -41,17 +43,15 @@ export const Route = createFileRoute("/login")({
       })
     }
   },
-  head: () => ({
-    meta: [
-      {
-        title: "Log In - FastAPI Template",
-      },
-    ],
-  }),
 })
 
 function Login() {
   const { loginMutation } = useAuth()
+  const { t } = useTranslation()
+
+  // We move the formSchema into the component if we want translated validation messages,
+  // but for simplicity right now let's just translate the UI parts.
+  
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -75,7 +75,7 @@ function Login() {
           className="flex flex-col gap-6"
         >
           <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Login to your account</h1>
+            <h1 className="text-2xl font-bold">{t("login.header")}</h1>
           </div>
 
           <div className="grid gap-4">
@@ -84,11 +84,11 @@ function Login() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t("login.emailLabel")}</FormLabel>
                   <FormControl>
                     <Input
                       data-testid="email-input"
-                      placeholder="user@example.com"
+                      placeholder={t("login.emailPlaceholder")}
                       type="email"
                       {...field}
                     />
@@ -104,18 +104,18 @@ function Login() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center">
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{t("login.passwordLabel")}</FormLabel>
                     <RouterLink
                       to="/recover-password"
                       className="ml-auto text-sm underline-offset-4 hover:underline"
                     >
-                      Forgot your password?
+                      {t("login.forgotPassword")}
                     </RouterLink>
                   </div>
                   <FormControl>
                     <PasswordInput
                       data-testid="password-input"
-                      placeholder="Password"
+                      placeholder={t("login.passwordPlaceholder")}
                       {...field}
                     />
                   </FormControl>
@@ -125,14 +125,14 @@ function Login() {
             />
 
             <LoadingButton type="submit" loading={loginMutation.isPending}>
-              Log In
+              {t("login.submitButton")}
             </LoadingButton>
           </div>
 
           <div className="text-center text-sm">
-            Don't have an account yet?{" "}
+            {t("login.noAccount")}{" "}
             <RouterLink to="/signup" className="underline underline-offset-4">
-              Sign up
+              {t("login.signUp")}
             </RouterLink>
           </div>
         </form>

@@ -1,3 +1,9 @@
+---
+description: Agents 角色与职责规范
+globs: "*"
+alwaysApply: true
+---
+
 # Trae 项目规则（OmniAPI）
 
 本文件用于 Trae 的“规则（Rules）”。目标是：在不依赖 Cursor 的前提下，让 Trae 在本仓库里稳定按约定工作，并按任务类型自动选用合适的 Skills。
@@ -50,4 +56,13 @@
 
 - 安全与隐私要求优先级最高：任何情况下不输出真实密钥/Token/连接串，不对外返回内部堆栈。
 - 若不同规则/技能建议冲突，以“更安全、更可维护、更少破坏对外接口兼容性”的方案为准。
+
+## 8) 全栈与前端自动化技能 (Full-Stack Skills)
+
+你可以通过对话“固化”或直接触发以下专项全栈生成技能（最佳实践流程）：
+
+- **Schema-Sync**：当后端 Pydantic 模型改变时，触发此技能。AI 应自动扫描后端变动，并运行前端的 API 客户端生成命令（如 `bun run generate-client`），以重新生成前端 OpenAPI 契约及类型。
+- **FastAPI-Route-Mapper**：当需要新建前端功能页时，触发此技能。AI 应读取后端 `router` 定义，并结合 TanStack Query 自动创建对应的 `useQuery` / `useMutation` 钩子和页面 API 请求调用。
+- **Zod-Pydantic-Bridge**：当编写前端复杂表单时，触发此技能。AI 应严格根据后端的 `Field(gt=0, le=100)` 等约束，自动生成对应的前端 Zod 校验规则（如 `z.number().min(0).max(100)`）。
+- **CRUD-Boilerplate**：当增加新的业务模块时，触发此技能。AI 应一次性端到端生成：后端 Model -> Schema -> Router，以及前端 API 调用 -> 列表页 (List Page) -> 表单弹窗 (Form Modal)。
 
