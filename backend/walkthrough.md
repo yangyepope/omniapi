@@ -77,3 +77,70 @@
 
 ### 验证结果
 - [x] `source_type` 字段已成功添加，历史数据已平滑升级，后续通过 JSON 导入的数据可将其状态更新为 `documented`，实现完美的影子 API 闭环管理。
+
+## [2026-03-26 01:30:00] 前端页面 AAM 风格重构与错误修复
+### 操作描述
+- 基于 `frontend/tmp/code.html` 与 `DESIGN.md` 中的设计稿，彻底重构了 `api-center.tsx` 接口中心页面，引入了暗黑毛玻璃风格、渐变按钮、服务卡片与微服务流量发现状态面板。
+- 优化了侧边栏 `AppSidebar.tsx` 及 `Main.tsx`，添加了 "AAM 微服务管理" 顶栏、"发现模块" 按钮，并对齐了选中项（"接口中心"）的深海/霓虹配色。
+- 清理了前端未使用的导入变量（`useTranslation` 等），修复了 TypeScript 构建错误。
+
+### 改动详情
+- 修改 `frontend/src/routes/_layout/api-center.tsx`：实现 `ServiceCard` 组件及 AAM 设计布局。
+- 修改 `frontend/src/components/Sidebar/AppSidebar.tsx`：移除 `useTranslation`、修改导航配置和侧边栏 UI。
+- 修改 `frontend/src/components/Sidebar/Main.tsx`：优化导航项高亮选中样式。
+
+### 验证结果
+- [x] 前端构建 (`bun run build`) 成功，无 TS/Lint 报错。
+- [x] 启动 Vite Dev Server 成功。
+
+## [2026-03-26 01:45:00] 侧边栏菜单结构与激活样式修复
+### 操作描述
+- 根据用户截图与设计要求，移除了侧边栏 `AppSidebar.tsx` 中多余的菜单分组标题（"系统概览", "API 发现", "系统管理"），将导航菜单恢复为与 `code.html` 扁平一致的结构。
+- 修复了 `Main.tsx` 中 "接口中心" 的激活态样式问题。禁用了 `SidebarMenuButton` 默认的 active 变体冲突，强制使用 `!text-[#69f6b8]` 和左侧翠绿色边框 (`border-l-4`)，使其完全对齐 AAM 深海霓虹设计规范。
+- 修复了全局字体缺失问题：在 `frontend/index.html` 引入了 `Space Grotesk` 与 `Inter` 字体，使界面的 `font-headline` 和 `font-body` 恢复正确的排版呈现。
+
+### 改动详情
+- 修改 `frontend/src/components/Sidebar/AppSidebar.tsx`：合并菜单项，移除 `title`。
+- 修改 `frontend/src/components/Sidebar/Main.tsx`：为当前激活的路由项强制使用 `code.html` 规范的样式类。
+- 修改 `frontend/index.html`：添加 Google Fonts 引用并更新标题。
+
+### 验证结果
+- [x] 侧边栏分组标题已被隐藏。
+- [x] 激活项 ("接口中心") 展现为深色底色、翠绿色文字及翠绿左边框。
+- [x] 全局排版恢复 Space Grotesk 和 Inter 字体。
+
+## [2026-03-26 12:30:00] 后端接口与前端集成：系统模块统计与列表
+### 操作描述
+- 用户提出需要后端开发接口查询当前微服务信息及接口列表，并在前端“接口中心”进行真实数据渲染。
+- AI 分析了 `models.py` 中的 `SystemModule` 和 `ApiEndpoint` 结构，设计并实现了 `/system-modules/` 和 `/{module_id}/endpoints` 接口。
+- 根据用户反馈修正了接口的实现逻辑：恢复使用 `SystemModule` 的真实 `id` 作为主键标识（UUID），并通过 `module.name` 作为 `service_name` 进行 1 对 1 映射查询，确保数据的严谨性与表结构的关联性。
+- 通过自定义脚本导出了 OpenAPI schema，并自动生成了前端 TypeScript Client 供 `api-center.tsx` 调用。
+
+### 改动详情
+- **新增后端路由**：创建 `backend/app/api/routes/system_modules.py`，实现 `get_system_modules_stats` 聚合各模块统计数据，以及 `get_module_endpoints` 分页获取具体模块的接口列表。
+- **注册路由**：在 `backend/app/api/main.py` 中注册 `/system-modules` 路由。
+- **生成 API Client**：编写 `backend/scripts/dump_openapi.py` 导出规范，在前端使用 `@hey-api/openapi-ts` 重新生成 API 客户端，将模型 `id` 同步为 `uuid.UUID`。
+- **前端集成**：修改 `frontend/src/routes/_layout/api-center.tsx`，使用 React Query 接入 `/system-modules/` 接口，替换了之前写死的静态卡片，实现了动态指标看板和覆盖率计算。并更新了前端以适配 UUID 的 `id` 类型。
+
+### 验证结果
+- [x] 后端 `system_modules` 路由接口逻辑已重构，通过 Pydantic 校验并修正为关联 `SystemModule` 真实的 `id`（UUID）。
+- [x] 成功生成并同步最新的 TypeScript OpenAPI Client 代码，解决重复 operationId 警告。
+- [x] 前端 `api-center.tsx` 数据读取正常，TypeScript 编译通过（`id` 被正确推导为字符串化的 UUID）。
+
+## [2026-03-26 13:00:00] 前端接口中心列表页按 STS 风格重构
+### 操作描述
+- 依据用户提供的截图需求，对 `api-center.tsx` 中的接口列表页面进行了 UI 深度重构，使其匹配 STS 服务接口列表的呈现风格。
+- 在顶部区域新增了包含服务模块名称的返回标题、带图标的搜索输入框，以及“导出数据”与“新建接口”的操作按钮。
+- 重构了接口数据表格（Table），将原先的列补充完整，添加了“接口描述”列，重新分配各列百分比宽度，优化了表头的视觉层次与背景色。
+- 重构了分页控制组件的布局，使其支持展示“共 X 个接口，每页显示 20 条”以及更加贴合设计的页码导航。
+
+### 改动详情
+- 修改 `frontend/src/routes/_layout/api-center.tsx`：
+  - 更新 Lucide 导入，添加 `Download`, `Plus`, `Bell`, `HelpCircle` 图标。
+  - 重构 `<header>` 区块，实现左右两端对齐的复合导航与工具栏。
+  - 调整 `<table>` 的 `<thead>` 及 `<tbody>`，新增 `endpoint.description` 展示支持，优化操作按钮悬浮样式。
+  - 重构底部分页（Pagination）HTML 结构，使其具备响应式及完善的文本描述。
+
+### 验证结果
+- [x] 前端组件重构完毕，无 TypeScript / Lint 错误。
+- [x] UI 严格遵循了截图所要求的列表设计规范与信息架构。

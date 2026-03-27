@@ -290,6 +290,12 @@ class SourceType(str, Enum):
     mocked = "mocked"                    # 模拟/测试数据
     zombie = "zombie"                    # 长期无流量的僵尸接口
 
+class EndpointLevel(str, Enum):
+    p0 = "p0"
+    p1 = "p1"
+    p2 = "p2"
+    p3 = "p3"
+
 # -----------------------------------------------------------------------------
 # API Directory & Traffic Models (DDD)
 # -----------------------------------------------------------------------------
@@ -297,7 +303,7 @@ class SourceType(str, Enum):
 # 1. System Module (上游系统模块)
 class SystemModuleBase(SQLModel):
     # 模块的名称（对应微服务名称，例如 'sts', 'authz'），建立索引以便快速查询
-    name: str = Field(max_length=255, index=True)
+    name: str = Field(max_length=255, index=True, unique=True)
     # 微服务路由前缀，例如 '/sts'
     service_prefix: str | None = Field(default=None, max_length=100)
     # 模块的可选描述信息
@@ -335,6 +341,8 @@ class ApiEndpointBase(SQLModel):
     method: str = Field(max_length=10, index=True)
     # 泛化后的 URI 路径（例如 /api/v1/users/{id}），建立索引以便匹配
     path: str = Field(max_length=512, index=True) 
+    # 接口等级：p0/p1/p2/p3，默认 p3
+    level: EndpointLevel = Field(default=EndpointLevel.p3, index=True)
     # API 接口的可选名称或摘要
     name: str | None = Field(default=None, max_length=255)
     # API 接口的可选详细描述

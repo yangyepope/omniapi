@@ -1,7 +1,18 @@
 from fastapi import APIRouter  # 导入 APIRouter，用于定义和组织路由
 
 # 导入各个业务模块的路由器
-from app.api.routes import api_keys, douyin, items, login, private, sec_assets, users, utils, traffic_manager
+from app.api.routes import (
+    api_keys,
+    douyin,
+    items,
+    login,
+    private,
+    sec_assets,
+    system_modules,
+    traffic_manager,
+    users,
+    utils,
+)
 from app.core.config import settings  # 导入全局配置
 
 # 创建主 API 路由器实例
@@ -23,6 +34,8 @@ api_router.include_router(api_keys.router)
 api_router.include_router(sec_assets.router)
 # 注册流量管理器（Nginx 镜像流量管理/Apifox 导入等）相关路由
 api_router.include_router(traffic_manager.router)
+# 注册系统模块（接口中心）相关路由
+api_router.include_router(system_modules.router)
 
 # 如果当前环境为本地开发环境，则暴露一些仅供内部测试的私有接口
 if settings.ENVIRONMENT == "local":

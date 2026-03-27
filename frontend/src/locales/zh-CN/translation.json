@@ -16,7 +16,8 @@
   "sidebar": {
     "dashboard": "仪表盘",
     "items": "项目管理",
-    "admin": "后台管理"
+    "admin": "后台管理",
+    "apiCenter": "接口中心"
   },
   "admin": {
     "title": "用户管理",

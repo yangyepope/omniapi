@@ -3,12 +3,235 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { ApiKeysReadApiKeysData, ApiKeysReadApiKeysResponse, ApiKeysCreateApiKeyData, ApiKeysCreateApiKeyResponse, ApiKeysDeleteApiKeyData, ApiKeysDeleteApiKeyResponse, CollectCollectTrafficResponse, CollectCollectTraffic1Response, CollectCollectTraffic2Response, CollectCollectTraffic3Response, CollectCollectTraffic4Response, CollectCollectTraffic5Response, CollectCollectTraffic6Response, DouyinFetchOneVideoByShareUrlData, DouyinFetchOneVideoByShareUrlResponse, ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, SecurityAssetsReadAssetsData, SecurityAssetsReadAssetsResponse, SecurityAssetsTriggerScanData, SecurityAssetsTriggerScanResponse, SecurityAssetsReadReportsData, SecurityAssetsReadReportsResponse, SystemModulesGetSystemModulesStatsResponse, SystemModulesGetModuleEndpointsData, SystemModulesGetModuleEndpointsResponse, SystemModulesGetModuleEndpointDetailData, SystemModulesGetModuleEndpointDetailResponse, TrafficManagerGetConfigResponse, TrafficManagerToggleConfigData, TrafficManagerToggleConfigResponse, TrafficManagerImportApifoxData, TrafficManagerImportApifoxResponse, TrafficManagerGetEndpointTrafficData, TrafficManagerGetEndpointTrafficResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+
+export class ApiKeysService {
+    /**
+     * Read Api Keys
+     * Retrieve own API keys.
+     * 获取当前用户拥有的所有 API Key。
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns ApiKeysPublic Successful Response
+     * @throws ApiError
+     */
+    public static readApiKeys(data: ApiKeysReadApiKeysData = {}): CancelablePromise<ApiKeysReadApiKeysResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/api-keys/',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Api Key
+     * Create new API key.
+     * 为当前用户创建一个新的 API Key。
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns ApiKeyPublic Successful Response
+     * @throws ApiError
+     */
+    public static createApiKey(data: ApiKeysCreateApiKeyData): CancelablePromise<ApiKeysCreateApiKeyResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/api-keys/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Api Key
+     * Delete an API key.
+     * 根据 ID 删除指定的 API Key。
+     * @param data The data for the request.
+     * @param data.id
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteApiKey(data: ApiKeysDeleteApiKeyData): CancelablePromise<ApiKeysDeleteApiKeyResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/api-keys/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class CollectService {
+    /**
+     * Collect Traffic
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static collectTraffic(): CancelablePromise<CollectCollectTrafficResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/v1/collect/'
+        });
+    }
+    
+    /**
+     * Collect Traffic
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static collectTraffic1(): CancelablePromise<CollectCollectTraffic1Response> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/v1/collect/'
+        });
+    }
+    
+    /**
+     * Collect Traffic
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static collectTraffic2(): CancelablePromise<CollectCollectTraffic2Response> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/v1/collect/'
+        });
+    }
+    
+    /**
+     * Collect Traffic
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static collectTraffic3(): CancelablePromise<CollectCollectTraffic3Response> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/v1/collect'
+        });
+    }
+    
+    /**
+     * Collect Traffic
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static collectTraffic4(): CancelablePromise<CollectCollectTraffic4Response> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/v1/collect'
+        });
+    }
+    
+    /**
+     * Collect Mirror Traffic
+     * Endpoint to receive asynchronous mirror traffic from Nginx. Returns 204 immediately.
+     * @returns void Successful Response
+     * @throws ApiError
+     */
+    public static collectTraffic5(): CancelablePromise<CollectCollectTraffic5Response> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/v1/collect'
+        });
+    }
+    
+    /**
+     * Collect Traffic
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static collectTraffic6(): CancelablePromise<CollectCollectTraffic6Response> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/v1/collect'
+        });
+    }
+}
+
+export class DouyinService {
+    /**
+     * Fetch One Video By Share Url
+     * ### 中文说明
+     *
+     * **用途**
+     * 根据分享链接获取单个作品数据。
+     *
+     * **参数**
+     * - `share_url`：分享链接（Query 参数）
+     *
+     * **返回**
+     * - `VideoResponse`：包含 `message` 与 `data`
+     *
+     * > 提示：如果接口返回为空，可用同样参数请求 Web 版本接口，查看：
+     * > `$.data.filter_list[0].reason`
+     *
+     * **reason 参考**
+     * - `8`：海外版权限制，暂时无法观看（短剧、电影片段等）
+     * - `8`：视频不存在或已被删除
+     * - `5`：私人内容，无公开展示权限
+     * - `10`：部分可见，仅作者选择的部分用户可见
+     * - 更多状态码请提交给客户支持补充
+     *
+     * ### English
+     *
+     * **Purpose**
+     * Get a single video data by sharing link.
+     *
+     * **Parameters**
+     * - `share_url`: Share link (Query param)
+     *
+     * **Return**
+     * - `VideoResponse`: includes `message` and `data`
+     *
+     * > Tip: If the interface returns empty, request the Web version endpoint with the same
+     * > params and check: `$.data.filter_list[0].reason`
+     *
+     * **reason reference**
+     * - `8`: Overseas copyright restriction (short dramas, movie clips, etc.)
+     * - `8`: The video does not exist or has been deleted
+     * - `5`: Private content, not publicly accessible
+     * - `10`: Partially visible, only visible to selected users
+     * - For more status codes, please contact customer support
+     *
+     * **Example**
+     * `share_url = "https://v.douyin.com/e3x2fjE/"`
+     * @param data The data for the request.
+     * @param data.shareUrl Douyin share URL
+     * @returns VideoResponse Successful Response
+     * @throws ApiError
+     */
+    public static fetchOneVideoByShareUrl(data: DouyinFetchOneVideoByShareUrlData): CancelablePromise<DouyinFetchOneVideoByShareUrlResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/douyin/fetch_one_video_by_share_url',
+            query: {
+                share_url: data.shareUrl
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
 
 export class ItemsService {
     /**
      * Read Items
-     * Retrieve items.
+     * 获取物品列表。
+     * 超级管理员可以获取所有物品，普通用户只能获取自己创建的物品。
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
@@ -31,7 +254,7 @@ export class ItemsService {
     
     /**
      * Create Item
-     * Create new item.
+     * 创建新物品。
      * @param data The data for the request.
      * @param data.requestBody
      * @returns ItemPublic Successful Response
@@ -51,7 +274,7 @@ export class ItemsService {
     
     /**
      * Read Item
-     * Get item by ID.
+     * 通过 ID 获取单个物品。
      * @param data The data for the request.
      * @param data.id
      * @returns ItemPublic Successful Response
@@ -72,7 +295,7 @@ export class ItemsService {
     
     /**
      * Update Item
-     * Update an item.
+     * 更新已有物品。
      * @param data The data for the request.
      * @param data.id
      * @param data.requestBody
@@ -96,7 +319,7 @@ export class ItemsService {
     
     /**
      * Delete Item
-     * Delete an item.
+     * 删除物品。
      * @param data The data for the request.
      * @param data.id
      * @returns Message Successful Response
@@ -119,7 +342,7 @@ export class ItemsService {
 export class LoginService {
     /**
      * Login Access Token
-     * OAuth2 compatible token login, get an access token for future requests
+     * 兼容 OAuth2 的 Token 登录接口，获取供后续请求使用的访问令牌（Access Token）。
      * @param data The data for the request.
      * @param data.formData
      * @returns Token Successful Response
@@ -139,7 +362,7 @@ export class LoginService {
     
     /**
      * Test Token
-     * Test access token
+     * 测试访问令牌是否有效。如果有效则返回当前用户信息。
      * @returns UserPublic Successful Response
      * @throws ApiError
      */
@@ -152,7 +375,7 @@ export class LoginService {
     
     /**
      * Recover Password
-     * Password Recovery
+     * 密码恢复接口。向指定邮箱发送重置密码的邮件。
      * @param data The data for the request.
      * @param data.email
      * @returns Message Successful Response
@@ -173,7 +396,7 @@ export class LoginService {
     
     /**
      * Reset Password
-     * Reset password
+     * 重置密码接口。需要提供有效的重置 Token 和新密码。
      * @param data The data for the request.
      * @param data.requestBody
      * @returns Message Successful Response
@@ -193,7 +416,7 @@ export class LoginService {
     
     /**
      * Recover Password Html Content
-     * HTML Content for Password Recovery
+     * 获取密码恢复邮件的 HTML 内容（仅超级管理员可调用，用于调试）。
      * @param data The data for the request.
      * @param data.email
      * @returns string Successful Response
@@ -216,7 +439,13 @@ export class LoginService {
 export class PrivateService {
     /**
      * Create User
-     * Create a new user.
+     * 创建用户（仅内部测试使用）。
+     *
+     * 路由层的职责：
+     * - 接收并校验请求体（UserCreate）
+     * - 绑定鉴权依赖（必须是超管）
+     * - 调用 service 层完成实际创建
+     * - 将 service 层的业务异常映射为 HTTP 错误响应
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -235,10 +464,229 @@ export class PrivateService {
     }
 }
 
+export class SecurityAssetsService {
+    /**
+     * Read Assets
+     * 获取通过流量镜像推导出的所有 API 资产
+     * 仅允许超级管理员访问（示例中复用了现有的 current_user，如需严格可以加上 is_superuser 校验）
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns ApiAssetsPublic Successful Response
+     * @throws ApiError
+     */
+    public static readAssets(data: SecurityAssetsReadAssetsData = {}): CancelablePromise<SecurityAssetsReadAssetsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/sec-assets/',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Trigger Scan
+     * 针对指定的 API 资产发起安全测试任务
+     * @param data The data for the request.
+     * @param data.assetId
+     * @param data.payloadType
+     * @returns SecurityTestTask Successful Response
+     * @throws ApiError
+     */
+    public static triggerScan(data: SecurityAssetsTriggerScanData): CancelablePromise<SecurityAssetsTriggerScanResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/sec-assets/{asset_id}/scan',
+            path: {
+                asset_id: data.assetId
+            },
+            query: {
+                payload_type: data.payloadType
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Reports
+     * 获取安全测试报告列表
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns SecurityTestReportsPublic Successful Response
+     * @throws ApiError
+     */
+    public static readReports(data: SecurityAssetsReadReportsData = {}): CancelablePromise<SecurityAssetsReadReportsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/sec-assets/reports',
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class SystemModulesService {
+    /**
+     * Get System Modules with Statistics
+     * @returns SystemModulesStatsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getSystemModulesStats(): CancelablePromise<SystemModulesGetSystemModulesStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/system-modules/'
+        });
+    }
+    
+    /**
+     * Get Endpoints for a System Module by Module ID
+     * @param data The data for the request.
+     * @param data.moduleId
+     * @param data.skip
+     * @param data.limit
+     * @returns ApiEndpointsPublic Successful Response
+     * @throws ApiError
+     */
+    public static getModuleEndpoints(data: SystemModulesGetModuleEndpointsData): CancelablePromise<SystemModulesGetModuleEndpointsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/system-modules/{module_id}/endpoints',
+            path: {
+                module_id: data.moduleId
+            },
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Endpoint Detail for a System Module
+     * @param data The data for the request.
+     * @param data.moduleId
+     * @param data.endpointId
+     * @returns ApiEndpointDetailResponse Successful Response
+     * @throws ApiError
+     */
+    public static getModuleEndpointDetail(data: SystemModulesGetModuleEndpointDetailData): CancelablePromise<SystemModulesGetModuleEndpointDetailResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/system-modules/{module_id}/endpoints/{endpoint_id}',
+            path: {
+                module_id: data.moduleId,
+                endpoint_id: data.endpointId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class TrafficManagerService {
+    /**
+     * Get Traffic Collection Config
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getConfig(): CancelablePromise<TrafficManagerGetConfigResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/traffic-manager/config'
+        });
+    }
+    
+    /**
+     * Toggle Traffic Collection
+     * @param data The data for the request.
+     * @param data.enabled
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static toggleConfig(data: TrafficManagerToggleConfigData): CancelablePromise<TrafficManagerToggleConfigResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/traffic-manager/config',
+            query: {
+                enabled: data.enabled
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Import Apifox API definitions
+     * 接收 Apifox 导出的 OpenAPI 格式 JSON。
+     * 为了简化，这里假设 data 中包含 'paths'，并根据 tags 将接口归类到 Module。
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static importApifox(data: TrafficManagerImportApifoxData): CancelablePromise<TrafficManagerImportApifoxResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/traffic-manager/import-apifox',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get traffic for an endpoint
+     * 按时间倒序查询某个接口下的所有流量快照。
+     * @param data The data for the request.
+     * @param data.endpointId
+     * @param data.skip
+     * @param data.limit
+     * @returns TrafficRecordsPublic Successful Response
+     * @throws ApiError
+     */
+    public static getEndpointTraffic(data: TrafficManagerGetEndpointTrafficData): CancelablePromise<TrafficManagerGetEndpointTrafficResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/traffic-manager/endpoints/{endpoint_id}/traffic',
+            path: {
+                endpoint_id: data.endpointId
+            },
+            query: {
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
 export class UsersService {
     /**
      * Read Users
-     * Retrieve users.
+     * # 函数文档字符串开始
+     * Retrieve users.  # 英文：获取用户列表（超管）
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
@@ -261,7 +709,8 @@ export class UsersService {
     
     /**
      * Create User
-     * Create new user.
+     * # 函数文档字符串开始
+     * Create new user.  # 英文：创建新用户（超管）
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -281,7 +730,8 @@ export class UsersService {
     
     /**
      * Read User Me
-     * Get current user.
+     * # 文档字符串开始
+     * Get current user.  # 英文：获取当前用户
      * @returns UserPublic Successful Response
      * @throws ApiError
      */
@@ -294,7 +744,8 @@ export class UsersService {
     
     /**
      * Delete User Me
-     * Delete own user.
+     * # 文档字符串开始
+     * Delete own user.  # 英文：删除自己的用户
      * @returns Message Successful Response
      * @throws ApiError
      */
@@ -307,7 +758,8 @@ export class UsersService {
     
     /**
      * Update User Me
-     * Update own user.
+     * # 文档字符串开始
+     * Update own user.  # 英文：更新自己的用户信息
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -327,7 +779,8 @@ export class UsersService {
     
     /**
      * Update Password Me
-     * Update own password.
+     * # 文档字符串开始
+     * Update own password.  # 英文：更新自己的密码
      * @param data The data for the request.
      * @param data.requestBody
      * @returns Message Successful Response
@@ -347,7 +800,8 @@ export class UsersService {
     
     /**
      * Register User
-     * Create new user without the need to be logged in.
+     * # 文档字符串开始
+     * Create new user without the need to be logged in.  # 英文：无需登录即可创建用户（注册）
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response
@@ -367,7 +821,8 @@ export class UsersService {
     
     /**
      * Read User By Id
-     * Get a specific user by id.
+     * # 文档字符串开始
+     * Get a specific user by id.  # 英文：按 ID 获取某个用户
      * @param data The data for the request.
      * @param data.userId
      * @returns UserPublic Successful Response
@@ -388,7 +843,8 @@ export class UsersService {
     
     /**
      * Update User
-     * Update a user.
+     * # 文档字符串开始
+     * Update a user.  # 英文：更新用户（超管）
      * @param data The data for the request.
      * @param data.userId
      * @param data.requestBody
@@ -412,7 +868,8 @@ export class UsersService {
     
     /**
      * Delete User
-     * Delete a user.
+     * # 文档字符串开始
+     * Delete a user.  # 英文：删除用户（超管）
      * @param data The data for the request.
      * @param data.userId
      * @returns Message Successful Response
@@ -435,7 +892,7 @@ export class UsersService {
 export class UtilsService {
     /**
      * Test Email
-     * Test emails.
+     * 发送测试邮件
      * @param data The data for the request.
      * @param data.emailTo
      * @returns Message Successful Response

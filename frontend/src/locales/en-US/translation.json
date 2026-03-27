@@ -16,7 +16,8 @@
   "sidebar": {
     "dashboard": "Dashboard",
     "items": "Items",
-    "admin": "Admin"
+    "admin": "Admin",
+    "apiCenter": "API Center"
   },
   "admin": {
     "title": "Users",

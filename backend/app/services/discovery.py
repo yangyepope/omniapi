@@ -15,11 +15,14 @@ def normalize_uri(uri: str) -> str:
     # 替换纯数字
     uri = re.sub(r'/[0-9]+(?=/|$)', '/{id}', uri)
     
-    # 替换不带连字符的 UUID (32位十六进制)
-    uri = re.sub(r'/[0-9a-fA-F]{32}(?=/|$)', '/{id}', uri)
+    # 替换包含不带连字符的 UUID (32位十六进制) 的路径片段
+    uri = re.sub(r'/[^/]*[0-9a-fA-F]{32}[^/]*(?=/|$)', '/{id}', uri)
     
-    # 替换带连字符的 UUID
-    uri = re.sub(r'/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?=/|$)', '/{id}', uri)
+    # 替换包含带连字符的 UUID 的路径片段 (例如 /mcp-a7c5.../ -> /{id})
+    uri = re.sub(r'/[^/]*[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}[^/]*(?=/|$)', '/{id}', uri)
+
+    # 替换包含 URL 编码的 URI 协议头 (例如 agent-spiffe%3A%2F%2F... 等被作为 path 变量传入的值)
+    uri = re.sub(r'/[^/]*%3A%2F%2F[^/]+(?=/|$)', '/{id}', uri)
     
     return uri
 

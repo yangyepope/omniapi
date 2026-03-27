@@ -1,17 +1,8 @@
 import { Link as RouterLink, useRouterState } from "@tanstack/react-router"
-import type { LucideIcon } from "lucide-react"
-
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
+import { useSidebar } from "@/components/ui/sidebar"
 
 export type Item = {
-  icon: LucideIcon
+  icon: string
   title: string
   path: string
 }
@@ -32,29 +23,34 @@ export function Main({ items }: MainProps) {
   }
 
   return (
-    <SidebarGroup>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map((item) => {
-            const isActive = currentPath === item.path
+    <nav className="flex-1 px-3 space-y-2">
+      {items.map((item) => {
+        const isActive = currentPath === item.path
 
-            return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton
-                  tooltip={item.title}
-                  isActive={isActive}
-                  asChild
-                >
-                  <RouterLink to={item.path} onClick={handleMenuClick}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </RouterLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )
-          })}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+        return (
+          <RouterLink
+            key={item.title}
+            to={item.path}
+            onClick={handleMenuClick}
+            className={`flex items-center gap-3 px-4 py-3 transition-colors group ${
+              isActive
+                ? "text-secondary border-l-4 border-secondary bg-surface-variant rounded-r-lg"
+                : "text-on-surface-variant hover:text-primary hover:bg-surface-variant rounded-lg"
+            }`}
+          >
+            <span 
+              className="material-symbols-outlined text-xl" 
+              style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
+              data-icon={item.icon}
+            >
+              {item.icon}
+            </span>
+            <span className="font-['Space_Grotesk'] text-sm tracking-tight">
+              {item.title}
+            </span>
+          </RouterLink>
+        )
+      })}
+    </nav>
   )
 }
