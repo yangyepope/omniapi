@@ -369,6 +369,13 @@ class ApiEndpoint(ApiEndpointBase, table=True):
         back_populates="endpoint",
         cascade_delete=True,
     )
+    # --- v3.0 新增关系 ---
+    # 与该接口关联的精选流量（去重后的永久存储）
+    # 建立此关系的目的是为了在资产管理界面能够直接下钻查看该接口捕获到的所有典型报文
+    filtered_flows: list["FilteredFlow"] = Relationship(
+        back_populates="endpoint",
+        cascade_delete=True,
+    )
 
 class ApiEndpointPublic(ApiEndpointBase):
     # 在公共 API 响应中暴露的 ID
@@ -520,3 +527,312 @@ class SecurityTestReportPublic(SecurityTestReportBase):
 class SecurityTestReportsPublic(SQLModel):
     data: list[SecurityTestReportPublic]
     count: int
+
+
+# =============================================================================
+# v3.0 流量管理与重放攻击测试核心模型 (Hybrid Integration)
+# =============================================================================
+
+# 1. 原始流量表 (RawFlow)
+# 作用：临时存储来自 Nginx Mirror 的所有原始请求报文
+# 设计意图：作为流量摄入的“缓冲区”，仅保留 3-7 天，用于后续的异步解析与去重逻辑
+class RawFlow(SQLModel, table=True):
+    # 指定数据库中的真实表名，保持与 database-init.sql 一致
+    __tablename__ = "raw_flows"
+    # 主键 ID，使用 UUID v4 保证分布式环境下的唯一性，避免 ID 预测攻击
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 服务标识，冗余存储以便在未关联到具体接口前进行按服务筛选
+    service_id: str = Field(max_length=64, index=True)
+    # 流量捕获的时间戳，必须带时区以支持全球时区对齐分析
+    captured_at: datetime = Field(
+        sa_type=cast(Any, DateTime(timezone=True)),
+        index=True
+    )
+    # HTTP 方法名（GET/POST等），建立索引以加速基于动作类型的搜索
+    method: str = Field(max_length=10)
+    # 原始完整 URL，用于后续的路径归一化匹配引擎处理
+    url: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 请求头，使用 JSONB 存储以便支持灵活的 Key-Value 检索
+    headers: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=sqlalchemy.Column(sqlalchemy.JSON)
+    )
+    # 请求体原文，使用 LargeBinary 存储以兼容二进制或多媒体 Payload 的内容
+    body: bytes | None = Field(
+        default=None,
+        sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary)
+    )
+    # 记录 Payload 的原始大小，用于列表展示及大报文初步过滤
+    body_size: int | None = Field(default=0)
+    # 客户端 IP，用于来源追溯及异常流量/CC 攻击风险分析
+    client_ip: str | None = Field(default=None, max_length=50)
+    # 标记位：是否已被解析模块处理，用于异步队列的状态转换追踪
+    parsed: bool = Field(default=False, index=True)
+    # 标记位：是否已完成去重检查，防止同一报文被重复存入精选库
+    deduped: bool = Field(default=False, index=True)
+    # 去重的指纹键（通常是特定字段的 MD5），用于快速判断幂等性
+    dedup_key: str | None = Field(default=None, max_length=32, index=True)
+    # 记录入库时间，与捕获时间分离，用于监控摄入管道的延迟状况
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=cast(Any, DateTime(timezone=True))
+    )
+    # TTL 过期时间，由后台任务定时清理此前的旧数据，保持存储成本可控
+    expire_at: datetime | None = Field(
+        default=None,
+        sa_type=cast(Any, DateTime(timezone=True)),
+        index=True
+    )
+
+# 2. 精选流量表 (FilteredFlow)
+# 作用：永久保存的典型请求模板，去重后的业务代表，挂载在 Interface/Endpoint 下
+# 设计意图：构建 API 资产的案例库，为后续的变体生成和渗透测试提供高质量的基础素材
+class FilteredFlow(SQLModel, table=True):
+    # 表名定义，强调其“经过筛选”的永久性特征
+    __tablename__ = "filtered_flows"
+    # 主键 ID
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 核心外键：关联到现有的 ApiEndpoint，建立从物理报文到逻辑接口的链接
+    endpoint_id: uuid.UUID = Field(foreign_key="apiendpoint.id", index=True, ondelete="CASCADE")
+    # 关联回原始流量 ID，用于追溯分析去重的来源样板
+    raw_flow_id: uuid.UUID | None = Field(default=None)
+    # 典型报文的首捕获时间
+    captured_at: datetime = Field(sa_type=cast(Any, DateTime(timezone=True)))
+    # 标准 HTTP 方法
+    method: str = Field(max_length=10)
+    # 原始请求路径（包含 Query），保留原始样貌以支持参数模板提取
+    original_path: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 经过过滤清洗（剔除 Token/时间戳等）后的标准请求头
+    headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    # 请求体原文，用于重现业务逻辑的 Payload
+    body: bytes | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary))
+    # 体积统计
+    body_size: int | None = Field(default=0)
+    # 捕获来源 IP
+    client_ip: str | None = Field(default=None, max_length=50)
+    # 对应的去重指纹，确保持久库中对同一接口的同一形态报文绝不重复
+    dedup_key: str | None = Field(default=None, max_length=32)
+    # 反向关联到逻辑接口定义，实现资产管理界面的级联展示
+    endpoint: "ApiEndpoint" = Relationship(back_populates="filtered_flows")
+    # 记录入库时间
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+    
+    # 统计字段冗余，用于在列表页展示变体丰富度，避免 JOIN 高开销
+    variant_count: int = Field(default=0)
+    # 统计被引用重放执行的历史次数
+    replay_count: int = Field(default=0)
+    
+    # 关联变体模型，支持基于精选流量衍生出的多种攻击载荷
+    variants: list["Variant"] = Relationship(back_populates="root_flow", cascade_delete=True)
+    # 关联标签模型，支持用户进行个性化的案例标记（如“高危”、“核心流程”）
+    tags: list["FlowTag"] = Relationship(back_populates="flow", cascade_delete=True)
+
+# 3. 流量标签表 (FlowTag)
+# 作用：精选流量的元数据标记，支持跨维度的分类检索
+class FlowTag(SQLModel, table=True):
+    # 表名定义
+    __tablename__ = "flow_tags"
+    # 简单自增主键
+    id: int | None = Field(default=None, primary_key=True)
+    # 关联到的精选流量 ID
+    flow_id: uuid.UUID = Field(foreign_key="filtered_flows.id", ondelete="CASCADE")
+    # 标签内容（例如：已验证、SQLI 触发点、敏感数据泄露）
+    tag: str = Field(max_length=64, index=True)
+    # 创建时间
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+    
+    # 反向关联到流量对象
+    flow: FilteredFlow = Relationship(back_populates="tags")
+
+# 4. 变体表 (Variant)
+# 作用：基于原始流量修改生成的“攻击载荷”或“测试样本”
+# 设计意图：支持多级 Fork，记录从一个普通报文演变为恶意载荷的全过程（Fork Chain）
+class Variant(SQLModel, table=True):
+    # 表名定义
+    __tablename__ = "variants"
+    # 变体唯一标识
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 标识是从原始流量变来的，还是从另一个变体 Fork 出来的
+    source_type: str = Field(max_length=20) # 'flow' 或 'variant'
+    # 指向父级对象的 ID，构建变体演进树
+    source_id: uuid.UUID = Field(index=True)
+    # 冗余记录最顶层的根流量 ID，方便直接根据流量查看所有衍生出的变体
+    root_flow_id: uuid.UUID = Field(foreign_key="filtered_flows.id", ondelete="CASCADE")
+    # 存存储完整的演变链条路径（JSON 数组），如 [flow_id, variant_1_id, variant_2_id]
+    fork_chain: list[uuid.UUID] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    # 变体的人类可读名称（或攻击类型名称）
+    name: str = Field(max_length=256)
+    # 对该变体设计意图的详细描述
+    description: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 记录修改规则的流水，定义如何从源变到现，用于审计和自动化批量生成
+    transformations: list[dict[str, Any]] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    
+    # 变体执行时的最终请求字段集合
+    method: str = Field(max_length=10)
+    url: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    body: bytes | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary))
+    
+    # 该变体被实际执行测试的频率统计
+    replay_count: int = Field(default=0)
+    # 创建时间戳
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+    
+    # 与根流量的逻辑关联
+    root_flow: FilteredFlow = Relationship(back_populates="variants")
+
+# 5. 重放任务表 (ReplayTask)
+# 作用：管理批量重放攻击执行周期
+# 设计意图：支持并发控制、频率限制以及完整的任务状态跟踪，实现大规模自动化测试
+class ReplayTask(SQLModel, table=True):
+    # 表名定义
+    __tablename__ = "replay_tasks"
+    # 任务唯一 ID
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 任务名称（如：核心系统压力测试、接口模糊测试-2026）
+    name: str | None = Field(default=None, max_length=256)
+    # 任务执行模式（单条/批量/按比例抽样等），决定执行引擎的行为逻辑
+    task_type: str = Field(max_length=20) # single/batch/proportional etc
+    # 重放请求发往的目标服务器基础地址
+    target_url: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 最大并发请求数，用于防止测试任务压垮下游微服务
+    concurrency: int = Field(default=10)
+    # 请求之间强制开启的间隔时间（毫秒），用于模拟人类行为或规避流控
+    interval_ms: int = Field(default=0)
+    # 单次 HTTP 请求的超时截断时间
+    timeout_ms: int = Field(default=30000)
+    # 存储任务的数据源配置（如哪些流量被选中、经过何种全局转换规则）
+    source_config: dict[str, Any] = Field(sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    # 任务状态（等待、运行中、已完成、失败、人工取消）
+    status: str = Field(default="pending", max_length=20)
+    
+    # 进度统计：总计执行数、成功数、失败数
+    total_count: int = Field(default=0)
+    completed_count: int = Field(default=0)
+    failed_count: int = Field(default=0)
+    
+    # 生命周期时间点追踪
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+    started_at: datetime | None = Field(default=None, sa_type=cast(Any, DateTime(timezone=True)))
+    completed_at: datetime | None = Field(default=None, sa_type=cast(Any, DateTime(timezone=True)))
+    # 若任务执行层面发生异常，在此记录详细堆栈
+    error_message: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    
+    # 关联该任务产生的所有执行细节结果
+    results: list["ReplayResult"] = Relationship(back_populates="task", cascade_delete=True)
+
+# 6. 重放执行结果表 (ReplayResult)
+# 作用：记录每一次具体的 HTTP 请求执行详情，用于后续的安全性判定和响应对比
+class ReplayResult(SQLModel, table=True):
+    # 表名定义
+    __tablename__ = "replay_results"
+    # 执行结果唯一 ID
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # 所属任务 ID，用于聚合分析整次任务的成功率
+    task_id: uuid.UUID = Field(foreign_key="replay_tasks.id", ondelete="CASCADE")
+    # 标记是针对哪类对象进行的重放
+    source_type: str = Field(max_length=20) # flow 或 variant
+    # 对象 ID
+    source_id: uuid.UUID = Field(index=True)
+    # 执行时的响应状态（成功/失败/超时/连接错误）
+    status: str = Field(max_length=20)
+    
+    # --- 记录执行时的物理报文快照，作为原始证据 ---
+    request_method: str | None = Field(default=None, max_length=10)
+    request_url: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    request_headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    request_body: bytes | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary))
+    
+    # --- 记录目标服务的真实返回，用于漏洞挖掘 ---
+    response_status: int | None = Field(default=None)
+    response_headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    # 响应体报文，限制存储大小，仅用于查看特征点，不在 DB 中存储海量数据
+    response_body: bytes | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary))
+    # 报文体积
+    response_size: int | None = Field(default=0)
+    # 响应延迟，毫秒级，用于性能基准对比
+    latency_ms: int | None = Field(default=0)
+    # 具体执行爆发的时间
+    executed_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+    # 详细错误描述
+    error_message: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    
+    # 建立与任务对象的逻辑链接
+    task: ReplayTask = Relationship(back_populates="results")
+
+# 7. 归一化规则配置表 (NormalizationRule)
+# 作用：定义 URL 路径归一化的计算规则（如把 /users/1 转换为 /users/{id}）
+# 设计意图：使不同变体路径能自动聚合到逻辑接口上，实现资产的自动发现与分类
+class NormalizationRule(SQLModel, table=True):
+    # 表名定义
+    __tablename__ = "normalization_rules"
+    # 自增 ID
+    id: int | None = Field(default=None, primary_key=True)
+    # 规则名称，如“标准 UUID 匹配”
+    name: str = Field(max_length=128)
+    # 类型标识（内置固化规则或用户自定义规则）
+    rule_type: str = Field(default="custom", max_length=20) # builtin/custom
+    # 用于识别路径变量的正则表达式模板
+    pattern: str = Field(max_length=512)
+    # 替换后的占位符，如 {uuid}
+    replacement: str = Field(max_length=128)
+    # 匹配优先级，数字越小越先被执行，用于多重规则竞态处理
+    priority: int = Field(default=100, index=True)
+    # 是否启用的全局开关
+    enabled: bool = Field(default=True, index=True)
+    # 系统内置规则不允许被物理删除，仅允许禁用，确保解析引擎基准稳定
+    deletable: bool = Field(default=True)
+    
+    # 记录元数据，用于审计
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+    updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+
+# 8. 全局系统配置表 (SystemConfig - v3.0 版)
+# 作用：持久化系统的各种运行阈值（如清理周期、重放默认值等）
+class SystemConfig(SQLModel, table=True):
+    # 表名定义
+    __tablename__ = "system_configs"
+    # 自增 ID
+    id: int | None = Field(default=None, primary_key=True)
+    # 全局唯一 Key，如 'raw_flow_ttl_days'
+    config_key: str = Field(max_length=128, unique=True, index=True)
+    # 配置值，统一以字符串存储，应用层按 need 转换
+    config_value: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 原始数据类型（string/int/bool/json），辅助应用层转换
+    value_type: str = Field(default="string", max_length=20)
+    # 描述该配置对系统的影响
+    description: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 更新记录
+    updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
+    # 记录由谁（或哪个服务）进行的更新
+    updated_by: str | None = Field(default=None, max_length=128)
+
+# 9. 高级操作日志表 (OperationLog)
+# 作用：记录关键增删改查动作，满足合规与安全审计要求
+class OperationLog(SQLModel, table=True):
+    # 表名定义
+    __tablename__ = "operation_logs"
+    # 唯一日志 ID
+    id: int | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.BigInteger, primary_key=True))
+    # 动作类型 (如 delete_flow, start_task 等)
+    operation_type: str = Field(max_length=64, index=True)
+    # 操作目标的类型 (flow, interface, task 等)
+    target_type: str | None = Field(default=None, max_length=64)
+    # 操作目标的 UUID 或 ID
+    target_id: str | None = Field(default=None, max_length=64)
+    # 请求报文详情快照（JSON 形式，剔除敏感值）
+    request_data: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    # 操作后的返回快照
+    response_data: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    # 操作是否最终成功的标记
+    success: bool = Field(default=True)
+    # 若失败，记录详细的阻断或错误原因
+    error_message: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 执行者的用户名或 ID
+    operator: str | None = Field(default=None, max_length=128)
+    # 访问者 IP
+    client_ip: str | None = Field(default=None, max_length=50)
+    # 请求头中的 UA 信息，用于设备定位
+    user_agent: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # 日志落盘时间
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))

@@ -16,12 +16,12 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutServicesRouteImport } from './routes/_layout/services'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
-import { Route as LayoutApiCenterRouteImport } from './routes/_layout/api-center'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
-import { Route as LayoutApiCenterIndexRouteImport } from './routes/_layout/api-center/index'
-import { Route as LayoutApiCenterModuleIdIndexRouteImport } from './routes/_layout/api-center/$moduleId/index'
-import { Route as LayoutApiCenterModuleIdEndpointIdRouteImport } from './routes/_layout/api-center/$moduleId/$endpointId'
+import { Route as LayoutServicesIndexRouteImport } from './routes/_layout/services/index'
+import { Route as LayoutServicesServiceIdIndexRouteImport } from './routes/_layout/services/$serviceId/index'
+import { Route as LayoutServicesServiceIdEndpointIdRouteImport } from './routes/_layout/services/$serviceId/$endpointId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -57,14 +57,14 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutServicesRoute = LayoutServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutItemsRoute = LayoutItemsRouteImport.update({
   id: '/items',
   path: '/items',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutApiCenterRoute = LayoutApiCenterRouteImport.update({
-  id: '/api-center',
-  path: '/api-center',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
@@ -72,22 +72,22 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutApiCenterIndexRoute = LayoutApiCenterIndexRouteImport.update({
+const LayoutServicesIndexRoute = LayoutServicesIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => LayoutApiCenterRoute,
+  getParentRoute: () => LayoutServicesRoute,
 } as any)
-const LayoutApiCenterModuleIdIndexRoute =
-  LayoutApiCenterModuleIdIndexRouteImport.update({
-    id: '/$moduleId/',
-    path: '/$moduleId/',
-    getParentRoute: () => LayoutApiCenterRoute,
+const LayoutServicesServiceIdIndexRoute =
+  LayoutServicesServiceIdIndexRouteImport.update({
+    id: '/$serviceId/',
+    path: '/$serviceId/',
+    getParentRoute: () => LayoutServicesRoute,
   } as any)
-const LayoutApiCenterModuleIdEndpointIdRoute =
-  LayoutApiCenterModuleIdEndpointIdRouteImport.update({
-    id: '/$moduleId/$endpointId',
-    path: '/$moduleId/$endpointId',
-    getParentRoute: () => LayoutApiCenterRoute,
+const LayoutServicesServiceIdEndpointIdRoute =
+  LayoutServicesServiceIdEndpointIdRouteImport.update({
+    id: '/$serviceId/$endpointId',
+    path: '/$serviceId/$endpointId',
+    getParentRoute: () => LayoutServicesRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -97,12 +97,12 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
-  '/api-center': typeof LayoutApiCenterRouteWithChildren
   '/items': typeof LayoutItemsRoute
+  '/services': typeof LayoutServicesRouteWithChildren
   '/settings': typeof LayoutSettingsRoute
-  '/api-center/': typeof LayoutApiCenterIndexRoute
-  '/api-center/$moduleId/$endpointId': typeof LayoutApiCenterModuleIdEndpointIdRoute
-  '/api-center/$moduleId/': typeof LayoutApiCenterModuleIdIndexRoute
+  '/services/': typeof LayoutServicesIndexRoute
+  '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
+  '/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -113,9 +113,9 @@ export interface FileRoutesByTo {
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
-  '/api-center': typeof LayoutApiCenterIndexRoute
-  '/api-center/$moduleId/$endpointId': typeof LayoutApiCenterModuleIdEndpointIdRoute
-  '/api-center/$moduleId': typeof LayoutApiCenterModuleIdIndexRoute
+  '/services': typeof LayoutServicesIndexRoute
+  '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
+  '/services/$serviceId': typeof LayoutServicesServiceIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,13 +125,13 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
-  '/_layout/api-center': typeof LayoutApiCenterRouteWithChildren
   '/_layout/items': typeof LayoutItemsRoute
+  '/_layout/services': typeof LayoutServicesRouteWithChildren
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
-  '/_layout/api-center/': typeof LayoutApiCenterIndexRoute
-  '/_layout/api-center/$moduleId/$endpointId': typeof LayoutApiCenterModuleIdEndpointIdRoute
-  '/_layout/api-center/$moduleId/': typeof LayoutApiCenterModuleIdIndexRoute
+  '/_layout/services/': typeof LayoutServicesIndexRoute
+  '/_layout/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
+  '/_layout/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,12 +142,12 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
-    | '/api-center'
     | '/items'
+    | '/services'
     | '/settings'
-    | '/api-center/'
-    | '/api-center/$moduleId/$endpointId'
-    | '/api-center/$moduleId/'
+    | '/services/'
+    | '/services/$serviceId/$endpointId'
+    | '/services/$serviceId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -158,9 +158,9 @@ export interface FileRouteTypes {
     | '/items'
     | '/settings'
     | '/'
-    | '/api-center'
-    | '/api-center/$moduleId/$endpointId'
-    | '/api-center/$moduleId'
+    | '/services'
+    | '/services/$serviceId/$endpointId'
+    | '/services/$serviceId'
   id:
     | '__root__'
     | '/_layout'
@@ -169,13 +169,13 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_layout/admin'
-    | '/_layout/api-center'
     | '/_layout/items'
+    | '/_layout/services'
     | '/_layout/settings'
     | '/_layout/'
-    | '/_layout/api-center/'
-    | '/_layout/api-center/$moduleId/$endpointId'
-    | '/_layout/api-center/$moduleId/'
+    | '/_layout/services/'
+    | '/_layout/services/$serviceId/$endpointId'
+    | '/_layout/services/$serviceId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,18 +237,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/services': {
+      id: '/_layout/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof LayoutServicesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/items': {
       id: '/_layout/items'
       path: '/items'
       fullPath: '/items'
       preLoaderRoute: typeof LayoutItemsRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/api-center': {
-      id: '/_layout/api-center'
-      path: '/api-center'
-      fullPath: '/api-center'
-      preLoaderRoute: typeof LayoutApiCenterRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/admin': {
@@ -258,59 +258,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/api-center/': {
-      id: '/_layout/api-center/'
+    '/_layout/services/': {
+      id: '/_layout/services/'
       path: '/'
-      fullPath: '/api-center/'
-      preLoaderRoute: typeof LayoutApiCenterIndexRouteImport
-      parentRoute: typeof LayoutApiCenterRoute
+      fullPath: '/services/'
+      preLoaderRoute: typeof LayoutServicesIndexRouteImport
+      parentRoute: typeof LayoutServicesRoute
     }
-    '/_layout/api-center/$moduleId/': {
-      id: '/_layout/api-center/$moduleId/'
-      path: '/$moduleId'
-      fullPath: '/api-center/$moduleId/'
-      preLoaderRoute: typeof LayoutApiCenterModuleIdIndexRouteImport
-      parentRoute: typeof LayoutApiCenterRoute
+    '/_layout/services/$serviceId/': {
+      id: '/_layout/services/$serviceId/'
+      path: '/$serviceId'
+      fullPath: '/services/$serviceId/'
+      preLoaderRoute: typeof LayoutServicesServiceIdIndexRouteImport
+      parentRoute: typeof LayoutServicesRoute
     }
-    '/_layout/api-center/$moduleId/$endpointId': {
-      id: '/_layout/api-center/$moduleId/$endpointId'
-      path: '/$moduleId/$endpointId'
-      fullPath: '/api-center/$moduleId/$endpointId'
-      preLoaderRoute: typeof LayoutApiCenterModuleIdEndpointIdRouteImport
-      parentRoute: typeof LayoutApiCenterRoute
+    '/_layout/services/$serviceId/$endpointId': {
+      id: '/_layout/services/$serviceId/$endpointId'
+      path: '/$serviceId/$endpointId'
+      fullPath: '/services/$serviceId/$endpointId'
+      preLoaderRoute: typeof LayoutServicesServiceIdEndpointIdRouteImport
+      parentRoute: typeof LayoutServicesRoute
     }
   }
 }
 
-interface LayoutApiCenterRouteChildren {
-  LayoutApiCenterIndexRoute: typeof LayoutApiCenterIndexRoute
-  LayoutApiCenterModuleIdEndpointIdRoute: typeof LayoutApiCenterModuleIdEndpointIdRoute
-  LayoutApiCenterModuleIdIndexRoute: typeof LayoutApiCenterModuleIdIndexRoute
+interface LayoutServicesRouteChildren {
+  LayoutServicesIndexRoute: typeof LayoutServicesIndexRoute
+  LayoutServicesServiceIdEndpointIdRoute: typeof LayoutServicesServiceIdEndpointIdRoute
+  LayoutServicesServiceIdIndexRoute: typeof LayoutServicesServiceIdIndexRoute
 }
 
-const LayoutApiCenterRouteChildren: LayoutApiCenterRouteChildren = {
-  LayoutApiCenterIndexRoute: LayoutApiCenterIndexRoute,
-  LayoutApiCenterModuleIdEndpointIdRoute:
-    LayoutApiCenterModuleIdEndpointIdRoute,
-  LayoutApiCenterModuleIdIndexRoute: LayoutApiCenterModuleIdIndexRoute,
+const LayoutServicesRouteChildren: LayoutServicesRouteChildren = {
+  LayoutServicesIndexRoute: LayoutServicesIndexRoute,
+  LayoutServicesServiceIdEndpointIdRoute:
+    LayoutServicesServiceIdEndpointIdRoute,
+  LayoutServicesServiceIdIndexRoute: LayoutServicesServiceIdIndexRoute,
 }
 
-const LayoutApiCenterRouteWithChildren = LayoutApiCenterRoute._addFileChildren(
-  LayoutApiCenterRouteChildren,
+const LayoutServicesRouteWithChildren = LayoutServicesRoute._addFileChildren(
+  LayoutServicesRouteChildren,
 )
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
-  LayoutApiCenterRoute: typeof LayoutApiCenterRouteWithChildren
   LayoutItemsRoute: typeof LayoutItemsRoute
+  LayoutServicesRoute: typeof LayoutServicesRouteWithChildren
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
-  LayoutApiCenterRoute: LayoutApiCenterRouteWithChildren,
   LayoutItemsRoute: LayoutItemsRoute,
+  LayoutServicesRoute: LayoutServicesRouteWithChildren,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
 }

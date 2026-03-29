@@ -2,15 +2,15 @@ import { useIsFetching } from "@tanstack/react-query"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
 
-export const Route = createFileRoute("/_layout/api-center")({
-  component: ApiCenterLayout,
+export const Route = createFileRoute("/_layout/services")({
+  component: ServicesLayout,
 })
 
-function ApiCenterLayout() {
+function ServicesLayout() {
   const isFetching = useIsFetching()
 
   return (
-    <div className="relative flex h-full min-h-screen flex-col bg-[#0a0e14] text-[#f1f3fc] selection:bg-[#00f1fe]/30 font-sans">
+    <div className="relative flex h-full grow flex-col bg-surface text-on-surface font-sans">
       {/* 顶部全局进度条 (针对高延迟优化) */}
       <div 
         className={cn(
@@ -33,4 +33,4 @@ function ApiCenterLayout() {
   )
 }
 
-export default ApiCenterLayout
+export default ServicesLayout
