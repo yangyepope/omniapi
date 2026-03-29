@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -164,5 +165,9 @@
     0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 246, 184, 0.7); }
     70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(105, 246, 184, 0); }
     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 246, 184, 0); }
+  }
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
   }
 }

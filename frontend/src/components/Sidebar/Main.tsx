@@ -25,7 +25,7 @@ export function Main({ items }: MainProps) {
   return (
     <nav className="flex-1 px-3 space-y-2">
       {items.map((item) => {
-        const isActive = currentPath === item.path
+        const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path)
 
         return (
           <RouterLink

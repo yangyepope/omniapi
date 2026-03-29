@@ -557,6 +557,7 @@ export class SystemModulesService {
      * @param data.moduleId
      * @param data.skip
      * @param data.limit
+     * @param data.keyword
      * @returns ApiEndpointsPublic Successful Response
      * @throws ApiError
      */
@@ -569,7 +570,8 @@ export class SystemModulesService {
             },
             query: {
                 skip: data.skip,
-                limit: data.limit
+                limit: data.limit,
+                keyword: data.keyword
             },
             errors: {
                 422: 'Validation Error'

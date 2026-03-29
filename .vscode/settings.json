@@ -41,5 +41,26 @@
         "./backend",
         "-p",
         "test_*.py"
-    ]
+    ],
+    "remote.autoForwardPortsFallback": 0,
+    // "http.useLocalProxyConfiguration": true,
+    // "http.proxy": "http://127.0.0.1:7891", // 这里的 7890 换成你的真实代理端口
+    // "http.proxySupport": "on",
+    // "http.noProxy": "127.0.0.1, localhost, 192.168.10.27",
+    // "antigravity.sshProxy.bypass": [
+    //     "127.0.0.1",
+    //     "localhost"
+    // ],
+    // "http.proxySupport": "override"
+    // 强制关闭 IDE 对本地代理配置的自动探测（这是导致 port 0 的元凶）
+    // 1. 禁用一切“自动探测”和“同步本地配置”，防止它乱跳端口
+    "http.useLocalProxyConfiguration": false,
+    "remote.SSH.localServerDownload": "off",
+    // 2. 强制指定你已经测通的那个“物理大桥”
+    "http.proxy": "http://127.0.0.1:7891",
+    "http.proxySupport": "on",
+    // 3. 极其重要：必须是字符串！防止内部回环通讯被拦截
+ //    "http.noProxy": "127.0.0.1,localhost,::1",
+  //  "remote.SSH.useLocalServer": false,
+  //  "remote.SSH.enableDynamicForwarding": false
 }

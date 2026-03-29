@@ -441,6 +441,7 @@ export type SecurityAssetsReadReportsResponse = (SecurityTestReportsPublic);
 export type SystemModulesGetSystemModulesStatsResponse = (SystemModulesStatsResponse);
 
 export type SystemModulesGetModuleEndpointsData = {
+    keyword?: string | null;
     limit?: number;
     moduleId: string;
     skip?: number;

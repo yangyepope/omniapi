@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_layout")({
 
 function Layout() {
   const router = useRouterState()
-  const isApiCenter = router.location.pathname === "/api-center"
+  const isApiCenter = router.location.pathname.startsWith("/api-center")
 
   return (
     <SidebarProvider>

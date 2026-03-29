@@ -19,6 +19,9 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutApiCenterRouteImport } from './routes/_layout/api-center'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutApiCenterIndexRouteImport } from './routes/_layout/api-center/index'
+import { Route as LayoutApiCenterModuleIdIndexRouteImport } from './routes/_layout/api-center/$moduleId/index'
+import { Route as LayoutApiCenterModuleIdEndpointIdRouteImport } from './routes/_layout/api-center/$moduleId/$endpointId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -69,6 +72,23 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutApiCenterIndexRoute = LayoutApiCenterIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LayoutApiCenterRoute,
+} as any)
+const LayoutApiCenterModuleIdIndexRoute =
+  LayoutApiCenterModuleIdIndexRouteImport.update({
+    id: '/$moduleId/',
+    path: '/$moduleId/',
+    getParentRoute: () => LayoutApiCenterRoute,
+  } as any)
+const LayoutApiCenterModuleIdEndpointIdRoute =
+  LayoutApiCenterModuleIdEndpointIdRouteImport.update({
+    id: '/$moduleId/$endpointId',
+    path: '/$moduleId/$endpointId',
+    getParentRoute: () => LayoutApiCenterRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -77,9 +97,12 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
-  '/api-center': typeof LayoutApiCenterRoute
+  '/api-center': typeof LayoutApiCenterRouteWithChildren
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/api-center/': typeof LayoutApiCenterIndexRoute
+  '/api-center/$moduleId/$endpointId': typeof LayoutApiCenterModuleIdEndpointIdRoute
+  '/api-center/$moduleId/': typeof LayoutApiCenterModuleIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -87,10 +110,12 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
-  '/api-center': typeof LayoutApiCenterRoute
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/api-center': typeof LayoutApiCenterIndexRoute
+  '/api-center/$moduleId/$endpointId': typeof LayoutApiCenterModuleIdEndpointIdRoute
+  '/api-center/$moduleId': typeof LayoutApiCenterModuleIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -100,10 +125,13 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
-  '/_layout/api-center': typeof LayoutApiCenterRoute
+  '/_layout/api-center': typeof LayoutApiCenterRouteWithChildren
   '/_layout/items': typeof LayoutItemsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/api-center/': typeof LayoutApiCenterIndexRoute
+  '/_layout/api-center/$moduleId/$endpointId': typeof LayoutApiCenterModuleIdEndpointIdRoute
+  '/_layout/api-center/$moduleId/': typeof LayoutApiCenterModuleIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +145,9 @@ export interface FileRouteTypes {
     | '/api-center'
     | '/items'
     | '/settings'
+    | '/api-center/'
+    | '/api-center/$moduleId/$endpointId'
+    | '/api-center/$moduleId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -124,10 +155,12 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
-    | '/api-center'
     | '/items'
     | '/settings'
     | '/'
+    | '/api-center'
+    | '/api-center/$moduleId/$endpointId'
+    | '/api-center/$moduleId'
   id:
     | '__root__'
     | '/_layout'
@@ -140,6 +173,9 @@ export interface FileRouteTypes {
     | '/_layout/items'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/api-center/'
+    | '/_layout/api-center/$moduleId/$endpointId'
+    | '/_layout/api-center/$moduleId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -222,12 +258,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/api-center/': {
+      id: '/_layout/api-center/'
+      path: '/'
+      fullPath: '/api-center/'
+      preLoaderRoute: typeof LayoutApiCenterIndexRouteImport
+      parentRoute: typeof LayoutApiCenterRoute
+    }
+    '/_layout/api-center/$moduleId/': {
+      id: '/_layout/api-center/$moduleId/'
+      path: '/$moduleId'
+      fullPath: '/api-center/$moduleId/'
+      preLoaderRoute: typeof LayoutApiCenterModuleIdIndexRouteImport
+      parentRoute: typeof LayoutApiCenterRoute
+    }
+    '/_layout/api-center/$moduleId/$endpointId': {
+      id: '/_layout/api-center/$moduleId/$endpointId'
+      path: '/$moduleId/$endpointId'
+      fullPath: '/api-center/$moduleId/$endpointId'
+      preLoaderRoute: typeof LayoutApiCenterModuleIdEndpointIdRouteImport
+      parentRoute: typeof LayoutApiCenterRoute
+    }
   }
 }
 
+interface LayoutApiCenterRouteChildren {
+  LayoutApiCenterIndexRoute: typeof LayoutApiCenterIndexRoute
+  LayoutApiCenterModuleIdEndpointIdRoute: typeof LayoutApiCenterModuleIdEndpointIdRoute
+  LayoutApiCenterModuleIdIndexRoute: typeof LayoutApiCenterModuleIdIndexRoute
+}
+
+const LayoutApiCenterRouteChildren: LayoutApiCenterRouteChildren = {
+  LayoutApiCenterIndexRoute: LayoutApiCenterIndexRoute,
+  LayoutApiCenterModuleIdEndpointIdRoute:
+    LayoutApiCenterModuleIdEndpointIdRoute,
+  LayoutApiCenterModuleIdIndexRoute: LayoutApiCenterModuleIdIndexRoute,
+}
+
+const LayoutApiCenterRouteWithChildren = LayoutApiCenterRoute._addFileChildren(
+  LayoutApiCenterRouteChildren,
+)
+
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
-  LayoutApiCenterRoute: typeof LayoutApiCenterRoute
+  LayoutApiCenterRoute: typeof LayoutApiCenterRouteWithChildren
   LayoutItemsRoute: typeof LayoutItemsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
@@ -235,7 +309,7 @@ interface LayoutRouteChildren {
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
-  LayoutApiCenterRoute: LayoutApiCenterRoute,
+  LayoutApiCenterRoute: LayoutApiCenterRouteWithChildren,
   LayoutItemsRoute: LayoutItemsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
