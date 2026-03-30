@@ -18,12 +18,11 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
-import { cn } from "@/lib/utils"
 import { handleError } from "@/utils"
 
 const formSchema = z.object({
   full_name: z.string().max(30).optional(),
-  email: z.email({ message: "Invalid email address" }),
+  email: z.string().email({ message: "Invalid email address" }),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -52,7 +51,7 @@ const UserInformation = () => {
     mutationFn: (data: UserUpdateMe) =>
       UsersService.updateUserMe({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("User updated successfully")
+      showSuccessToast("个人资料更新成功")
       toggleEditMode()
     },
     onError: handleError.bind(showErrorToast),
@@ -64,7 +63,6 @@ const UserInformation = () => {
   const onSubmit = (data: FormData) => {
     const updateData: UserUpdateMe = {}
 
-    // only include fields that have changed
     if (data.full_name !== currentUser?.full_name) {
       updateData.full_name = data.full_name
     }
@@ -81,61 +79,55 @@ const UserInformation = () => {
   }
 
   return (
-    <div className="max-w-md">
-      <h3 className="text-lg font-semibold py-4">User Information</h3>
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
-          <FormField
-            control={form.control}
-            name="full_name"
-            render={({ field }) =>
-              editMode ? (
-                <FormItem>
-                  <FormLabel>Full name</FormLabel>
-                  <FormControl>
-                    <Input type="text" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              ) : (
-                <FormItem>
-                  <FormLabel>Full name</FormLabel>
-                  <p
-                    className={cn(
-                      "py-2 truncate max-w-sm",
-                      !field.value && "text-muted-foreground",
-                    )}
-                  >
-                    {field.value || "N/A"}
-                  </p>
-                </FormItem>
-              )
-            }
-          />
+    <div className="flex flex-col gap-8 max-w-2xl">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-lg font-semibold text-on-surface">个人信息资料</h3>
+        <p className="text-sm text-on-surface-variant">管理您的基本身份信息和联系方式</p>
+      </div>
 
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) =>
-              editMode ? (
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>真实姓名</FormLabel>
                   <FormControl>
-                    <Input type="email" {...field} />
+                    {editMode ? (
+                      <Input type="text" {...field} />
+                    ) : (
+                      <div className="h-10 flex items-center px-3 rounded-md border border-transparent bg-surface-container text-on-surface font-medium text-sm">
+                        {field.value || <span className="text-on-surface-variant">未设置</span>}
+                      </div>
+                    )}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              ) : (
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <p className="py-2 truncate max-w-sm">{field.value}</p>
+                  <FormLabel>电子邮箱</FormLabel>
+                  <FormControl>
+                    {editMode ? (
+                      <Input type="email" {...field} />
+                    ) : (
+                      <div className="h-10 flex items-center px-3 rounded-md border border-transparent bg-muted/50 text-foreground font-medium text-sm">
+                        {field.value}
+                      </div>
+                    )}
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
-              )
-            }
-          />
+              )}
+            />
+          </div>
 
           <div className="flex gap-3">
             {editMode ? (
@@ -145,7 +137,7 @@ const UserInformation = () => {
                   loading={mutation.isPending}
                   disabled={!form.formState.isDirty}
                 >
-                  Save
+                  保存更改
                 </LoadingButton>
                 <Button
                   type="button"
@@ -153,12 +145,12 @@ const UserInformation = () => {
                   onClick={onCancel}
                   disabled={mutation.isPending}
                 >
-                  Cancel
+                  取消
                 </Button>
               </>
             ) : (
               <Button type="button" onClick={toggleEditMode}>
-                Edit
+                编辑个人资料
               </Button>
             )}
           </div>
@@ -167,5 +159,6 @@ const UserInformation = () => {
     </div>
   )
 }
+
 
 export default UserInformation

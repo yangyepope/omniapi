@@ -55,7 +55,7 @@ const ChangePassword = () => {
     mutationFn: (data: UpdatePassword) =>
       UsersService.updatePasswordMe({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("Password updated successfully")
+      showSuccessToast("密码已成功更新")
       form.reset()
     },
     onError: handleError.bind(showErrorToast),
@@ -66,24 +66,24 @@ const ChangePassword = () => {
   }
 
   return (
-    <div className="max-w-md">
-      <h3 className="text-lg font-semibold py-4">Change Password</h3>
+    <div className="flex flex-col gap-8 max-w-2xl">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-lg font-semibold text-on-surface">修改登录密码</h3>
+        <p className="text-sm text-on-surface-variant">定期更换密码可以显著提高您的账户安全性</p>
+      </div>
+
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
           <FormField
             control={form.control}
             name="current_password"
-            render={({ field, fieldState }) => (
+            render={({ field }) => (
               <FormItem>
-                <FormLabel>Current Password</FormLabel>
+                <FormLabel>当前密码</FormLabel>
                 <FormControl>
                   <PasswordInput
-                    data-testid="current-password-input"
+                    id="current_password"
                     placeholder="••••••••"
-                    aria-invalid={fieldState.invalid}
                     {...field}
                   />
                 </FormControl>
@@ -92,55 +92,59 @@ const ChangePassword = () => {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="new_password"
-            render={({ field, fieldState }) => (
-              <FormItem>
-                <FormLabel>New Password</FormLabel>
-                <FormControl>
-                  <PasswordInput
-                    data-testid="new-password-input"
-                    placeholder="••••••••"
-                    aria-invalid={fieldState.invalid}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="new_password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>新密码</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      id="new_password"
+                      placeholder="••••••••"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="confirm_password"
-            render={({ field, fieldState }) => (
-              <FormItem>
-                <FormLabel>Confirm Password</FormLabel>
-                <FormControl>
-                  <PasswordInput
-                    data-testid="confirm-password-input"
-                    placeholder="••••••••"
-                    aria-invalid={fieldState.invalid}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="confirm_password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>确认新密码</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      id="confirm_password"
+                      placeholder="••••••••"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <LoadingButton
-            type="submit"
-            loading={mutation.isPending}
-            className="self-start"
-          >
-            Update Password
-          </LoadingButton>
+          <div>
+            <LoadingButton
+              type="submit"
+              loading={mutation.isPending}
+              className="self-start"
+            >
+              更新密码
+            </LoadingButton>
+          </div>
         </form>
       </Form>
     </div>
   )
 }
 
+
 export default ChangePassword
+

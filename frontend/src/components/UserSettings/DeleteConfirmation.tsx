@@ -27,7 +27,7 @@ const DeleteConfirmation = () => {
   const mutation = useMutation({
     mutationFn: () => UsersService.deleteUserMe(),
     onSuccess: () => {
-      showSuccessToast("Your account has been successfully deleted")
+      showSuccessToast("您的账户已成功注销")
       logout()
     },
     onError: handleError.bind(showErrorToast),
@@ -43,26 +43,23 @@ const DeleteConfirmation = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="destructive" className="mt-3">
-          Delete Account
+        <Button variant="destructive">
+          立即注销账户
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Confirmation Required</DialogTitle>
+            <DialogTitle>确认注销操作</DialogTitle>
             <DialogDescription>
-              All your account data will be{" "}
-              <strong>permanently deleted.</strong> If you are sure, please
-              click <strong>"Confirm"</strong> to proceed. This action cannot be
-              undone.
+              这是一个不可逆的操作。您的所有账户数据将被<strong>永久删除</strong>。
+              如果您确定要继续，请点击下面的按钮完成。
             </DialogDescription>
           </DialogHeader>
-
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-4 gap-2">
             <DialogClose asChild>
               <Button variant="outline" disabled={mutation.isPending}>
-                Cancel
+                点错了，取消
               </Button>
             </DialogClose>
             <LoadingButton
@@ -70,7 +67,7 @@ const DeleteConfirmation = () => {
               type="submit"
               loading={mutation.isPending}
             >
-              Delete
+              确定注销
             </LoadingButton>
           </DialogFooter>
         </form>
@@ -78,5 +75,6 @@ const DeleteConfirmation = () => {
     </Dialog>
   )
 }
+
 
 export default DeleteConfirmation

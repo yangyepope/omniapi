@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/providers/theme-provider"
 import { cn } from "@/lib/utils"
 import icon from "/assets/images/fastapi-icon.svg"
 import iconLight from "/assets/images/fastapi-icon-light.svg"

@@ -66,3 +66,20 @@ alwaysApply: true
 - **Zod-Pydantic-Bridge**：当编写前端复杂表单时，触发此技能。AI 应严格根据后端的 `Field(gt=0, le=100)` 等约束，自动生成对应的前端 Zod 校验规则（如 `z.number().min(0).max(100)`）。
 - **CRUD-Boilerplate**：当增加新的业务模块时，触发此技能。AI 应一次性端到端生成：后端 Model -> Schema -> Router，以及前端 API 调用 -> 列表页 (List Page) -> 表单弹窗 (Form Modal)。
 
+
+## 9) ECC 增强专家 (ECC Enhanced Experts)
+
+这些是由 `everything-claude-code` 插件提供的专用子代理，可通过在对话中明确要求其“化身”或委派任务来启用。详细路径见 `.agent/plugins/ecc/agents/`：
+
+- **Architect (规划架构师)**：负责系统级设计决策、模块解耦与扩展性评估。
+- **Planner (特性规划员)**：负责将复杂需求拆解为可执行的实施计划。
+- **TDD-Guide (测试开发向导)**：强制执行测试驱动开发 (Red-Green-Refactor) 流程。
+- **Code-Reviewer (代码审计员)**：严格审查代码质量、命名规范与逻辑完整性。
+- **Typescript-Reviewer (TS 专项审查)**：深入审计 TS 类型安全、React 性能与最佳实践。
+- **Security-Reviewer (安全卫士)**：对变更进行 OWASP Top 10 级别的安全审计。
+- **Build-Error-Resolver (编译错误修复)**：自动分析并修复跨平台的编译/链表错误。
+- **Doc-Updater (文档同步员)**：确保 `WALKTHROUGH.md` 和代码注释与最新变更同步。
+
+---
+
+**使用说明**：当任务特别复杂或涉及核心架构变更时，建议主动“委派”给上述专家进行多步验证。

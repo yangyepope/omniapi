@@ -1,0 +1,42 @@
+#!/bin/bash
+# ecc - Everything Claude Code
+
+case "$1" in
+  test|e2e)
+    echo "Running Playwright E2E tests in Docker..."
+    # Ensure test-results and playwright-report directories exist locally
+    mkdir -p frontend/test-results
+    mkdir -p frontend/playwright-report
+    # Run tests in docker, mapping local directories to container so we can retrieve results
+    docker run --rm \
+      --network host \
+      --env-file .env \
+      -v "$(pwd)/frontend/test-results:/app/frontend/test-results" \
+      -v "$(pwd)/frontend/playwright-report:/app/frontend/playwright-report" \
+      omniapi-e2e bun --cwd frontend run test
+    ;;
+  test:ui)
+    echo "Running Playwright E2E tests in Docker with UI (requires X11 forward or VNC)..."
+    docker run --rm -it \
+      --network host \
+      --env-file .env \
+      -v "$(pwd)/frontend/test-results:/app/frontend/test-results" \
+      -v "$(pwd)/frontend/playwright-report:/app/frontend/playwright-report" \
+      omniapi-e2e bun --cwd frontend run test:ui --ui
+    ;;
+  build)
+    echo "Building omniapi-e2e Docker image..."
+    docker build -f frontend/Dockerfile.playwright -t omniapi-e2e .
+    ;;
+  info)
+    echo "OmniAPI E2E Docker Runner (ECC - Everything Claude Code)"
+    echo "Available commands:"
+    echo "  ./ecc build   - Build the e2e testing docker image"
+    echo "  ./ecc test    - Run e2e tests in container and export results"
+    echo "  ./ecc info    - Display this information"
+    ;;
+  *)
+    echo "Usage: ./ecc [test|build|info]"
+    exit 1
+    ;;
+esac

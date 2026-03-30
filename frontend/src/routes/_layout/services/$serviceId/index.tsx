@@ -84,13 +84,7 @@ function EndpointListPage() {
     >
       {/* Breadcrumbs & Header */}
       <div className="flex flex-col gap-6 mb-10">
-        <nav className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">
-          <Link to="/" search={{}} className="hover:text-primary-fixed transition-colors">首页</Link>
-          <ChevronRight className="w-3 h-3" />
-          <Link to="/services" className="hover:text-primary-fixed transition-colors">服务列表</Link>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-on-surface">{serviceName}</span>
-        </nav>
+
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -125,7 +119,12 @@ function EndpointListPage() {
         animate="show"
         className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8"
       >
-        <motion.div variants={itemVariants} className="col-span-1 md:col-span-2 bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 flex flex-col justify-between">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -5, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="col-span-1 md:col-span-2 bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10 flex flex-col justify-between hover:shadow-lg hover:border-primary-fixed/20 transition-all duration-300 cursor-default"
+        >
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">Service Name</span>
             <h3 className="text-2xl font-black text-primary-fixed mt-1">{serviceName}</h3>
@@ -136,21 +135,36 @@ function EndpointListPage() {
           </div>
         </motion.div>
         
-        <motion.div variants={itemVariants} className="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center border border-outline-variant/5">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -5, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center border border-outline-variant/5 hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
+        >
           <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">总接口数</span>
           <div className="text-3xl font-black text-on-surface mt-1 tracking-tighter">
             {currentModule?.interfaces || 0}
           </div>
         </motion.div>
         
-        <motion.div variants={itemVariants} className="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center border border-outline-variant/5">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -5, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center border border-outline-variant/5 hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
+        >
           <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">已建档接口</span>
           <div className="text-3xl font-black text-on-surface mt-1 tracking-tighter">
             {currentModule?.documented || 0}
           </div>
         </motion.div>
         
-        <motion.div variants={itemVariants} className="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center border border-outline-variant/5">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -5, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center border border-outline-variant/5 hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
+        >
           <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">覆盖率</span>
           <div className="text-3xl font-black text-primary-fixed mt-1 tracking-tighter">
             {currentModule?.interfaces ? Math.round((currentModule.documented / currentModule.interfaces) * 100) : 0}%
@@ -203,7 +217,11 @@ function EndpointListPage() {
           </thead>
           <tbody className={cn("divide-y divide-outline-variant/5", endpointsQuery.isFetching && "opacity-50 transition-opacity")}>
             {endpoints.map((api: any) => (
-              <tr key={api.id} className="hover:bg-surface-container-low/40 transition-colors group">
+              <motion.tr 
+                key={api.id} 
+                whileHover={{ x: 4, backgroundColor: 'rgba(var(--surface-container-low), 0.6)' }}
+                className="hover:bg-surface-container-low/40 transition-colors group cursor-pointer"
+              >
                 <td className="px-6 py-5">
                   <Badge variant={api.method === 'GET' ? 'success' : 'default'} className="font-mono uppercase">
                     {api.method}
@@ -237,7 +255,7 @@ function EndpointListPage() {
                     </Link>
                   </div>
                 </td>
-              </tr>
+              </motion.tr>
             ))}
             {endpoints.length === 0 && !endpointsQuery.isLoading && (
               <tr>

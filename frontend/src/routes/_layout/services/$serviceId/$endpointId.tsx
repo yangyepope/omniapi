@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Bell, ChevronRight, Globe, Lock, Shield, Zap, Activity, Clock, Database, Server } from "lucide-react"
+import { ArrowLeft, Bell, Globe, Lock, Shield, Zap, Activity, Clock, Database, Server } from "lucide-react"
 import { useMemo } from "react"
 import { z } from "zod"
 import { motion } from "motion/react"
@@ -97,15 +97,7 @@ function EndpointDetailPage() {
     >
       {/* Breadcrumbs & Header */}
       <div className="flex flex-col gap-6 mb-10">
-        <nav className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">
-          <Link to="/" search={{}} className="hover:text-primary-fixed transition-colors">仪表盘</Link>
-          <ChevronRight className="w-3 h-3" />
-          <Link to="/services" search={{ page: 1, pageSize: 20, query: "" }} className="hover:text-primary-fixed transition-colors">服务列表</Link>
-          <ChevronRight className="w-3 h-3" />
-          <Link to="/services/$serviceId" params={{ serviceId }} search={{ page: 1, pageSize: 20, query: "" }} className="hover:text-primary-fixed transition-colors truncate max-w-[150px]">{serviceName}</Link>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-on-surface truncate max-w-[200px]">{detail.path}</span>
-        </nav>
+
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -143,7 +135,11 @@ function EndpointDetailPage() {
         <div className="col-span-12 lg:col-span-8 space-y-8">
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm">
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
+            >
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="w-4 h-4 text-primary-fixed" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">请求频率</span>
@@ -152,8 +148,12 @@ function EndpointDetailPage() {
                 <span className="text-3xl font-black text-on-surface tracking-tighter">1.2k</span>
                 <span className="text-[10px] font-bold text-secondary-fixed mb-1.5">+14% / hour</span>
               </div>
-            </div>
-            <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm">
+            </motion.div>
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
+            >
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-4 h-4 text-primary-fixed" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">平均响应</span>
@@ -162,8 +162,12 @@ function EndpointDetailPage() {
                 <span className="text-3xl font-black text-on-surface tracking-tighter">124ms</span>
                 <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Baseline: 110ms</span>
               </div>
-            </div>
-            <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm">
+            </motion.div>
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
+            >
               <div className="flex items-center gap-2 mb-3">
                 <Database className="w-4 h-4 text-primary-fixed" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">流量总量</span>
@@ -172,7 +176,7 @@ function EndpointDetailPage() {
                 <span className="text-3xl font-black text-primary-fixed tracking-tighter">{trafficCount}</span>
                 <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Unites captured</span>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Traffic Records Table */}
@@ -192,7 +196,11 @@ function EndpointDetailPage() {
               </thead>
               <tbody className="divide-y divide-outline-variant/5">
                 {trafficRecords.map((record: any) => (
-                  <tr key={record.id} className="hover:bg-surface-container-low/40 transition-colors group">
+                  <motion.tr 
+                    key={record.id} 
+                    whileHover={{ x: 4, backgroundColor: 'rgba(var(--surface-container-low), 0.6)' }}
+                    className="hover:bg-surface-container-low/40 transition-colors group cursor-pointer"
+                  >
                     <td className="px-6 py-5 whitespace-nowrap">
                        <span className="font-mono text-[10px] font-black text-on-surface-variant uppercase">{record.method}</span>
                     </td>
@@ -202,12 +210,12 @@ function EndpointDetailPage() {
                       </p>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-xs font-bold text-on-surface">{record.source_ip || "Internal"}</span>
+                       <span className="text-xs font-bold text-on-surface">{record.source_ip || "Internal"}</span>
                     </td>
                     <td className="px-6 py-5 text-right whitespace-nowrap">
                       <span className="text-xs font-medium text-on-surface-variant">{formatRelativeTime(record.created_at)}</span>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
                 {trafficRecords.length === 0 && (
                   <tr>
@@ -223,7 +231,10 @@ function EndpointDetailPage() {
 
         {/* Sidebar Column */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
-          <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm relative overflow-hidden group">
+          <motion.div 
+            whileHover={{ y: -5 }}
+            className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all duration-300"
+          >
             <h3 className="text-lg font-black text-on-surface mb-4 font-headline">安全合规审计</h3>
             <div className="space-y-4 relative z-10">
               <div className="flex items-start gap-3">
@@ -255,9 +266,12 @@ function EndpointDetailPage() {
               </div>
             </div>
             <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-24 h-24 bg-primary-fixed/5 rounded-full blur-2xl group-hover:bg-primary-fixed/10 transition-all" />
-          </div>
+          </motion.div>
 
-          <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
+          <motion.div 
+            whileHover={{ y: -5 }}
+            className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm hover:shadow-lg transition-all duration-300"
+          >
             <h3 className="text-sm font-black text-on-surface mb-4 tracking-tight uppercase">所属微服务节点</h3>
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-primary-fixed/5 text-primary-fixed">
@@ -284,7 +298,7 @@ function EndpointDetailPage() {
                   <div className="h-full bg-secondary-fixed w-[92%]" />
                </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </motion.div>

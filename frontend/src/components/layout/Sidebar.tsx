@@ -1,4 +1,4 @@
-import { Activity, BarChart2, Network, PlayCircle, Search, Settings } from "lucide-react"
+import { Activity, BarChart2, Network, PlayCircle, Search, Settings, Shield } from "lucide-react"
 import { Link, useRouterState } from "@tanstack/react-router"
 
 export function Sidebar() {
@@ -21,11 +21,29 @@ export function Sidebar() {
       label: "服务管理",
       active: isServicesActive
     },
+    {
+      to: "/settings",
+      icon: Settings,
+      label: "系统设置",
+      active: pathname === "/settings"
+    },
   ];
 
   return (
-    <aside className="fixed left-0 top-16 bottom-0 w-64 flex flex-col p-4 gap-2 border-r border-outline-variant/15 bg-surface-container-low z-40">
-      <nav className="flex flex-col gap-1 mt-4">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 flex flex-col p-6 gap-2 border-r border-gray-100 bg-white z-40 transition-all">
+      {/* Brand Logo Section */}
+      <div className="flex items-center gap-3 mb-10 px-2 mt-2">
+        <div className="relative">
+          <Shield className="text-blue-600 w-8 h-8 fill-blue-500/10" />
+          <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-full -z-10" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xl font-black tracking-tight text-gray-900 leading-none">流量大师</span>
+          <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase leading-none mt-1">Security Sentinel</span>
+        </div>
+      </div>
+
+      <nav className="flex flex-col gap-1">
         {navItems.map((item) => (
           <Link 
             key={item.to}
@@ -54,10 +72,6 @@ export function Sidebar() {
         <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-highest/50 hover:text-on-surface hover:translate-x-1 transition-all duration-200 rounded-md">
           <BarChart2 className="w-5 h-5" />
           <span className="text-sm font-medium">统计分析</span>
-        </a>
-        <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-highest/50 hover:text-on-surface hover:translate-x-1 transition-all duration-200 rounded-md">
-          <Settings className="w-5 h-5" />
-          <span className="text-sm font-medium">系统设置</span>
         </a>
       </nav>
 

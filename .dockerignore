@@ -1,0 +1,14 @@
+.git
+.venv
+.pytest_cache
+backend/venv
+frontend/node_modules
+frontend/.next
+frontend/dist
+frontend/playwright-report
+frontend/test-results
+img
+.vscode
+.cursor
+.trae
+.devcontainer

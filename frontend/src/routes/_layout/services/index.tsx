@@ -88,11 +88,7 @@ function ServiceListPage() {
       {/* Header Section */}
       <div className="flex justify-between items-end mb-10">
         <div>
-          <nav className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70 mb-2">
-            <span>系统管理</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-primary-fixed">服务管理</span>
-          </nav>
+
           <h2 className="text-3xl font-black text-on-surface tracking-tight">服务列表</h2>
           <p className="text-sm text-on-surface-variant mt-1 font-medium">监控并探索所有已注册的微服务接口资产</p>
         </div>
@@ -145,6 +141,8 @@ function ServiceListPage() {
             <motion.div 
               key={module.id} 
               variants={itemVariants}
+              whileHover={{ y: -8, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => goService(module.id)}
               className="group bg-surface-container-low hover:bg-surface-container-lowest transition-all duration-300 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary-fixed/5 flex flex-col border border-transparent hover:border-outline-variant/15 cursor-pointer"
             >

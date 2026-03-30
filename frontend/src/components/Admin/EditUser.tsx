@@ -45,7 +45,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
 
   const formSchema = z
     .object({
-      email: z.email({ message: t("admin.invalidEmail") }),
+      email: z.string().email({ message: t("admin.invalidEmail") }),
       full_name: z.string().optional(),
       password: z
         .string()
