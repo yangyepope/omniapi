@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { ArrowRight, Search, Server, ChevronRight, Plus, ChevronLeft } from "lucide-react"
+import { Search, ChevronRight, Plus, ChevronLeft } from "lucide-react"
 import { z } from "zod"
 import { motion } from "motion/react"
 
 import { SystemModulesService } from "@/client"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { ServiceCard } from "@/components/services/ServiceCard"
 
 const searchSchema = z.object({
   query: z.string().optional().default(""),
@@ -43,22 +43,21 @@ const containerVariants = {
   }
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
-}
-
 function ServiceListPage() {
+  // 获取路由中的 pageSize 参数并初始化导航钩子
   const { pageSize } = Route.useSearch()
   const navigate = Route.useNavigate()
 
+  // 使用 React Query 加载所有模块的统计数据
   const statsQuery = useQuery({
     queryKey: ["system-modules", "stats"],
     queryFn: () => SystemModulesService.getSystemModulesStats(),
   })
 
+  // 提取模块列表数据，默认为空数组
   const modules = statsQuery.data?.data ?? []
 
+  // 导航至具体的服务详情页并携带默认的分页参数
   const goService = (serviceId: string) => {
     navigate({
       to: "/services/$serviceId",
@@ -71,9 +70,10 @@ function ServiceListPage() {
     })
   }
 
+  // 加载状态下的 UI 反馈
   if (statsQuery.isLoading) {
     return (
-      <div className="flex h-[calc(100vh-100px)] items-center justify-center text-on-surface-variant font-bold text-sm tracking-widest animate-pulse">
+      <div className="flex h-[calc(100vh-100px)] items-center justify-center text-gray-400 font-bold text-sm tracking-widest animate-pulse">
         正在初始化安全扫描矩阵...
       </div>
     )
@@ -84,131 +84,77 @@ function ServiceListPage() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
+      className="space-y-10 pb-12"
     >
       {/* Header Section */}
-      <div className="flex justify-between items-end mb-10">
+      <div className="flex justify-between items-end">
         <div>
-
-          <h2 className="text-3xl font-black text-on-surface tracking-tight">服务列表</h2>
-          <p className="text-sm text-on-surface-variant mt-1 font-medium">监控并探索所有已注册的微服务接口资产</p>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+            <span className="w-1.5 h-8 bg-blue-600 rounded-full shrink-0" />
+            服务列表
+          </h2>
+          <p className="text-sm text-gray-500 mt-2 font-medium">监控并探索所有已注册的微服务接口资产</p>
         </div>
-        <Button className="gap-2 shadow-lg shadow-primary-fixed/20">
-          <Plus className="w-4 h-4" />
-          <span>探测新服务</span>
+        <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 rounded-xl px-6 h-12">
+          <Plus className="w-5 h-5" />
+          <span className="font-bold uppercase tracking-wider text-xs">探测新服务</span>
         </Button>
       </div>
 
       {/* Filter Bar */}
-      <div className="grid grid-cols-12 gap-4 mb-8 bg-surface-container-low p-5 rounded-xl border border-outline-variant/10 shadow-sm">
+      <div className="grid grid-cols-12 gap-6 bg-white border border-gray-100 p-6 rounded-[2.5rem] shadow-sm">
         <div className="col-span-12 lg:col-span-5 relative group">
-          <label className="block text-[10px] font-bold text-on-surface-variant uppercase mb-1.5 ml-1">服务名搜索</label>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1 tracking-widest">服务名搜索</label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-primary-fixed transition-colors" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
             <input 
               type="text" 
               placeholder="输入服务名称关键字..." 
-              className="w-full bg-surface-container-lowest border-none rounded-md pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-fixed/20 transition-all outline-none shadow-sm text-on-surface placeholder:text-on-surface-variant/40 font-medium"
+              className="w-full bg-gray-50 border border-transparent focus:border-blue-200 focus:bg-white rounded-2xl pl-12 pr-4 py-3.5 text-sm transition-all outline-none text-gray-900 placeholder:text-gray-400 font-medium"
             />
           </div>
         </div>
         <div className="col-span-12 md:col-span-6 lg:col-span-3">
-          <label className="block text-[10px] font-bold text-on-surface-variant uppercase mb-1.5 ml-1">健康状态</label>
-          <select className="w-full bg-surface-container-lowest border-none rounded-md py-2.5 px-4 text-sm focus:ring-2 focus:ring-primary-fixed/20 transition-all outline-none shadow-sm text-on-surface font-medium cursor-pointer">
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1 tracking-widest">健康状态</label>
+          <select className="w-full bg-gray-50 border border-transparent focus:border-blue-200 focus:bg-white rounded-2xl py-3.5 px-4 text-sm transition-all outline-none text-gray-900 font-medium cursor-pointer appearance-none">
             <option>所有状态</option>
-            <option>运行中 (Healthy)</option>
-            <option>告警中 (Risk)</option>
-            <option>已离线 (Down)</option>
+            <option>健康</option>
+            <option>风险</option>
+            <option>离线</option>
           </select>
         </div>
         <div className="col-span-12 md:col-span-6 lg:col-span-4 flex items-end gap-3">
-          <Button variant="secondary" className="flex-1">重置</Button>
-          <Button className="flex-1 bg-primary-fixed/10 text-primary-fixed hover:bg-primary-fixed/20 shadow-none">执行探测</Button>
+          <Button variant="ghost" className="flex-1 h-12 rounded-2xl text-gray-500 font-bold hover:bg-gray-100">重置</Button>
+          <Button className="flex-1 h-12 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-2xl font-bold border border-blue-100/50 shadow-none">执行探测同步</Button>
         </div>
       </div>
 
-      {/* Service Cards Grid */}
+      {/* Service Cards Grid - 这里的 grid 布局与 Stitch 的 4 列响应式逻辑保持一致 */}
       <motion.div 
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
       >
-        {modules.map((module) => {
-          const progress = module.interfaces > 0 ? (module.documented / module.interfaces) * 100 : 0
-          const isHealthy = progress > 80;
-          
-          return (
-            <motion.div 
-              key={module.id} 
-              variants={itemVariants}
-              whileHover={{ y: -8, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              onClick={() => goService(module.id)}
-              className="group bg-surface-container-low hover:bg-surface-container-lowest transition-all duration-300 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary-fixed/5 flex flex-col border border-transparent hover:border-outline-variant/15 cursor-pointer"
-            >
-              <div className="p-6 flex-1">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="p-3 rounded-lg bg-primary-fixed/5 text-primary-fixed group-hover:bg-primary-fixed/10 transition-colors">
-                    <Server className="w-7 h-7" />
-                  </div>
-                  <Badge variant={isHealthy ? 'success' : 'warning'}>
-                    {isHealthy ? '运行良好' : '风险预警'}
-                  </Badge>
-                </div>
-                
-                <h3 className="text-xl font-bold text-on-surface mb-1 truncate tracking-tight">{module.name}</h3>
-                <p className="text-[10px] text-on-surface-variant/60 font-black uppercase tracking-widest mb-6">
-                   API 哨兵节点 #{(module.id.slice(0, 4))}
-                </p>
-                
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1.5">
-                      <span>覆盖率 (Coverage)</span>
-                      <span className="text-primary-fixed">{Math.round(progress)}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
-                      <div 
-                        className={cn("h-full transition-all duration-1000", isHealthy ? "bg-primary-fixed" : "bg-tertiary")} 
-                        style={{ width: `${progress}%` }} 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant/10 text-center">
-                      <p className="text-[9px] font-bold text-on-surface-variant uppercase mb-0.5">接口数</p>
-                      <p className="text-lg font-black text-on-surface">{module.interfaces}</p>
-                   </div>
-                   <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant/10 text-center">
-                      <p className="text-[9px] font-bold text-on-surface-variant uppercase mb-0.5">已记录</p>
-                      <p className="text-lg font-black text-on-surface">{module.documented}</p>
-                   </div>
-                </div>
-              </div>
-              
-              <div className="p-4 border-t border-outline-variant/10 group-hover:bg-primary-fixed group-hover:text-on-primary transition-colors block">
-                <div className="w-full flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest">
-                  <span>查看接口矩阵</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
+        {modules.map((module) => (
+          <ServiceCard 
+            key={module.id} 
+            module={module} 
+            onClick={() => goService(module.id)} 
+          />
+        ))}
       </motion.div>
 
-      {/* Pagination Placeholder */}
-      <div className="flex items-center justify-between border-t border-outline-variant/10 pt-8 pb-4">
-        <p className="text-sm text-on-surface-variant font-medium">显示 1 到 {modules.length} 条记录</p>
-        <div className="flex items-center gap-1">
-          <button className="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-30" disabled>
-            <ChevronLeft className="w-4 h-4" />
+      {/* 分页控制器容器 - 保持项目一贯的大间距与精致边框 */}
+      <div className="flex items-center justify-between border-t border-gray-100 pt-10 px-2">
+        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">显示第 1 到 {modules.length} 条结果</p>
+        <div className="flex items-center gap-2">
+          <button className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 transition-colors disabled:opacity-30 self-center" disabled>
+            <ChevronLeft className="w-5 h-5" />
           </button>
-          <button className="w-9 h-9 flex items-center justify-center rounded-md bg-primary-fixed text-on-primary font-bold shadow-md shadow-primary-fixed/20 text-xs">1</button>
-          <button className="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high transition-colors">
-            <ChevronRight className="w-4 h-4" />
+          <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-600 text-white font-black shadow-lg shadow-blue-600/20 text-xs">1</button>
+          <button className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 transition-colors">
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>

@@ -95,18 +95,9 @@ export const ApiEndpointDetailResponseSchema = {
         endpoint: {
             '$ref': '#/components/schemas/ApiEndpointPublic'
         },
-        module_id: {
-            type: 'string',
-            format: 'uuid',
-            title: 'Module Id'
-        },
         module_name: {
             type: 'string',
             title: 'Module Name'
-        },
-        service_name: {
-            type: 'string',
-            title: 'Service Name'
         },
         traffic_count: {
             type: 'integer',
@@ -133,7 +124,7 @@ export const ApiEndpointDetailResponseSchema = {
         }
     },
     type: 'object',
-    required: ['endpoint', 'module_id', 'module_name', 'service_name', 'traffic_count', 'last_seen_at', 'recent_traffic'],
+    required: ['endpoint', 'module_name', 'traffic_count', 'last_seen_at', 'recent_traffic'],
     title: 'ApiEndpointDetailResponse'
 } as const;
 
@@ -148,6 +139,10 @@ export const ApiEndpointPublicSchema = {
             type: 'string',
             maxLength: 512,
             title: 'Path'
+        },
+        level: {
+            '$ref': '#/components/schemas/EndpointLevel',
+            default: 'p3'
         },
         name: {
             anyOf: [
@@ -444,6 +439,12 @@ export const Body_login_login_access_tokenSchema = {
     title: 'Body_login-login_access_token'
 } as const;
 
+export const EndpointLevelSchema = {
+    type: 'string',
+    enum: ['p0', 'p1', 'p2', 'p3'],
+    title: 'EndpointLevel'
+} as const;
+
 export const HTTPValidationErrorSchema = {
     properties: {
         detail: {
@@ -737,6 +738,12 @@ export const SecurityTestTaskSchema = {
     title: 'SecurityTestTask'
 } as const;
 
+export const ServiceStatusSchema = {
+    type: 'string',
+    enum: ['active', 'deprecated'],
+    title: 'ServiceStatus'
+} as const;
+
 export const SourceTypeSchema = {
     type: 'string',
     enum: ['auto_discovered', 'documented', 'mocked', 'zombie'],
@@ -817,20 +824,206 @@ export const StatisticsSchema = {
     title: 'Statistics'
 } as const;
 
-export const SystemModuleStatsSchema = {
+export const SystemModuleSchema = {
     properties: {
+        name: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Name'
+        },
+        service_prefix: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Service Prefix'
+        },
+        description: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 1024
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Description'
+        },
+        owner: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Owner'
+        },
+        status: {
+            '$ref': '#/components/schemas/ServiceStatus',
+            default: 'active'
+        },
+        total_traffic_count: {
+            type: 'integer',
+            title: 'Total Traffic Count',
+            default: 0
+        },
+        unique_traffic_count: {
+            type: 'integer',
+            title: 'Unique Traffic Count',
+            default: 0
+        },
+        last_active_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Active At'
+        },
+        deprecated_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Deprecated At'
+        },
         id: {
             type: 'string',
             format: 'uuid',
             title: 'Id'
         },
+        created_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['name'],
+    title: 'SystemModule'
+} as const;
+
+export const SystemModuleCreateSchema = {
+    properties: {
+        name: {
+            type: 'string',
+            maxLength: 255,
+            title: 'Name'
+        },
+        service_prefix: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Service Prefix'
+        },
+        description: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 1024
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Description'
+        },
+        owner: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Owner'
+        },
+        status: {
+            '$ref': '#/components/schemas/ServiceStatus',
+            default: 'active'
+        },
+        total_traffic_count: {
+            type: 'integer',
+            title: 'Total Traffic Count',
+            default: 0
+        },
+        unique_traffic_count: {
+            type: 'integer',
+            title: 'Unique Traffic Count',
+            default: 0
+        },
+        last_active_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Active At'
+        },
+        deprecated_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Deprecated At'
+        }
+    },
+    type: 'object',
+    required: ['name'],
+    title: 'SystemModuleCreate'
+} as const;
+
+export const SystemModuleStatsSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id'
+        },
         name: {
             type: 'string',
             title: 'Name'
-        },
-        service_name: {
-            type: 'string',
-            title: 'Service Name'
         },
         description: {
             anyOf: [
@@ -866,11 +1059,122 @@ export const SystemModuleStatsSchema = {
                 }
             ],
             title: 'Last Scanned At'
+        },
+        owner: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Owner'
+        },
+        status: {
+            '$ref': '#/components/schemas/ServiceStatus'
+        },
+        total_traffic_count: {
+            type: 'integer',
+            title: 'Total Traffic Count'
+        },
+        unique_traffic_count: {
+            type: 'integer',
+            title: 'Unique Traffic Count'
+        },
+        last_active_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Active At'
+        },
+        deprecated_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Deprecated At'
         }
     },
     type: 'object',
-    required: ['id', 'name', 'service_name', 'description', 'interfaces', 'documented', 'shadow', 'last_scanned_at'],
+    required: ['id', 'name', 'description', 'interfaces', 'documented', 'shadow', 'last_scanned_at', 'owner', 'status', 'total_traffic_count', 'unique_traffic_count', 'last_active_at', 'deprecated_at'],
     title: 'SystemModuleStats'
+} as const;
+
+export const SystemModuleUpdateSchema = {
+    properties: {
+        name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Name'
+        },
+        service_prefix: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 100
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Service Prefix'
+        },
+        description: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 1024
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Description'
+        },
+        owner: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 255
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Owner'
+        },
+        status: {
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/ServiceStatus'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        }
+    },
+    type: 'object',
+    title: 'SystemModuleUpdate'
 } as const;
 
 export const SystemModulesStatsResponseSchema = {
@@ -881,14 +1185,10 @@ export const SystemModulesStatsResponseSchema = {
             },
             type: 'array',
             title: 'Data'
-        },
-        count: {
-            type: 'integer',
-            title: 'Count'
         }
     },
     type: 'object',
-    required: ['data', 'count'],
+    required: ['data'],
     title: 'SystemModulesStatsResponse'
 } as const;
 

@@ -146,9 +146,21 @@ export const DashboardDesign = () => {
                   <span className="text-3xl font-black text-gray-900">286</span>
               </div>
               <svg className="w-full h-full transform -rotate-90">
+                {/* 底部灰色展示轨道：提供进度条底座，视觉上作为 100% 的基准线 */}
                 <circle cx="80" cy="80" r="72" fill="transparent" stroke="#f3f4f6" strokeWidth="12" />
-                <circle cx="80" cy="80" r="72" fill="transparent" stroke="#10b981" strokeWidth="12" strokeDasharray="452" strokeDashoffset="110" strokeLinecap="round" />
-                <circle cx="80" cy="80" r="72" fill="transparent" stroke="#ef4444" strokeWidth="12" strokeDasharray="452" strokeDashoffset="380" strokeLinecap="round" />
+                
+                {/* 
+                  环形逻辑计算 (周长 C ≈ 452, 总数 286):
+                  使用 strokeDasharray 配合 strokeDashoffset 实现段落衔接，保持视觉上的顺滑感。
+                */}
+                {/* 成功状态 (绿色, 215/286 ≈ 75%): length = 340。作为第一段，不设 offset 确保起始点在顶部正中。 */}
+                <circle cx="80" cy="80" r="72" fill="transparent" stroke="#10b981" strokeWidth="12" strokeDasharray="340 452" strokeDashoffset="0" strokeLinecap="round" />
+                
+                {/* 失败状态 (红色, 28/286 ≈ 10%): length = 44。offset 设为前一段的长度负值 (-340) 以实现接力渲染。 */}
+                <circle cx="80" cy="80" r="72" fill="transparent" stroke="#ef4444" strokeWidth="12" strokeDasharray="44 452" strokeDashoffset="-340" strokeLinecap="round" />
+                
+                {/* 进行中状态 (蓝色, 43/286 ≈ 15%): length = 68。offset 设为前两段之和的负值 (-384) 填补剩余数据空间。 */}
+                <circle cx="80" cy="80" r="72" fill="transparent" stroke="#3b82f6" strokeWidth="12" strokeDasharray="68 452" strokeDashoffset="-384" strokeLinecap="round" />
               </svg>
             </div>
 

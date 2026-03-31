@@ -80,6 +80,15 @@ alwaysApply: true
 - **Build-Error-Resolver (编译错误修复)**：自动分析并修复跨平台的编译/链表错误。
 - **Doc-Updater (文档同步员)**：确保 `WALKTHROUGH.md` 和代码注释与最新变更同步。
 
+## 10) 自动化测试保障 (Automated Testing Compliance)
+
+为了确保全栈功能（尤其是前台 UI）的持续稳定性，AI 助手在执行 `/e2e` 或相关自动化验证任务时，必须遵守以下持久化规据：
+
+- **凭据获取策略**：必须优先读取项目根目录下的 [.env](file:///root/omniapi/.env) 文件。该文件包含 `FIRST_SUPERUSER` 和 `FIRST_SUPERUSER_PASSWORD`。严禁在代码中硬编码或使用虚假账户。
+- **Session 自动维系**：若测试因权限（401/403）失败，应主动运行 `npx playwright test tests/auth.setup.ts`。此操作会将登录状态持久化至 `playwright/.auth/user.json`，供后续所有测试复用。
+- **本地连通性配置**：在执行测试时，默认使用 `http://localhost:5173` 作为 Frontend 入口，确保环境内部回路连通。
+- **视觉取证要求**：对于 UI 变更，必须保留 Playwright 生成的 `test-results` 截图或录屏记录，并将其路径同步至 `WALKTHROUGH.md` 供用户复核。
+
 ---
 
 **使用说明**：当任务特别复杂或涉及核心架构变更时，建议主动“委派”给上述专家进行多步验证。

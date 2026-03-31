@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ApiKeysReadApiKeysData, ApiKeysReadApiKeysResponse, ApiKeysCreateApiKeyData, ApiKeysCreateApiKeyResponse, ApiKeysDeleteApiKeyData, ApiKeysDeleteApiKeyResponse, CollectCollectTrafficResponse, CollectCollectTraffic1Response, CollectCollectTraffic2Response, CollectCollectTraffic3Response, CollectCollectTraffic4Response, CollectCollectTraffic5Response, CollectCollectTraffic6Response, DouyinFetchOneVideoByShareUrlData, DouyinFetchOneVideoByShareUrlResponse, ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, SecurityAssetsReadAssetsData, SecurityAssetsReadAssetsResponse, SecurityAssetsTriggerScanData, SecurityAssetsTriggerScanResponse, SecurityAssetsReadReportsData, SecurityAssetsReadReportsResponse, SystemModulesGetSystemModulesStatsResponse, SystemModulesGetModuleEndpointsData, SystemModulesGetModuleEndpointsResponse, SystemModulesGetModuleEndpointDetailData, SystemModulesGetModuleEndpointDetailResponse, TrafficManagerGetConfigResponse, TrafficManagerToggleConfigData, TrafficManagerToggleConfigResponse, TrafficManagerImportApifoxData, TrafficManagerImportApifoxResponse, TrafficManagerGetEndpointTrafficData, TrafficManagerGetEndpointTrafficResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { ApiKeysReadApiKeysData, ApiKeysReadApiKeysResponse, ApiKeysCreateApiKeyData, ApiKeysCreateApiKeyResponse, ApiKeysDeleteApiKeyData, ApiKeysDeleteApiKeyResponse, CollectCollectTrafficResponse, CollectCollectTraffic1Response, CollectCollectTraffic2Response, CollectCollectTraffic3Response, CollectCollectTraffic4Response, CollectCollectTraffic5Response, CollectCollectTraffic6Response, DouyinFetchOneVideoByShareUrlData, DouyinFetchOneVideoByShareUrlResponse, ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, SecurityAssetsReadAssetsData, SecurityAssetsReadAssetsResponse, SecurityAssetsTriggerScanData, SecurityAssetsTriggerScanResponse, SecurityAssetsReadReportsData, SecurityAssetsReadReportsResponse, SystemModulesGetSystemModulesStatsResponse, SystemModulesCreateSystemModuleData, SystemModulesCreateSystemModuleResponse, SystemModulesUpdateSystemModuleData, SystemModulesUpdateSystemModuleResponse, SystemModulesDeleteSystemModuleData, SystemModulesDeleteSystemModuleResponse, SystemModulesGetModuleEndpointsData, SystemModulesGetModuleEndpointsResponse, SystemModulesGetModuleEndpointDetailData, SystemModulesGetModuleEndpointDetailResponse, TrafficManagerGetConfigResponse, TrafficManagerToggleConfigData, TrafficManagerToggleConfigResponse, TrafficManagerImportApifoxData, TrafficManagerImportApifoxResponse, TrafficManagerGetEndpointTrafficData, TrafficManagerGetEndpointTrafficResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class ApiKeysService {
     /**
@@ -540,7 +540,7 @@ export class SecurityAssetsService {
 
 export class SystemModulesService {
     /**
-     * Get System Modules with Statistics
+     * 获取所有系统模块的聚合统计逻辑
      * @returns SystemModulesStatsResponse Successful Response
      * @throws ApiError
      */
@@ -552,7 +552,69 @@ export class SystemModulesService {
     }
     
     /**
-     * Get Endpoints for a System Module by Module ID
+     * 手动创建一个系统模块
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns SystemModule Successful Response
+     * @throws ApiError
+     */
+    public static createSystemModule(data: SystemModulesCreateSystemModuleData): CancelablePromise<SystemModulesCreateSystemModuleResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/system-modules/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * 更新系统模块信息
+     * @param data The data for the request.
+     * @param data.moduleId
+     * @param data.requestBody
+     * @returns SystemModule Successful Response
+     * @throws ApiError
+     */
+    public static updateSystemModule(data: SystemModulesUpdateSystemModuleData): CancelablePromise<SystemModulesUpdateSystemModuleResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/system-modules/{module_id}',
+            path: {
+                module_id: data.moduleId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * 彻底删除一个系统模块
+     * @param data The data for the request.
+     * @param data.moduleId
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static deleteSystemModule(data: SystemModulesDeleteSystemModuleData): CancelablePromise<SystemModulesDeleteSystemModuleResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/system-modules/{module_id}',
+            path: {
+                module_id: data.moduleId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get endpoints for a specific module
      * @param data The data for the request.
      * @param data.moduleId
      * @param data.skip
@@ -580,7 +642,7 @@ export class SystemModulesService {
     }
     
     /**
-     * Get Endpoint Detail for a System Module
+     * Get details and recent traffic for a specific endpoint
      * @param data The data for the request.
      * @param data.moduleId
      * @param data.endpointId

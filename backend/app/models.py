@@ -296,6 +296,10 @@ class EndpointLevel(str, Enum):
     p2 = "p2"
     p3 = "p3"
 
+class ServiceStatus(str, Enum):
+    active = "active"
+    deprecated = "deprecated"
+
 # -----------------------------------------------------------------------------
 # API Directory & Traffic Models (DDD)
 # -----------------------------------------------------------------------------
@@ -308,6 +312,22 @@ class SystemModuleBase(SQLModel):
     service_prefix: str | None = Field(default=None, max_length=100)
     # 模块的可选描述信息
     description: str | None = Field(default=None, max_length=1024)
+    # 服务责任人标记
+    owner: str | None = Field(default=None, max_length=255)
+    # 服务状态：Active（激活）/ Deprecated（弃用）
+    status: ServiceStatus = Field(default=ServiceStatus.active, index=True)
+    
+    # 统计字段（由 Worker 进程原子更新，列表页直接读取以提升性能）
+    total_traffic_count: int = Field(default=0)
+    unique_traffic_count: int = Field(default=0)
+    last_active_at: datetime | None = Field(
+        default=None,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
+    deprecated_at: datetime | None = Field(
+        default=None,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
 
 class SystemModule(SystemModuleBase, table=True):
     # 系统模块的主键 UUID
@@ -323,11 +343,23 @@ class SystemModule(SystemModuleBase, table=True):
         cascade_delete=True,
     )
 
+class SystemModuleCreate(SystemModuleBase):
+    pass
+
+class SystemModuleUpdate(SQLModel):
+    name: str | None = Field(default=None, max_length=255)
+    service_prefix: str | None = Field(default=None, max_length=100)
+    description: str | None = Field(default=None, max_length=1024)
+    owner: str | None = Field(default=None, max_length=255)
+    status: ServiceStatus | None = None
+
 class SystemModulePublic(SystemModuleBase):
     # 在公共 API 响应中暴露的 ID
     id: uuid.UUID
     # 在公共 API 响应中暴露的创建时间戳
     created_at: datetime | None
+    # 动态统计项（兼容前端既有逻辑，如果是旧代码可能需要 interface_count）
+    interface_count: int = 0
 
 class SystemModulesPublic(SQLModel):
     # 公共模块表示的列表

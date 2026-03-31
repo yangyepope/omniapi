@@ -16,11 +16,14 @@ from app.models import (
     SystemModule,
     TrafficRecord,
     TrafficRecordPublic,
+    SystemModuleCreate,
+    SystemModuleUpdate,
+    ServiceStatus,
 )
 
 router = APIRouter(prefix="/system-modules", tags=["system-modules"])
 
-EXCLUDED_SERVICE_NAMES = {"default"}
+EXCLUDED_SERVICE_NAMES = {"default", "unknown api"}
 EXCLUDED_PATHS = {"/"}
 RECENT_TRAFFIC_LIMIT = 10
 
@@ -32,6 +35,14 @@ class SystemModuleStats(BaseModel):
     documented: int
     shadow: int
     last_scanned_at: datetime | None
+    
+    # v3.0 新增持久化统计与元数据字段
+    owner: str | None
+    status: ServiceStatus
+    total_traffic_count: int
+    unique_traffic_count: int
+    last_active_at: datetime | None
+    deprecated_at: datetime | None
 
 class SystemModulesStatsResponse(BaseModel):
     data: list[SystemModuleStats]
@@ -60,55 +71,113 @@ def _should_exclude_endpoint(endpoint: ApiEndpoint, service_name: str) -> bool:
 @router.get(
     "/",
     response_model=SystemModulesStatsResponse,
-    summary="Get aggregated stats for all system modules",
+    summary="获取所有系统模块的聚合统计逻辑",
 )
+# [设计意图]：V3.0 版本后，统计数据已实现持久化存储。此接口不再实时聚合流量记录，而是直接从模块表中读取预计算结果，大幅提升万级接口场景下的加载速度。
 def get_system_modules_stats(session: SessionDep) -> Any:
+    # 一次性获取所有系统模块
     modules = session.exec(select(SystemModule)).all()
+    # 为了统计接口数量，仍需要获取接口概况（后续可优化为在模型层冗余接口总数）
     endpoints = session.exec(select(ApiEndpoint)).all()
 
-    module_endpoints = defaultdict(list)
+    # 按模块 ID 对接口进行分组统计
+    module_eps_stats = defaultdict(lambda: {"total": 0, "documented": 0, "shadow": 0, "last_scan": None})
     for ep in endpoints:
-        module_endpoints[ep.module_id].append(ep)
+        stats = module_eps_stats[ep.module_id]
+        stats["total"] += 1
+        if ep.source_type == SourceType.documented:
+            stats["documented"] += 1
+        else:
+            stats["shadow"] += 1
+        
+        # 更新该模块的最晚扫描时间（接口创建时间）
+        if ep.created_at:
+            if stats["last_scan"] is None or ep.created_at > stats["last_scan"]:
+                stats["last_scan"] = ep.created_at
 
     stats_list = []
     for module in modules:
         service_name = _clean_service_name(module.name)
+        # 排除内部默认服务
         if not service_name or service_name.lower() in EXCLUDED_SERVICE_NAMES:
             continue
 
-        module_eps = module_endpoints.get(module.id, [])
-        valid_eps = [
-            ep for ep in module_eps if not _should_exclude_endpoint(ep, service_name)
-        ]
+        m_stats = module_eps_stats.get(module.id, {"total": 0, "documented": 0, "shadow": 0, "last_scan": None})
 
-        total_interfaces = len(valid_eps)
-        if total_interfaces == 0:
-            continue
-
-        documented_count = sum(
-            1 for ep in valid_eps if ep.source_type == SourceType.documented
-        )
-        shadow_count = sum(
-            1 for ep in valid_eps if ep.source_type == SourceType.auto_discovered
-        )
-
-        last_scanned_at = max(
-            (ep.created_at for ep in valid_eps if ep.created_at), default=None
-        )
-
+        # 组装响应模型，优先使用持久化字段
         stats = SystemModuleStats(
             id=str(module.id),
-            name=service_name,
+            name=module.name,
             description=module.description,
-            interfaces=total_interfaces,
-            documented=documented_count,
-            shadow=shadow_count,
-            last_scanned_at=last_scanned_at,
+            interfaces=m_stats["total"],
+            documented=m_stats["documented"],
+            shadow=m_stats["shadow"],
+            last_scanned_at=m_stats["last_scan"],
+            # v3.0 新增字段映射
+            owner=module.owner,
+            status=module.status,
+            total_traffic_count=module.total_traffic_count,
+            unique_traffic_count=module.unique_traffic_count,
+            last_active_at=module.last_active_at,
+            deprecated_at=module.deprecated_at,
         )
         stats_list.append(stats)
 
+    # 按服务名称字母顺序排序，保持 UI 展示逻辑一致
     stats_list.sort(key=lambda x: x.name)
     return {"data": stats_list}
+
+
+@router.post("/", response_model=SystemModule, summary="手动创建一个系统模块")
+# [设计意图]：允许管理员在流量捕获前，先手动定义业务服务及其责任人。
+def create_system_module(module_in: SystemModuleCreate, session: SessionDep) -> Any:
+    # 检查重名风险
+    existing = session.exec(select(SystemModule).where(SystemModule.name == module_in.name)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="服务名称已存在")
+    
+    db_module = SystemModule.model_validate(module_in)
+    session.add(db_module)
+    session.commit()
+    session.refresh(db_module)
+    return db_module
+
+
+@router.patch("/{module_id}", response_model=SystemModule, summary="更新系统模块信息")
+# [设计意图]：支持修改服务名称、责任人或切换状态（Active/Deprecated）。当切换到 Deprecated 时，会自动记录时间。
+def update_system_module(module_id: uuid.UUID, module_in: SystemModuleUpdate, session: SessionDep) -> Any:
+    db_module = session.get(SystemModule, module_id)
+    if not db_module:
+        raise HTTPException(status_code=404, detail="模块未找到")
+    
+    update_data = module_in.model_dump(exclude_unset=True)
+    
+    # 状态切换逻辑处理
+    if "status" in update_data and update_data["status"] != db_module.status:
+        if update_data["status"] == ServiceStatus.deprecated:
+            db_module.deprecated_at = datetime.now()
+        elif update_data["status"] == ServiceStatus.active:
+            db_module.deprecated_at = None # 恢复激活时清空弃用时间
+
+    for key, value in update_data.items():
+        setattr(db_module, key, value)
+    
+    session.add(db_module)
+    session.commit()
+    session.refresh(db_module)
+    return db_module
+
+
+@router.delete("/{module_id}", summary="彻底删除一个系统模块")
+# [设计意图]：执行物理删除，级联清理其下的所有接口定义与流量记录。请谨慎操作。
+def delete_system_module(module_id: uuid.UUID, session: SessionDep) -> Any:
+    db_module = session.get(SystemModule, module_id)
+    if not db_module:
+        raise HTTPException(status_code=404, detail="模块未找到")
+    
+    session.delete(db_module)
+    session.commit()
+    return {"message": "服务模块及关联数据已彻底清理"}
 
 
 @router.get(

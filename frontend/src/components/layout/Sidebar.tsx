@@ -1,4 +1,4 @@
-import { Activity, BarChart2, Network, PlayCircle, Search, Settings, Shield } from "lucide-react"
+import { Activity, BarChart2, LayoutGrid, Network, PlayCircle, Search, Settings, Shield } from "lucide-react"
 import { Link, useRouterState } from "@tanstack/react-router"
 
 export function Sidebar() {
@@ -20,6 +20,12 @@ export function Sidebar() {
       icon: Network,
       label: "服务管理",
       active: isServicesActive
+    },
+    {
+      to: "/business-config",
+      icon: LayoutGrid,
+      label: "业务配置",
+      active: pathname.startsWith('/business-config')
     },
     {
       to: "/settings",

@@ -20,6 +20,7 @@ import { Route as LayoutServicesRouteImport } from './routes/_layout/services'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutServicesIndexRouteImport } from './routes/_layout/services/index'
+import { Route as LayoutBusinessConfigIndexRouteImport } from './routes/_layout/business-config/index'
 import { Route as LayoutServicesServiceIdIndexRouteImport } from './routes/_layout/services/$serviceId/index'
 import { Route as LayoutServicesServiceIdEndpointIdRouteImport } from './routes/_layout/services/$serviceId/$endpointId'
 
@@ -77,6 +78,12 @@ const LayoutServicesIndexRoute = LayoutServicesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutServicesRoute,
 } as any)
+const LayoutBusinessConfigIndexRoute =
+  LayoutBusinessConfigIndexRouteImport.update({
+    id: '/business-config/',
+    path: '/business-config/',
+    getParentRoute: () => LayoutRoute,
+  } as any)
 const LayoutServicesServiceIdIndexRoute =
   LayoutServicesServiceIdIndexRouteImport.update({
     id: '/$serviceId/',
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/items': typeof LayoutItemsRoute
   '/services': typeof LayoutServicesRouteWithChildren
   '/settings': typeof LayoutSettingsRoute
+  '/business-config/': typeof LayoutBusinessConfigIndexRoute
   '/services/': typeof LayoutServicesIndexRoute
   '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
   '/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
@@ -113,6 +121,7 @@ export interface FileRoutesByTo {
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/business-config': typeof LayoutBusinessConfigIndexRoute
   '/services': typeof LayoutServicesIndexRoute
   '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
   '/services/$serviceId': typeof LayoutServicesServiceIdIndexRoute
@@ -129,6 +138,7 @@ export interface FileRoutesById {
   '/_layout/services': typeof LayoutServicesRouteWithChildren
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/business-config/': typeof LayoutBusinessConfigIndexRoute
   '/_layout/services/': typeof LayoutServicesIndexRoute
   '/_layout/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
   '/_layout/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
     | '/items'
     | '/services'
     | '/settings'
+    | '/business-config/'
     | '/services/'
     | '/services/$serviceId/$endpointId'
     | '/services/$serviceId/'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
     | '/items'
     | '/settings'
     | '/'
+    | '/business-config'
     | '/services'
     | '/services/$serviceId/$endpointId'
     | '/services/$serviceId'
@@ -173,6 +185,7 @@ export interface FileRouteTypes {
     | '/_layout/services'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/business-config/'
     | '/_layout/services/'
     | '/_layout/services/$serviceId/$endpointId'
     | '/_layout/services/$serviceId/'
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutServicesIndexRouteImport
       parentRoute: typeof LayoutServicesRoute
     }
+    '/_layout/business-config/': {
+      id: '/_layout/business-config/'
+      path: '/business-config'
+      fullPath: '/business-config/'
+      preLoaderRoute: typeof LayoutBusinessConfigIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/services/$serviceId/': {
       id: '/_layout/services/$serviceId/'
       path: '/$serviceId'
@@ -305,6 +325,7 @@ interface LayoutRouteChildren {
   LayoutServicesRoute: typeof LayoutServicesRouteWithChildren
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutBusinessConfigIndexRoute: typeof LayoutBusinessConfigIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -313,6 +334,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutServicesRoute: LayoutServicesRouteWithChildren,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutBusinessConfigIndexRoute: LayoutBusinessConfigIndexRoute,
 }
 
 const LayoutRouteWithChildren =

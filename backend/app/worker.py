@@ -1,18 +1,26 @@
-import json
 from datetime import datetime, timezone
+import json
+import re
+import asyncio
 from celery import Celery
 from sqlmodel import Session, select
 from app.core.config import settings
 from app.core.db import engine
-from app.models import ApiAsset, ApiEndpoint, SystemModule, TrafficRecord
+from app.models import (
+    ApiAsset, 
+    ApiEndpoint, 
+    SystemModule, 
+    TrafficRecord, 
+    GlobalConfig,
+    ServiceStatus
+)
 from app.services.discovery import normalize_uri, extract_schemas
 from app.services.scanner import run_scan_for_asset
-import asyncio
-from loguru import logger
-import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Initialize Celery
-# The broker and backend URLs should be provided via environment variables in the container
 celery_app = Celery(
     "worker",
     broker=settings.CELERY_BROKER_URL if hasattr(settings, "CELERY_BROKER_URL") else "redis://localhost:6379/0",
@@ -22,125 +30,135 @@ celery_app = Celery(
 def find_matching_endpoint(session: Session, method: str, real_uri: str) -> ApiEndpoint | None:
     """
     查找匹配的 ApiEndpoint。首先尝试精确匹配，然后尝试匹配路径变量。
-    例如 real_uri='/api/v1/users/123' -> path='/api/v1/users/{id}'
     """
-    # 1. 精确匹配：在数据库中查询方法和路径完全一致的接口定义
     statement = select(ApiEndpoint).where(ApiEndpoint.method == method, ApiEndpoint.path == real_uri)
-    # 执行查询并获取第一个精确匹配的结果
     exact_match = session.exec(statement).first()
-    # 如果找到精确匹配，则立即返回该接口
     if exact_match:
         return exact_match
         
-    # 2. 模式匹配：如果没有精确匹配，则退而求其次进行模式匹配
-    # 检索具有相同 HTTP 方法的所有接口定义，以缩小搜索范围
     endpoints = session.exec(select(ApiEndpoint).where(ApiEndpoint.method == method)).all()
-    # 遍历检索到的每个接口定义
     for ep in endpoints:
-        # 将路径变量（如 {id}）转换为正则表达式模式 [^/]+
         pattern = re.sub(r'\{[^}]+\}', r'[^/]+', ep.path)
-        # 检查真实的 URI 是否完全符合生成的正则表达式模式
         if re.match(f"^{pattern}$", real_uri):
-            # 如果模式匹配成功，则返回该接口
             return ep
             
-    # 如果既没有精确匹配也没有模式匹配，则返回 None
     return None
 
 def get_or_create_module_by_uri(session: Session, uri: str) -> tuple[SystemModule, str]:
     """
-    根据 URI 提取微服务名称，并获取或创建对应的 SystemModule。
-    例如: /sts/api/login-session/ -> 服务名称为 'sts'
+    V3.0 增强型服务发现逻辑：
+    1. 优先匹配【全局业务配置】中的“上游服务路由映射”
+    2. 若无匹配，提取 URI 第一层路径作为服务名
+    3. 自动同步责任人 (Owner) 信息
     """
-    # 去除查询参数以防万一
     clean_uri = uri.split('?')[0]
     
-    # 提取第一段作为微服务名称
-    parts = [p for p in clean_uri.split('/') if p]
-    if parts:
-        service_name = parts[0]
-        service_prefix = f"/{service_name}"
+    matching_name = None
+    matching_owner = "Unknown"
+    
+    config_statement = select(GlobalConfig).where(GlobalConfig.key == "upstream_service_route_mapping")
+    config = session.exec(config_statement).first()
+    
+    if config and config.value:
+        try:
+            mappings = json.loads(config.value)
+            logger.debug(f"[Discovery] Testing {len(mappings)} mappings for URI: {clean_uri}")
+            for item in mappings:
+                pattern = item.get("pattern", "").strip()
+                # 使用 re.search 增加灵活性，并处理可能的空模式
+                if pattern and re.search(pattern, clean_uri):
+                    matching_name = item.get("service")
+                    matching_owner = item.get("owner", "Unknown")
+                    logger.info(f"[Discovery] ✅ Match found (search): Pattern '{pattern}' -> Service: {matching_name}")
+                    break
+        except Exception as e:
+            logger.error(f"解析路由映射配置失败: {e}")
     else:
-        service_name = "default"
-        service_prefix = "/"
-        
-    # 查询数据库以查找对应的系统模块
-    statement = select(SystemModule).where(SystemModule.name == service_name)
+        logger.debug(f"[Discovery] No mapping configuration found in GlobalConfig.")
+
+    if not matching_name:
+        parts = [p for p in clean_uri.split('/') if p]
+        if parts:
+            matching_name = parts[0]
+        else:
+            matching_name = "default"
+            
+    # 再次兜底：如果 matching_name 被意外设置为了包含 "Unknown" 的字符串（来自旧配置等），强制改为 "default"
+    if not matching_name or "Unknown" in matching_name:
+        matching_name = matching_name or "default"
+        # 如果不是明确的 "default"，则保持原样，除非它确实是 "Unknown API"
+        if matching_name == "Unknown API":
+            matching_name = "default"
+            
+    service_prefix = f"/{matching_name}" if "/" not in matching_name else None
+    
+    statement = select(SystemModule).where(SystemModule.name == matching_name)
     mod = session.exec(statement).first()
     
-    # 如果不存在该模块
     if not mod:
-        # 创建一个新的 SystemModule 实例
         mod = SystemModule(
-            name=service_name, 
+            name=matching_name, 
             service_prefix=service_prefix,
-            description=f"Auto-generated module for {service_name} service"
+            owner=matching_owner,
+            description=f"Auto-generated module for {matching_name} service",
+            status=ServiceStatus.active
         )
         session.add(mod)
-        session.commit()
-        session.refresh(mod)
+        session.flush() 
+    else:
+        if mod.owner == "Unknown" and matching_owner != "Unknown":
+            mod.owner = matching_owner
+            session.add(mod)
         
-    return mod, service_name
+    return mod, matching_name
 
 @celery_app.task(name="process_mirror_traffic_task")
 def process_mirror_traffic_task(method: str, uri: str, headers: dict, body_str: str, source_ip: str = "") -> str:
     """
-    异步处理收集到的流量：
-    1. 脱敏敏感字段（待实现）
-    2. 匹配已有的 ApiEndpoint (例如来自 Apifox 导入)
-    3. 如果不匹配，则归档为对应的微服务模块，并创建一个新的 ApiEndpoint
-    4. 将实际的流量请求保存为 TrafficRecord
+    异步处理收集到的流量 (v3.0 增强版)
     """
     try:
-        # 标准化 URI（例如移除尾部斜杠或查询参数）
         norm_uri = normalize_uri(uri)
-        # TODO: 脱敏 headers 和 body 中的密码或 Token 等敏感信息
         
-        # 打开一个新的数据库会话
         with Session(engine) as session:
-            # 尝试查找与传入的方法和 URI 匹配的现有 ApiEndpoint
             endpoint = find_matching_endpoint(session, method, norm_uri)
             
-            # 如果没有找到匹配的接口（影子 API 场景）
             if not endpoint:
-                # 动态获取或创建对应的微服务模块
                 mod, service_name = get_or_create_module_by_uri(session, norm_uri)
-                # 创建一个新的 ApiEndpoint 来表示这个之前未知的 API
                 endpoint = ApiEndpoint(
-                    method=method, # 设置 HTTP 方法
-                    path=norm_uri, # 设置标准化后的路径
-                    name=f"Auto Discovered {method} {norm_uri}", # 生成一个默认名称
-                    service_name=service_name, # 设置微服务名称
-                    module_id=mod.id # 将其链接到对应的微服务模块
+                    method=method,
+                    path=norm_uri,
+                    name=f"Auto Discovered {method} {norm_uri}",
+                    service_name=service_name,
+                    module_id=mod.id
                 )
-                # 将新接口添加到会话中
                 session.add(endpoint)
-                # 提交事务以保存新接口
                 session.commit()
-                # 刷新接口对象以获取其生成的 ID
                 session.refresh(endpoint)
-                
-            # 创建一个新的 TrafficRecord 以对这个特定的 API 请求进行快照（仅追加，不去重）
+                session.refresh(mod)
+            else:
+                mod = session.get(SystemModule, endpoint.module_id)
+
+            if mod:
+                mod.total_traffic_count += 1
+                mod.last_active_at = datetime.now(timezone.utc)
+                session.add(mod)
+
             record = TrafficRecord(
-                endpoint_id=endpoint.id, # 将流量记录链接到匹配或新创建的接口
-                method=method, # 记录使用的 HTTP 方法
-                real_uri=uri, # 记录确切请求的 URI
-                headers=headers, # 存储请求头
-                body=body_str, # 存储请求体
-                source_ip=source_ip # 记录客户端的真实 IP 地址
+                endpoint_id=endpoint.id,
+                method=method,
+                real_uri=uri,
+                headers=headers,
+                body=body_str,
+                source_ip=source_ip
             )
-            # 将流量记录添加到会话中
             session.add(record)
-            # 提交事务以将流量记录保存到数据库
             session.commit()
             
-            # 返回包含接口 ID 的成功消息
             return f"Traffic archived for endpoint: {endpoint.id}"
             
     except Exception as e:
-        # 记录异步处理过程中发生的任何错误
         logger.error(f"Error in process_mirror_traffic_task: {e}")
-        # 返回错误消息
         return f"Error: {str(e)}"
 
 @celery_app.task(name="run_security_scan_task")
@@ -151,7 +169,6 @@ def run_security_scan_task(task_id: str) -> str:
     try:
         task_uuid = uuid.UUID(task_id)
         with Session(engine) as session:
-            # 1. 获取任务
             task = session.get(SecurityTestTask, task_uuid)
             if not task:
                 return "Task not found"
@@ -160,7 +177,6 @@ def run_security_scan_task(task_id: str) -> str:
             session.add(task)
             session.commit()
             
-            # 2. 获取目标资产
             asset = session.get(ApiAsset, task.target_asset_id)
             if not asset:
                 task.status = "failed"
@@ -168,11 +184,8 @@ def run_security_scan_task(task_id: str) -> str:
                 session.commit()
                 return "Asset not found"
                 
-            # 3. 运行扫描 (Scanner 中的方法是 async 的，在 Celery 中需要用 asyncio 运行)
-            # 也可以把 Scanner 改为同步，但由于 httpx 常用异步，我们使用 asyncio.run
             scan_result = asyncio.run(run_scan_for_asset(asset, task.payload_type))
             
-            # 4. 保存报告
             report = SecurityTestReport(
                 task_id=task.id,
                 asset_id=asset.id,
@@ -181,11 +194,9 @@ def run_security_scan_task(task_id: str) -> str:
             )
             session.add(report)
             
-            # 5. 更新任务状态
             task.status = "completed"
             task.finished_at = datetime.now(timezone.utc)
             session.add(task)
-            
             session.commit()
             return f"Scan completed for Task {task_id}. Vuln Found: {report.vulnerability_found}"
             

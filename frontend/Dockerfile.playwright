@@ -2,7 +2,10 @@ FROM mcr.microsoft.com/playwright:v1.58.2-noble
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y unzip \
+# 优化：加速国内 APT 源
+RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list.d/ubuntu.sources \
+    && sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt-get update && apt-get install -y unzip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://bun.sh/install | bash

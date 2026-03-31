@@ -21,9 +21,7 @@ export type ApiAssetsPublic = {
 
 export type ApiEndpointDetailResponse = {
     endpoint: ApiEndpointPublic;
-    module_id: string;
     module_name: string;
-    service_name: string;
     traffic_count: number;
     last_seen_at: (string | null);
     recent_traffic: Array<TrafficRecordPublic>;
@@ -32,6 +30,7 @@ export type ApiEndpointDetailResponse = {
 export type ApiEndpointPublic = {
     method: string;
     path: string;
+    level?: EndpointLevel;
     name?: (string | null);
     description?: (string | null);
     service_name?: (string | null);
@@ -79,6 +78,8 @@ export type Body_login_login_access_token = {
     client_id?: (string | null);
     client_secret?: (string | null);
 };
+
+export type EndpointLevel = 'p0' | 'p1' | 'p2' | 'p3';
 
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
@@ -141,6 +142,8 @@ export type SecurityTestTask = {
     finished_at?: (string | null);
 };
 
+export type ServiceStatus = 'active' | 'deprecated';
+
 export type SourceType = 'auto_discovered' | 'documented' | 'mocked' | 'zombie';
 
 export type Statistics = {
@@ -166,20 +169,58 @@ export type Statistics = {
     share_count?: (number | null);
 };
 
+export type SystemModule = {
+    name: string;
+    service_prefix?: (string | null);
+    description?: (string | null);
+    owner?: (string | null);
+    status?: ServiceStatus;
+    total_traffic_count?: number;
+    unique_traffic_count?: number;
+    last_active_at?: (string | null);
+    deprecated_at?: (string | null);
+    id?: string;
+    created_at?: (string | null);
+};
+
+export type SystemModuleCreate = {
+    name: string;
+    service_prefix?: (string | null);
+    description?: (string | null);
+    owner?: (string | null);
+    status?: ServiceStatus;
+    total_traffic_count?: number;
+    unique_traffic_count?: number;
+    last_active_at?: (string | null);
+    deprecated_at?: (string | null);
+};
+
 export type SystemModulesStatsResponse = {
     data: Array<SystemModuleStats>;
-    count: number;
 };
 
 export type SystemModuleStats = {
     id: string;
     name: string;
-    service_name: string;
     description: (string | null);
     interfaces: number;
     documented: number;
     shadow: number;
     last_scanned_at: (string | null);
+    owner: (string | null);
+    status: ServiceStatus;
+    total_traffic_count: number;
+    unique_traffic_count: number;
+    last_active_at: (string | null);
+    deprecated_at: (string | null);
+};
+
+export type SystemModuleUpdate = {
+    name?: (string | null);
+    service_prefix?: (string | null);
+    description?: (string | null);
+    owner?: (string | null);
+    status?: (ServiceStatus | null);
 };
 
 export type Token = {
@@ -440,8 +481,27 @@ export type SecurityAssetsReadReportsResponse = (SecurityTestReportsPublic);
 
 export type SystemModulesGetSystemModulesStatsResponse = (SystemModulesStatsResponse);
 
+export type SystemModulesCreateSystemModuleData = {
+    requestBody: SystemModuleCreate;
+};
+
+export type SystemModulesCreateSystemModuleResponse = (SystemModule);
+
+export type SystemModulesUpdateSystemModuleData = {
+    moduleId: string;
+    requestBody: SystemModuleUpdate;
+};
+
+export type SystemModulesUpdateSystemModuleResponse = (SystemModule);
+
+export type SystemModulesDeleteSystemModuleData = {
+    moduleId: string;
+};
+
+export type SystemModulesDeleteSystemModuleResponse = (unknown);
+
 export type SystemModulesGetModuleEndpointsData = {
-    keyword?: string | null;
+    keyword?: (string | null);
     limit?: number;
     moduleId: string;
     skip?: number;
