@@ -13,8 +13,8 @@
     "test:ui": "bunx playwright test --ui",
     "mcp:setup": "export $(cat .env | xargs) && npx stitch-mcp-server setup",
     "mcp:bridge": "export $(cat .env | xargs) && PORT=3000 node mcp-sse-bridge.js",
-    "stitch": "node scripts/stitch-cli.js",
-    "stitch:raw": "node scripts/stitch-raw.js"
+    "stitch": "node ../.agent/plugins/ecc/skills/stitch-mcp/scripts/stitch-cli.js",
+    "stitch:raw": "node ../.agent/plugins/ecc/skills/stitch-mcp/scripts/stitch-raw.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

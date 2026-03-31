@@ -140,6 +140,7 @@ function Login() {
                 </div>
                 <input 
                   id="username" 
+                  data-testid="email-input"
                   {...register("username", { required: "Username is required" })}
                   type="text" 
                   placeholder="admin@trafficmaster.com" 
@@ -163,6 +164,7 @@ function Login() {
                 </div>
                 <input 
                   id="password" 
+                  data-testid="password-input"
                   {...register("password", { required: "Password is required" })}
                   type="password" 
                   placeholder="••••••••••••" 
@@ -185,6 +187,7 @@ function Login() {
 
             <button 
               type="submit" 
+              data-testid="login-button"
               disabled={loginMutation.isPending}
               className="w-full py-4 px-6 bg-primary-fixed hover:bg-primary-container text-on-primary rounded-md font-bold text-base shadow-[0_8px_30px_rgba(0,93,170,0.12)] transition-all active:scale-[0.98] flex items-center justify-center gap-2 group mt-2 disabled:opacity-50"
             >

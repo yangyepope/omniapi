@@ -11,6 +11,7 @@ import 'dotenv/config'
  */
 export default defineConfig({
   testDir: './tests',
+  globalTeardown: './tests/utils/global-teardown',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -87,5 +88,10 @@ export default defineConfig({
     command: 'bun run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000, // 增加超时时间到 120 秒
   },
+
+  /* 归档配置：统一输出路径与截图模板 */
+  outputDir: 'test-results/',
+  snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
 });

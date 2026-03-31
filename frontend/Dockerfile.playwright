@@ -8,16 +8,22 @@ RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list.d/u
     && apt-get update && apt-get install -y unzip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:$PATH"
+# 1. 优化容器内 Bun 的安装：使用 npmmirror (淘宝镜像源) 极速下载
+# 相比 curl，npm install 走国内镜像在构建时更加稳定
+RUN npm install -g bun --registry=https://registry.npmmirror.com
 
+# 2. 导出 Bun 路径，确保后续命令可用
+ENV PATH="/usr/local/bin:$PATH"
+
+# 3. 准备应用目录
 COPY package.json bun.lock /app/
 
 COPY frontend/package.json /app/frontend/
 
 WORKDIR /app/frontend
 
-RUN bun install
+# 4. 安装依赖：同样强制指定国内 npm 镜像源以加速包下载
+RUN bun install --registry=https://registry.npmmirror.com
 
 COPY ./frontend /app/frontend
 

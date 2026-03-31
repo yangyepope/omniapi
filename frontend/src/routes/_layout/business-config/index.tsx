@@ -12,7 +12,8 @@ import {
   AlertTriangle, 
   Download, 
   Plus, 
-  Edit3 
+  Edit3,
+  LayoutGrid
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 

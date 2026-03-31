@@ -17,6 +17,7 @@ ECC 提供了一套基于斜杠（Slash）的精确指令，用于触发特定�
 | **`/build-fix`**| **错误修复** | 当遇到编译错误或运行报错时，自动分析日志并修复。 |
 | **`/code-review`**| **代码审计** | 在提交代码前，由内置的高级审计代理检查逻辑漏洞与规范。 |
 | **`/checkpoint`**| **断点保存** | 在进行重大变更前手动保存状态，方便后续回滚或上下文恢复。 |
+| **`/stitch`**| **设计素材同步** | 通过 Stitch MCP 拉取素材列表、诊断链路并按自然语言同步设计代码。 |
 
 ### 如何使用
 直接在聊天窗口输入指令即可（例如：`/plan 增加 OAuth2 登录支持`）。忽略 IDE 弹出的“No matching results”提示，AI 会识别你的意图。
@@ -58,6 +59,7 @@ ECC 提供了一套基于斜杠（Slash）的精确指令，用于触发特定�
 | **`/rules-distill`** | 扫描当前全量 Skills 并生成规则指南供模型严格遵循。 | `/rules-distill 从现有的最佳实践中提炼 AGENT.md` |
 | **`/rust-build`** / **`/rust-review`** / **`/rust-test`** | 修复 Rust 借用检查器 (Borrow Checker) 错误、生命周期审查与 cargo-llvm-cov 驱动工作流。 | `/rust-build 帮我处理生命周期参数推导报错` |
 | **`/setup-pm`** | 全自动包管理器引导修正（npm/yarn/pnpm/bun 大统一）。 | `/setup-pm` |
+| **`/stitch`** | Stitch MCP 一键入口：支持 `/stitch list`、`/stitch doctor` 以及自然语言同步（如“同步服务卡片设计”）。 | `/stitch 同步服务卡片设计` |
 | **`/skill-create`** / **`/skill-health`** | 从本地 Git 历史中逆向推导代码模式，自动生成 `SKILL.md` 新文件。 | `/skill-create 根据我昨天的提交提取 React 视图开发模式` |
 | **`/tdd`** | 标准测试驱动：设计边界接口 -> 生成测试 -> 编写实现。 | `/tdd 我需要一个函数来计算购物车订单折扣总价` |
 | **`/test-coverage`** / **`/verify`** | 测试结果检查以及全面自驱动验证流程。 | `/verify 运行全量检测脚本确保核心没挂` |
