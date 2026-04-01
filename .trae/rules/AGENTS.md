@@ -66,3 +66,38 @@ alwaysApply: true
 - **Zod-Pydantic-Bridge**：当编写前端复杂表单时，触发此技能。AI 应严格根据后端的 `Field(gt=0, le=100)` 等约束，自动生成对应的前端 Zod 校验规则（如 `z.number().min(0).max(100)`）。
 - **CRUD-Boilerplate**：当增加新的业务模块时，触发此技能。AI 应一次性端到端生成：后端 Model -> Schema -> Router，以及前端 API 调用 -> 列表页 (List Page) -> 表单弹窗 (Form Modal)。
 
+
+## 9) ECC 增强专家 (ECC Enhanced Experts)
+
+这些是由 `everything-claude-code` 插件提供的专用子代理，可通过在对话中明确要求其“化身”或委派任务来启用。详细路径见 `.agent/plugins/ecc/agents/`：
+
+- **Architect (规划架构师)**：负责系统级设计决策、模块解耦与扩展性评估。
+- **Planner (特性规划员)**：负责将复杂需求拆解为可执行的实施计划。
+- **TDD-Guide (测试开发向导)**：强制执行测试驱动开发 (Red-Green-Refactor) 流程。
+- **Code-Reviewer (代码审计员)**：严格审查代码质量、命名规范与逻辑完整性。
+- **Typescript-Reviewer (TS 专项审查)**：深入审计 TS 类型安全、React 性能与最佳实践。
+- **Security-Reviewer (安全卫士)**：对变更进行 OWASP Top 10 级别的安全审计。
+- **Build-Error-Resolver (编译错误修复)**：自动分析并修复跨平台的编译/链表错误。
+- **Doc-Updater (文档同步员)**：确保 `WALKTHROUGH.md` 和代码注释与最新变更同步。
+
+## 10) 自动化测试保障 (Automated Testing Compliance)
+
+为了确保全栈功能（尤其是前台 UI）的持续稳定性，AI 助手在执行 `/e2e` 或相关自动化验证任务时，必须遵守以下持久化规据：
+
+- **凭据获取策略**：必须优先读取项目根目录下的 [.env](file:///root/omniapi/.env) 文件。该文件包含 `FIRST_SUPERUSER` 和 `FIRST_SUPERUSER_PASSWORD`。严禁在代码中硬编码或使用虚假账户。
+- **Session 自动维系**：若测试因权限（401/403）失败，应主动运行 `npx playwright test tests/auth.setup.ts`。此操作会将登录状态持久化至 `playwright/.auth/user.json`，供后续所有测试复用。
+- **本地连通性配置**：在执行测试时，默认使用 `http://localhost:5173` 作为 Frontend 入口，确保环境内部回路连通。
+- **视觉取证要求**：对于 UI 变更，必须保留 Playwright 生成的 `test-results` 截图或录屏记录，并将其路径同步至 `WALKTHROUGH.md` 供用户复核。
+
+## 11) 测试与脚本管理规范 (Test & Script Management)
+
+为了维护仓库（特别是 `backend/` 根目录）的整洁度，所有非生产运行代码必须严格遵循以下归位规则：
+- **禁止项 (Anti-Patterns)**：禁止在 `backend/` 根目录、`app/` 业务逻辑目录或项目根目录放置临时脚本（如 `resync_*.py`, `tdd_*.py`）。
+- **核验与同步工具 (Tools & Scripts)**：所有用于数据校准、同步或一次性修复的非测试框架工具脚本，必须统一放置于 `backend/tests/scripts/`。
+- **功能验证与 TDD (Functional Tests)**：所有为了验证特定功能点而编写的演示性或核验性脚本，必须放置于 `backend/tests/functional/`。
+- **单元测试 (Unit Tests)**：放置于 `backend/tests/api/` 或对应的 `backend/tests/unit/`。
+- **清理原则**：任务完成后，AI 应主动检查并归位上述文件。
+
+---
+
+**使用说明**：当任务特别复杂或涉及核心架构变更时，建议主动“委派”给上述专家进行多步验证。

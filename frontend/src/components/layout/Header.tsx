@@ -23,7 +23,7 @@ export function Header() {
     const parts = [{ label: "首页", to: "/" }]
     const segments = pathname.split("/").filter(Boolean)
 
-    if (pathname === "/") {
+    if (pathname === "/" || segments.length === 0) {
       parts.push({ label: "仪表面板", to: "/" })
       return parts
     }
@@ -47,11 +47,15 @@ export function Header() {
       // 处理二级目录 (服务 ID)
       else if (index === 1 && segments[0] === "services") {
         const service = statsQuery.data?.data?.find(s => s.id === seg)
-        parts.push({ label: service ? service.name : "载入中...", to: currentPath })
+        parts.push({ label: service ? service.name : (seg || "详情"), to: currentPath })
       }
       // 处理三级目录 (接口 ID)
       else if (index === 2 && segments[0] === "services") {
         parts.push({ label: "接口详情", to: currentPath })
+      }
+      // 兜底处理：防止未知路径导致面包屑缺失
+      else if (index > 0 && !parts.find(p => p.to === currentPath)) {
+        parts.push({ label: seg, to: currentPath })
       }
     })
 

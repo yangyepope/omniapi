@@ -7,6 +7,13 @@ import { motion } from "motion/react"
 import { SystemModulesService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { ServiceCard } from "@/components/services/ServiceCard"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const searchSchema = z.object({
   query: z.string().optional().default(""),
@@ -113,14 +120,19 @@ function ServiceListPage() {
             />
           </div>
         </div>
-        <div className="col-span-12 md:col-span-6 lg:col-span-3">
+        <div className="col-span-12 md:col-span-6 lg:col-span-3 flex flex-col">
           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1 tracking-widest">健康状态</label>
-          <select className="w-full bg-gray-50 border border-transparent focus:border-blue-200 focus:bg-white rounded-2xl py-3.5 px-4 text-sm transition-all outline-none text-gray-900 font-medium cursor-pointer appearance-none">
-            <option>所有状态</option>
-            <option>健康</option>
-            <option>风险</option>
-            <option>离线</option>
-          </select>
+          <Select defaultValue="all">
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="所有状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">所有状态</SelectItem>
+              <SelectItem value="healthy">健康</SelectItem>
+              <SelectItem value="risk">风险</SelectItem>
+              <SelectItem value="offline">离线</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="col-span-12 md:col-span-6 lg:col-span-4 flex items-end gap-3">
           <Button variant="ghost" className="flex-1 h-12 rounded-2xl text-gray-500 font-bold hover:bg-gray-100">重置</Button>

@@ -89,6 +89,15 @@ alwaysApply: true
 - **本地连通性配置**：在执行测试时，默认使用 `http://localhost:5173` 作为 Frontend 入口，确保环境内部回路连通。
 - **视觉取证要求**：对于 UI 变更，必须保留 Playwright 生成的 `test-results` 截图或录屏记录，并将其路径同步至 `WALKTHROUGH.md` 供用户复核。
 
+## 11) 测试与脚本管理规范 (Test & Script Management)
+
+为了维护仓库（特别是 `backend/` 根目录）的整洁度，所有非生产运行代码必须严格遵循以下归位规则：
+- **禁止项 (Anti-Patterns)**：禁止在 `backend/` 根目录、`app/` 业务逻辑目录或项目根目录放置临时脚本（如 `resync_*.py`, `tdd_*.py`）。
+- **核验与同步工具 (Tools & Scripts)**：所有用于数据校准、同步或一次性修复的非测试框架工具脚本，必须统一放置于 `backend/tests/scripts/`。
+- **功能验证与 TDD (Functional Tests)**：所有为了验证特定功能点而编写的演示性或核验性脚本，必须放置于 `backend/tests/functional/`。
+- **单元测试 (Unit Tests)**：放置于 `backend/tests/api/` 或对应的 `backend/tests/unit/`。
+- **清理原则**：任务完成后，AI 应主动检查并归位上述文件。
+
 ---
 
 **使用说明**：当任务特别复杂或涉及核心架构变更时，建议主动“委派”给上述专家进行多步验证。

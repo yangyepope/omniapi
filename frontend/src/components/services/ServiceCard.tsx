@@ -208,42 +208,37 @@ export function ServiceCard({ module, onClick }: { module: SystemModuleStats; on
           )}
         </div>
         
-        <div className="space-y-3">
-          {/* 责任人展示/编辑 */}
-          <div className="relative group/owner min-h-[24px]">
+        <div className="flex items-center justify-between gap-4 py-1.5 border-y border-gray-50/50">
+          {/* 左侧：责任人 */}
+          <div className="relative group/owner min-h-[20px] flex-1">
             {isEditingOwner ? (
-              <div className="flex items-center gap-2 bg-blue-50/50 p-2 rounded-lg" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 bg-blue-50/50 p-1.5 rounded-lg border border-blue-100/50" onClick={(e) => e.stopPropagation()}>
                 <input 
                   autoFocus
-                  className="bg-transparent border-none outline-none text-sm font-bold text-blue-700 w-full"
+                  className="bg-transparent border-none outline-none text-[11px] font-black text-blue-700 w-full"
                   value={tempOwner}
                   onChange={(e) => setTempOwner(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleUpdateOwner()}
                 />
-                <button onClick={handleUpdateOwner} className="text-blue-600 hover:bg-blue-100 p-1 rounded"><Check className="w-3.5 h-3.5" /></button>
-                <button onClick={() => { setIsEditingOwner(false); setTempOwner(module.owner || "") }} className="text-gray-400 hover:bg-gray-100 p-1 rounded"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={handleUpdateOwner} className="text-blue-600 rounded hover:bg-blue-100/50"><Check className="w-3 h-3" /></button>
               </div>
             ) : (
               <div 
-                className="flex items-center gap-2 text-gray-500 font-bold text-sm tracking-tight"
+                className="flex items-center gap-1.5 text-gray-500 cursor-pointer group/text"
                 onClick={(e) => { e.stopPropagation(); setIsEditingOwner(true) }}
               >
-                <span className="opacity-70 flex items-center gap-1.5 uppercase text-[10px] tracking-widest">
-                  Owner:
+                <span className="opacity-30 uppercase text-[8px] font-black tracking-widest shrink-0">Owner:</span>
+                <span className="text-xs font-black text-gray-900 border-b border-dashed border-transparent group-hover/text:border-blue-400 group-hover/text:text-blue-600 transition-all truncate">
+                  {module.owner || "Unknown"}
                 </span>
-                <span className="text-gray-900 border-b border-dashed border-gray-200 group-hover/owner:border-blue-400 group-hover/owner:text-blue-600 transition-all">
-                  {module.owner || "未指定"}
-                </span>
-                <Edit2 className="w-3.5 h-3.5 opacity-0 group-hover/owner:opacity-100 text-blue-500 transition-opacity" />
               </div>
             )}
           </div>
 
-          {/* 最后活跃时间 */}
-          <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 tracking-tight">
-            <Clock className={cn("w-3.5 h-3.5", module.last_active_at ? "text-blue-400" : "text-gray-200")} />
-            <span className="uppercase text-[9px] tracking-widest opacity-70">最后活跃:</span>
-            <span className={cn(module.last_active_at ? "text-gray-600" : "italic")}>
+          {/* 右侧：活跃时间 */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Clock className={cn("w-3 h-3", module.last_active_at ? "text-blue-400/50" : "text-gray-200")} />
+            <span className="text-[10px] font-black text-gray-400 tabular-nums">
               {formatRelativeTime(module.last_active_at)}
             </span>
           </div>

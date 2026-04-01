@@ -68,9 +68,10 @@ def generate_dedup_key(service_name: str, path: str, method: str, headers: dict,
     组合 (服务名 + 归一化路径 + 方法 + 过滤后的 Header + 过滤后的 Body)
     使用 MD5 哈希作为去重键。
     """
-    # 1. 对 Header 进行过滤和排序（确保字典顺序一致）
-    filtered_headers = filter_headers_for_dedup(headers)
-    headers_str = json.dumps(filtered_headers, sort_keys=True)
+    # 1. 对 Header 进行过滤和排序 (暂时关闭，后续有需求再启用)
+    # filtered_headers = filter_headers_for_dedup(headers)
+    # headers_str = json.dumps(filtered_headers, sort_keys=True)
+    headers_str = "{}" # 占位符
     
     # 2. 对 Body 进行解析、过滤和排序
     filtered_body_str = ""
@@ -86,8 +87,6 @@ def generate_dedup_key(service_name: str, path: str, method: str, headers: dict,
             
     # 3. 组合最终指纹库字符串
     raw_key_str = f"{service_name}|{path}|{method}|{headers_str}|{filtered_body_str}"
-    print(f"[DEBUG_RAW_KEY] {repr(raw_key_str)} (len={len(raw_key_str)})")
-    print(f"[DEBUG_BYTES] {raw_key_str.encode('utf-8').hex()}")
     
     # 4. 生成 MD5
     return hashlib.md5(raw_key_str.encode('utf-8')).hexdigest()

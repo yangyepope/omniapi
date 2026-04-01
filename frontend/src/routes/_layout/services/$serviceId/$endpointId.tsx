@@ -1,12 +1,21 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Bell, Globe, Lock, Shield, Zap, Activity, Clock, Database, Server } from "lucide-react"
-import { useMemo } from "react"
+import { ArrowLeft, Bell, Globe, Lock, Shield, Zap, Activity, Clock, Database, Server, Copy, Check } from "lucide-react"
+import { useMemo, useState } from "react"
 import { z } from "zod"
 import { motion } from "motion/react"
 
 import { SystemModulesService, TrafficManagerService } from "@/client"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 const formatRelativeTime = (value?: string | null) => {
   if (!value) return "未知"
@@ -20,6 +29,68 @@ const formatRelativeTime = (value?: string | null) => {
   if (hours < 24) return `${hours} 小时前`
   const days = Math.floor(hours / 24)
   return `${days} 天前`
+}
+
+const formatAbsoluteTime = (value?: string | null) => {
+  if (!value) return "—"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "—"
+  
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  const s = String(date.getSeconds()).padStart(2, '0')
+  
+  return `${y}-${m}-${d} ${h}:${min}:${s}`
+}
+
+const PayloadDisplay = ({ body }: { body: string }) => {
+  const [copied, setCopied] = useState(false)
+
+  const formattedBody = useMemo(() => {
+    try {
+      const parsed = JSON.parse(body)
+      return JSON.stringify(parsed, null, 2)
+    } catch {
+      return body
+    }
+  }, [body])
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(body)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="relative group/code">
+      <div className="max-h-[500px] overflow-auto rounded-3xl bg-surface-container-low/50 p-8 border border-outline-variant/5 shadow-inner">
+        <pre className="text-xs font-mono text-primary-fixed leading-relaxed whitespace-pre-wrap break-all tracking-tight">
+          {formattedBody}
+        </pre>
+      </div>
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <button
+          onClick={handleCopy}
+          className={cn(
+            "p-2 rounded-xl border transition-all shadow-sm",
+            copied 
+              ? "bg-secondary-fixed text-on-secondary border-secondary-fixed" 
+              : "bg-surface-container-high text-on-surface-variant hover:text-primary-fixed hover:bg-surface-container-highest border-outline-variant/10"
+          )}
+          title={copied ? "已复制" : "复制 Payload"}
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        </button>
+        <Badge variant="neutral" className="text-[9px] font-black uppercase bg-primary-fixed/10 text-primary-fixed border-none">
+          JSON Format
+        </Badge>
+      </div>
+    </div>
+  )
 }
 
 const searchSchema = z.object({
@@ -190,6 +261,7 @@ function EndpointDetailPage() {
                 <tr className="border-b border-outline-variant/5">
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Method</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Real URI / Params</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Body</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Source IP</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">Captured At</th>
                 </tr>
@@ -209,17 +281,50 @@ function EndpointDetailPage() {
                          {record.original_path}
                       </p>
                     </td>
+                    <td className="px-6 py-5">
+                      {record.body ? (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <div className="flex items-center gap-2 cursor-pointer">
+                              <span className="max-w-[120px] truncate font-mono text-[10px] text-on-surface-variant/70 bg-surface-container-high/50 px-1.5 py-0.5 rounded border border-outline-variant/10 hover:text-primary-fixed hover:border-primary-fixed/30 transition-all">
+                                {record.body}
+                              </span>
+                              <Activity className="w-3 h-3 text-on-surface-variant/20 hover:text-primary-fixed transition-colors" />
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl bg-surface-container-lowest border-outline-variant/10 shadow-2xl rounded-[2rem] p-8">
+                            <DialogHeader className="mb-6">
+                              <DialogTitle className="text-xl font-black text-on-surface flex items-center gap-3">
+                                <Database className="w-5 h-5 text-primary-fixed" />
+                                流量负载详细 Payload
+                              </DialogTitle>
+                              <DialogDescription className="text-xs font-medium text-on-surface-variant mt-1">
+                                已捕获请求体 (Method: {record.method} | IP: {record.client_ip || "Internal"})
+                              </DialogDescription>
+                            </DialogHeader>
+                            <PayloadDisplay body={record.body} />
+                          </DialogContent>
+                        </Dialog>
+                      ) : (
+                        <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-5 whitespace-nowrap">
                        <span className="text-xs font-bold text-on-surface">{record.client_ip || "Internal"}</span>
                     </td>
                     <td className="px-6 py-5 text-right whitespace-nowrap">
-                      <span className="text-xs font-medium text-on-surface-variant">{formatRelativeTime(record.created_at)}</span>
+                      <span 
+                        className="text-[10px] font-mono font-medium text-on-surface-variant group-hover:text-primary-fixed transition-colors"
+                        title={formatRelativeTime(record.captured_at || record.created_at)}
+                      >
+                        {formatAbsoluteTime(record.captured_at || record.created_at)}
+                      </span>
                     </td>
                   </motion.tr>
                 ))}
                 {trafficRecords.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center text-on-surface-variant font-medium opacity-50">
+                    <td colSpan={5} className="px-6 py-20 text-center text-on-surface-variant font-medium opacity-50">
                        目前尚无历史流量捕获记录，正在监听中...
                     </td>
                   </tr>
