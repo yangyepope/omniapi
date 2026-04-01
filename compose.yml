@@ -2,6 +2,41 @@
 # 约定：变量多数从同目录的 .env 注入；带 “?Variable not set” 的变量必须提供，否则 compose 会直接报错
 services:  # 所有服务定义入口（db/backend/frontend 等都在此声明）
 
+  redis:  # Redis 服务：作为 Celery 的消息代理 (Broker)
+    image: redis:7
+    restart: always
+    networks:
+      - default
+
+  celery-worker:  # Celery Worker：处理流量异步去重、接口发现等后台任务
+    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
+    restart: always
+    networks:
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - DOMAIN=${DOMAIN}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+
   db:  # PostgreSQL 数据库服务（存储用户、业务数据等）
     image: postgres:18  # 数据库镜像版本：PostgreSQL 18
     restart: always  # 容器异常退出时自动重启（提升可用性）
@@ -90,6 +125,8 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
         restart: true
       prestart:
         condition: service_completed_successfully
+      redis:
+        condition: service_started
     env_file:  # 加载 .env
       - .env
     environment:  # 显式透传应用配置（与 app/core/config.py 对应）
@@ -110,6 +147,8 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - POSTGRES_USER=${POSTGRES_USER?Variable not set}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - SENTRY_DSN=${SENTRY_DSN}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
 
     healthcheck:  # 健康检查：用于判断后端是否对外可用（Traefik/depends_on 可用）
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]  # 调用健康检查接口

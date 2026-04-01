@@ -2,7 +2,7 @@ from typing import Any # 导入 Any 用于类型提示灵活的字典
 from fastapi import APIRouter, HTTPException, Depends # 导入 FastAPI 路由和依赖注入组件
 from sqlmodel import select, func # 导入 SQLModel 的查询和聚合函数
 from app.api.deps import SessionDep # 导入数据库会话依赖
-from app.models import GlobalConfig, SystemModule, ApiEndpoint, TrafficRecord, TrafficRecordPublic, TrafficRecordsPublic # 导入所需的数据库模型
+from app.models import GlobalConfig, SystemModule, ApiEndpoint, FilteredFlow, FilteredFlowPublic, FilteredFlowsPublic # 导入新的流量流水模型
 import uuid # 导入 uuid 用于处理和提示 UUID 类型
 
 # 创建一个新的 APIRouter 实例，并指定路由前缀和标签
@@ -115,28 +115,43 @@ def import_apifox(data: dict[str, Any], session: SessionDep) -> dict[str, Any]:
     return {"message": "Import successful", "modules_added": imported_modules, "endpoints_added": imported_endpoints}
 
 # 定义一个 GET 接口，用于检索特定接口的分页流量记录
-@router.get("/endpoints/{endpoint_id}/traffic", response_model=TrafficRecordsPublic, summary="Get traffic for an endpoint")
+@router.get("/endpoints/{endpoint_id}/traffic", response_model=FilteredFlowsPublic, summary="Get traffic for an endpoint")
 def get_endpoint_traffic(
     endpoint_id: uuid.UUID, session: SessionDep, skip: int = 0, limit: int = 100
 ) -> Any:
     """
-    按时间倒序查询某个接口下的所有流量快照。
+    按时间倒序查询某个接口下的所有精选流量快照。
     """
-    # 构建查询语句，计算此接口的总流量记录数
-    count_statement = select(func.count()).select_from(TrafficRecord).where(TrafficRecord.endpoint_id == endpoint_id)
-    # 执行计数查询并检索单个整数结果
+    # 计算总记录数
+    count_statement = select(func.count()).select_from(FilteredFlow).where(FilteredFlow.endpoint_id == endpoint_id)
     count = session.exec(count_statement).one()
     
-    # 构建查询语句以检索实际的流量记录
+    # 检索记录
     statement = (
-        select(TrafficRecord) # 从 TrafficRecord 表中选择
-        .where(TrafficRecord.endpoint_id == endpoint_id) # 过滤属于所请求接口 ID 的记录
-        .order_by(TrafficRecord.created_at.desc()) # type: ignore # 根据创建时间对记录进行降序排序
-        .offset(skip) # 跳过指定数量的记录以进行分页
-        .limit(limit) # 限制返回记录的最大数量以进行分页
+        select(FilteredFlow)
+        .where(FilteredFlow.endpoint_id == endpoint_id)
+        .order_by(FilteredFlow.created_at.desc()) # type: ignore
+        .offset(skip)
+        .limit(limit)
     )
-    # 执行查询并获取所有匹配的记录
     records = session.exec(statement).all()
     
-    # 返回分页的数据列表和总数
-    return {"data": records, "count": count}
+    # 数据转换：将二进制 Body 显式解码为字符串以适配展示模型
+    public_records = []
+    for r in records:
+        public_records.append(
+            FilteredFlowPublic(
+                id=r.id,
+                endpoint_id=r.endpoint_id,
+                method=r.method,
+                original_path=r.original_path,
+                headers=r.headers,
+                body=r.body.decode("utf-8", errors="replace") if r.body else None,
+                client_ip=r.client_ip,
+                created_at=r.created_at,
+                variant_count=r.variant_count,
+                replay_count=r.replay_count
+            )
+        )
+    
+    return {"data": public_records, "count": count}

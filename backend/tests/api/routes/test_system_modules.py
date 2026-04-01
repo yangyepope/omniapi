@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 from app.models import SystemModule, ServiceStatus, GlobalConfig
-from app.worker import process_mirror_traffic_task
+from app.worker import process_raw_flow_task
 
 def test_create_system_module(client: TestClient, superuser_token_headers: dict) -> None:
     """
@@ -86,6 +86,9 @@ def test_service_discovery_via_config(db: Session) -> None:
     db.flush()
     
     # 2. 模拟流量触发发现
+    import uuid
+    raw_flow_id = str(uuid.uuid4())
+    
     import app.worker
     original_session = app.worker.Session
     class MockSession:
@@ -95,13 +98,13 @@ def test_service_discovery_via_config(db: Session) -> None:
         
     try:
         app.worker.Session = MockSession
-        process_mirror_traffic_task.run(
-            method="GET",
-            uri=f"/test-{unique_id}/api/test",
-            headers={},
-            body_str="",
-            source_ip="127.0.0.1"
-        )
+        # 先执行任务，产生发现逻辑并更新时间
+        process_raw_flow_task.run(raw_flow_id=raw_flow_id)
+        
+        # 任务执行后再获取模块进行断言
+        after_mod = db.exec(select(SystemModule).where(SystemModule.name == service_name)).first()
+        assert after_mod is not None, f"Module {service_name} should be created by discovery"
+        assert after_mod.last_active_at is not None, "Worker should update last_active_at"
     finally:
         app.worker.Session = original_session
     

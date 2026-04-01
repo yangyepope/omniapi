@@ -5,35 +5,37 @@
 """
 
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request, Response, status
 from loguru import logger
 from sqlmodel import select
 
 from app.api.deps import SessionDep
-from app.models import GlobalConfig
-from app.worker import process_mirror_traffic_task
+from app.models import GlobalConfig, RawFlow
+from app.worker import process_raw_flow_task
 
 router = APIRouter(prefix="/collect", tags=["collect"])
 
 # [接口完整路径]: POST /v1/collect/
-# [设计意图]：作为 Nginx 镜像流量的接收端。接收并记录 Nginx 转发过来的真实流量信息。
-# [参数说明]：request: Request 对象，包含从 Nginx 镜像过来的完整 HTTP 请求信息（Headers, Body 等）。
-# [注意]：异常必须全量捕获，无论如何都要返回 204，避免阻塞或影响上游。
+# [设计意图]：作为流量采集的第一站，实现“极速入库”模式。
+# [逻辑说明]：
+# 1. 解析基础信息（URL, Method, IP, 毫秒级时间戳）。
+# 2. 自动识别服务名（URL 首层）。
+# 3. 立即存入 RawFlow 永久表（带 TTL）。
+# 4. 仅触发异步 ID，确保接口性能。
 @router.post(
     "",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Collect Mirror Traffic",
-    description="Endpoint to receive asynchronous mirror traffic from Nginx. Returns 204 immediately.",
+    description="Endpoint for Step 1: Immediate ingestion into RawFlow table.",
     response_class=Response,
 )
 @router.post(
     "/",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Collect Mirror Traffic",
-    description="Endpoint to receive asynchronous mirror traffic from Nginx. Returns 204 immediately.",
-    response_class=Response,
     include_in_schema=False,
+    response_class=Response,
 )
 @router.get("")
 @router.get("/")
@@ -43,51 +45,59 @@ router = APIRouter(prefix="/collect", tags=["collect"])
 @router.delete("/")
 async def collect_traffic(request: Request, session: SessionDep) -> Response:
     try:
-        # 1. 检查全局流量采集开关
-        # 为了极速响应，这里从 DB 同步读取配置（后续可优化为 Redis 缓存）
+        # --- 1. 采集开关校验 ---
+        # 优先读取流量采集开关，若关闭则直接丢弃报文以节省性能
         statement = select(GlobalConfig).where(GlobalConfig.key == "traffic_collection_enabled")
         config = session.exec(statement).first()
         if config and config.value.lower() == "false":
-            # 如果开关关闭，直接丢弃流量并返回 204
             return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-        # 获取原始请求体和 Headers。使用 await 异步读取，防止阻塞
+        # --- 2. 原始报文读取 ---
+        # 异步读取 Body 并获取请求头字典
         body = await request.body()
-        headers = dict(request.headers)
+        raw_headers = dict(request.headers)
 
-        # 提取 Nginx 配置中专门透传的 Headers
-        original_method = headers.get('x-original-method', request.method)
-        original_uri = headers.get('x-original-uri', request.url.path)
-        real_ip = headers.get('x-real-ip', getattr(request.client, 'host', 'Unknown'))
+        # --- 3. 核心字段提取 (Step 1 要求) ---
+        # 获取由 Nginx Mirror 模块透传的原始 URI 和方法
+        original_method = raw_headers.get('x-original-method', request.method)
+        original_uri = raw_headers.get('x-original-uri', request.url.path)
+        real_ip = raw_headers.get('x-real-ip', getattr(request.client, 'host', 'Unknown'))
+        
+        # [服务名称提取逻辑]：取 URL Path 的第一层（例如 /api/v1/users -> api）
+        path_parts = [p for p in original_uri.split('/') if p]
+        service_name = path_parts[0] if path_parts else "default"
 
-        # 尝试将 body 解析为字符串；如果是二进制无法解码则保留其 repr 表示
-        try:
-            body_str = body.decode('utf-8')
-        except UnicodeDecodeError:
-            body_str = repr(body)
-
-        # 打印清晰的日志，方便在控制台查看接收到的流量
-        logger.info(
-            f"🟢 [Mirror Traffic Received]\n"
-            f"   ├─ Original Request: {original_method} {original_uri}\n"
-            f"   ├─ Real IP: {real_ip}\n"
-            f"   ├─ Headers: {json.dumps(headers, indent=2, ensure_ascii=False)}\n"
-            f"   └─ Body Length: {len(body)} bytes\n"
-            f"   └─ Body Preview: {body_str[:500]}"
-        )
-
-        # 将流量交给 Celery 异步处理，推导为 ApiAsset 并存入数据库
-        process_mirror_traffic_task.delay(
+        # --- 4. 实例化原始流量对象 ---
+        # 毫秒级时间戳由数据库默认值工厂或此处显式生成
+        raw_flow = RawFlow(
+            service_name=service_name,
+            captured_at=datetime.now(timezone.utc),
             method=original_method,
-            uri=original_uri,
-            headers=headers,
-            body_str=body_str,
-            source_ip=real_ip
+            interface_path=original_uri,
+            headers=raw_headers,
+            body=body,
+            body_size=len(body),
+            client_ip=real_ip,
+            parsed=False,
+            deduped=False
         )
+
+        # --- 5. 即时存库 ---
+        # 将原始报文存入数据库，作为审计和后续解析的唯一证据
+        session.add(raw_flow)
+        session.commit()
+        session.refresh(raw_flow)
+
+        # 打印摄入日志，包含 ID 以便分布式追踪
+        logger.info(f"✅ [RawFlow Created] ID: {raw_flow.id} | Service: {service_name} | Method: {original_method}")
+
+        # --- 6. 异步移交 ---
+        # 仅向异步任务池发送记录 ID，由 Worker 完成去重和路径发现逻辑
+        process_raw_flow_task.delay(raw_flow_id=str(raw_flow.id))
 
     except Exception as e:
-        # 捕获所有异常，确保绝对不会向上游 Nginx 返回 500 错误
-        logger.error(f"🔴 Error processing mirror traffic: {e}")
+        # 全量异常捕获，确保镜像流量接收端点永不返回 500
+        logger.error(f"🔴 Traffic collection failed: {e}")
 
     # 根据 HTTP 规范，处理成功但无内容返回时使用 204 状态码
     return Response(status_code=status.HTTP_204_NO_CONTENT)

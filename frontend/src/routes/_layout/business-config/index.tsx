@@ -7,15 +7,13 @@ import {
   Activity, 
   Zap, 
   RotateCcw, 
-  Settings, 
-  Lock, 
-  AlertTriangle, 
   Download, 
   Plus, 
   Edit3,
   LayoutGrid
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/_layout/business-config/")({
   component: BusinessConfigCenter,
@@ -33,86 +31,139 @@ export const Route = createFileRoute("/_layout/business-config/")({
 function BusinessConfigCenter() {
   const [activeTab, setActiveTab] = useState("route-mapping")
 
-  const menuItems = [
-    { id: "route-mapping", label: "路由映射", icon: Network },
-    { id: "normalization", label: "归一化规则", icon: Shield },
-    { id: "traffic-control", label: "流量处理与频率限制", icon: Zap },
-    { id: "replay-config", label: "重放测试配置", icon: RotateCcw },
-    { id: "automation", label: "自动化策略", icon: Activity },
-    { id: "endpoint-status", label: "接口状态维护", icon: Network },
-    { id: "api-keys", label: "API 密钥", icon: Settings },
-    { id: "security", label: "修改密码", icon: Lock },
-    { id: "danger-zone", label: "危险区域", icon: AlertTriangle, isDanger: true },
+  const menuItems: { id: string; label: string; icon: any; description: string; isDanger?: boolean }[] = [
+    { id: "route-mapping", label: "路由映射", icon: Network, description: "管理进入系统的流量路由与微服务对应关系" },
+    { id: "normalization", label: "归一化规则", icon: Shield, description: "管理全局路径归一化与流量聚合规则" },
+    { id: "traffic-control", label: "流量处理与频率限制", icon: Zap, description: "限制请求体大小与全局 IP 访问频率" },
+    { id: "replay-config", label: "重放测试配置", icon: RotateCcw, description: "配置流量重放的目标环境与并发策略" },
+    { id: "automation", label: "自动化策略", icon: Activity, description: "设置数据定期清理与接口状态维护周期" },
+    { id: "endpoint-status", label: "接口状态维护", icon: LayoutGrid, description: "监控与手动调整各个微服务的接口健康度" },
   ]
 
+  const activeTabDetails = menuItems.find(item => item.id === activeTab) || menuItems[0]
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-12 pb-12"
-    >
-      {/* 顶部标题栏：高还原度对齐原型 */}
-      <div className="flex justify-between items-start">
-        <div className="space-y-3">
-          <h2 className="text-4xl font-black text-gray-900 tracking-tighter">全局配置中心</h2>
-          <p className="text-sm text-gray-500 font-medium">集中管理全网流量的安全审计路由、数据归一化与策略维护。</p>
+    <div className="flex flex-col gap-10 w-full max-w-7xl mx-auto px-6 py-12">
+      {/* 头部标题区域：对齐系统设置的高保真风格 */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-6">
+          <div className="p-4 rounded-[1.5rem] bg-blue-50 border border-blue-100 shadow-sm transition-transform hover:scale-110">
+            <LayoutGrid className="text-4xl text-blue-600 w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-4xl font-black tracking-tight text-gray-900">全局配置中心</h1>
+            <p className="text-gray-500 font-bold text-sm uppercase tracking-widest opacity-60">集中管理全网流量安全审计路由、数据归一化与策略维护</p>
+          </div>
         </div>
         <div className="flex gap-4">
-          <Button variant="outline" className="rounded-xl h-14 px-8 border-gray-100 font-bold text-gray-600 flex gap-2">
-            <Download className="w-5 h-5" />
+          <Button variant="outline" className="rounded-2xl h-14 px-8 border-gray-100 font-bold text-gray-600 flex gap-2 hover:bg-gray-50 hover:border-gray-200 transition-all">
+            <Download className="w-5 h-5 text-gray-400 group-hover:text-blue-500" />
             导出配置 (JSON)
           </Button>
-          <Button className="rounded-xl h-14 px-10 bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 font-black">
+          <Button className="rounded-2xl h-14 px-10 bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 font-black transition-all active:scale-95">
             保存所有更改
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-10">
-        {/* 左侧配置菜单：垂直气泡导航 */}
-        <aside className="col-span-12 lg:col-span-3 space-y-6">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-4">配置菜单</p>
-          <nav className="space-y-1">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-4 px-6 py-5 rounded-[1.5rem] transition-all duration-300 relative group ${
-                  activeTab === item.id 
-                    ? "bg-blue-600 text-white shadow-2xl shadow-blue-600/30 font-black scale-105 z-10" 
-                    : "text-gray-500 hover:bg-gray-50 hover:translate-x-1"
-                } ${item.isDanger ? "text-red-500" : ""}`}
-              >
-                <item.icon className={`w-5 h-5 ${activeTab === item.id ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`} />
-                <span className="text-sm whitespace-nowrap">{item.label}</span>
+      <div className="flex flex-col lg:flex-row gap-12 items-start">
+        {/* 左侧侧边栏导航：同步 Settings 样式的胶囊菜单 */}
+        <aside className="w-full lg:w-72 flex flex-col gap-2 sticky top-24">
+          <div className="px-4 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+            配置菜单
+          </div>
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`
+                group flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 relative overflow-hidden
+                ${activeTab === item.id 
+                  ? "text-white shadow-xl shadow-blue-600/20" 
+                  : "text-gray-500 hover:bg-blue-50/50 hover:text-blue-600"}
+                ${item.isDanger && activeTab !== item.id ? "text-red-400/80 hover:bg-red-50/50 hover:text-red-500" : ""}
+              `}
+            >
+              {activeTab === item.id ? (
+                <motion.div 
+                  layoutId="active-pill"
+                  className="absolute inset-0 bg-blue-600 z-0"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                />
+              ) : (
+                <div className={cn(
+                  "absolute left-0 w-1.5 h-0 rounded-full transition-all duration-300 group-hover:h-6",
+                  item.isDanger ? "bg-red-500" : "bg-blue-600"
+                )} />
+              )}
+              
+              <div className="relative z-10 flex items-center gap-4 w-full">
+                <item.icon className={cn(
+                  "h-5 w-5 transition-transform duration-300",
+                  activeTab === item.id ? "scale-110" : "group-hover:scale-125"
+                )} />
+                <span className="font-bold text-xs uppercase tracking-widest">{item.label}</span>
                 {activeTab === item.id && (
                   <motion.div 
-                    layoutId="active-pill"
-                    className="absolute right-4 w-1.5 h-1.5 bg-white rounded-full"
-                  />
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="ml-auto"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                  </motion.div>
                 )}
-              </button>
-            ))}
-          </nav>
+              </div>
+            </button>
+          ))}
         </aside>
 
-        {/* 右侧内容容器：高保真超大圆角白板 */}
-        <main className="col-span-12 lg:col-span-9 bg-white border border-gray-100 rounded-[3.5rem] shadow-sm p-12 min-h-[700px] relative overflow-hidden">
-           <AnimatePresence mode="wait">
-              {activeTab === "route-mapping" && <RouteMappingView key="route" />}
-              {activeTab === "traffic-control" && <TrafficControlView key="traffic" />}
-              {activeTab === "automation" && <AutomationPolicyView key="auto" />}
-              {activeTab === "replay-config" && <ReplayTestingView key="replay" />}
-              {/* 其他 Tab 占位 */}
-              {!["route-mapping", "traffic-control", "automation", "replay-config"].includes(activeTab) && (
-                <div className="flex flex-col items-center justify-center h-full text-gray-300 text-lg font-bold italic">
-                   Coming Soon...
+        {/* 右侧主内容区域：标准化高圆角白板容器 */}
+        <main className="flex-1 min-w-0 w-full">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-white border border-gray-100 rounded-[2.5rem] p-10 lg:p-12 shadow-sm hover:shadow-xl hover:border-blue-50 transition-all duration-500 relative overflow-hidden group min-h-[600px]"
+            >
+              {/* 背景动态光晕对齐系统风格 */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/20 rounded-full -mr-32 -mt-32 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+              
+              <div className="relative z-10">
+                <div className="mb-12 flex justify-between items-start border-b border-gray-100 pb-8">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                      <span className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                      {activeTabDetails.label}
+                    </h2>
+                    <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-xl">{activeTabDetails.description}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-xl text-gray-400 group-hover:text-blue-500 group-hover:bg-blue-50 transition-all duration-300">
+                    <activeTabDetails.icon className="h-6 w-6" />
+                  </div>
                 </div>
-              )}
-           </AnimatePresence>
+                
+                <div className="min-h-[400px]">
+                  {activeTab === "route-mapping" && <RouteMappingView key="route" />}
+                  {activeTab === "traffic-control" && <TrafficControlView key="traffic" />}
+                  {activeTab === "automation" && <AutomationPolicyView key="auto" />}
+                  {activeTab === "replay-config" && <ReplayTestingView key="replay" />}
+                  {/* 其他 Tab 占位逻辑 */}
+                  {!["route-mapping", "traffic-control", "automation", "replay-config"].includes(activeTab) && (
+                    <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-300 text-lg font-bold italic tracking-widest opacity-40">
+                       <LayoutGrid className="w-12 h-12 mb-4 animate-pulse" />
+                       VIEW DEVELOPING...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
-    </motion.div>
+    </div>
   )
 }
 

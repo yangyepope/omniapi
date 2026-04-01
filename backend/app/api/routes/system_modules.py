@@ -14,8 +14,8 @@ from app.models import (
     ApiEndpointsPublic,
     SourceType,
     SystemModule,
-    TrafficRecord,
-    TrafficRecordPublic,
+    FilteredFlow, # 替代 TrafficRecord
+    FilteredFlowPublic, # 替代 TrafficRecordPublic
     SystemModuleCreate,
     SystemModuleUpdate,
     ServiceStatus,
@@ -52,7 +52,7 @@ class ApiEndpointDetailResponse(BaseModel):
     module_name: str
     traffic_count: int
     last_seen_at: datetime | None
-    recent_traffic: list[TrafficRecordPublic]
+    recent_traffic: list[FilteredFlowPublic]
 
 def _clean_service_name(value: str | None) -> str | None:
     if value is None:
@@ -260,19 +260,37 @@ def get_module_endpoint_detail(
         raise HTTPException(status_code=404, detail="Endpoint not found")
 
     traffic_statement = (
-        select(TrafficRecord)
-        .where(TrafficRecord.endpoint_id == endpoint_id)
-        .order_by(TrafficRecord.created_at.desc()) # type: ignore
+        select(FilteredFlow)
+        .where(FilteredFlow.endpoint_id == endpoint_id)
+        .order_by(FilteredFlow.created_at.desc()) # type: ignore
         .limit(RECENT_TRAFFIC_LIMIT)
     )
-    recent_traffic = session.exec(traffic_statement).all()
+    records = session.exec(traffic_statement).all()
 
     count_statement = (
         select(func.count())
-        .select_from(TrafficRecord)
-        .where(TrafficRecord.endpoint_id == endpoint_id)
+        .select_from(FilteredFlow)
+        .where(FilteredFlow.endpoint_id == endpoint_id)
     )
     traffic_count = session.exec(count_statement).one()
+
+    # 数据格式转换 (bytes -> str)
+    recent_traffic = []
+    for r in records:
+        recent_traffic.append(
+            FilteredFlowPublic(
+                id=r.id,
+                endpoint_id=r.endpoint_id,
+                method=r.method,
+                original_path=r.original_path,
+                headers=r.headers,
+                body=r.body.decode("utf-8", errors="replace") if r.body else None,
+                client_ip=r.client_ip,
+                created_at=r.created_at,
+                variant_count=r.variant_count,
+                replay_count=r.replay_count
+            )
+        )
 
     last_seen_at = None
     if recent_traffic:

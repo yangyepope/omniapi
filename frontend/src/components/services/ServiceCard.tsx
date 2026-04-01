@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { Server, Trash2, Edit2, ArrowRight, ChevronDown, Check, X } from "lucide-react"
+import { Server, Trash2, Edit2, ArrowRight, ChevronDown, Check, X, Clock, CalendarOff } from "lucide-react"
 
 import { type SystemModuleStats } from "@/client"
 import { useSystemModules } from "@/hooks/useSystemModules"
@@ -23,15 +23,24 @@ import {
 } from "@/components/ui/tooltip"
 
 /**
+ * 格式化相对时间
+ */
+function formatRelativeTime(dateString: string | null | undefined): string {
+  if (!dateString) return "从无流量记录"
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) return "刚刚"
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} 分钟前`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} 小时前`
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} 天前`
+  
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+/**
  * ServiceCard 组件 - 遵循 Stitch 设计语言同步的高保真服务卡片
- * 
- * 核心功能：
- * 1. 展示微服务的实时状态、指标数据及责任人。
- * 2. 视觉对齐 Stitch 原型中的 Bento Grid 指标展示方式。
- * 3. 采用项目全局的 rounded-[2.5rem] 与精致悬浮阴影。
- * 
- * @param {SystemModuleStats} module - 模块/服务的基础元数据
- * @param {Function} onClick - 点击卡片的跳转回调
  */
 export function ServiceCard({ module, onClick }: { module: SystemModuleStats; onClick: () => void }) {
   const { updateModule, deleteModule } = useSystemModules()
@@ -92,12 +101,12 @@ export function ServiceCard({ module, onClick }: { module: SystemModuleStats; on
                 "flex items-center gap-2 px-4 py-1.5 rounded-full border text-[11px] font-bold tracking-tight transition-all",
                 module.status === 'active' 
                   ? "bg-green-50 text-green-700 border-green-100/50" 
-                  : "bg-gray-50 text-gray-400 border-gray-100"
+                  : "bg-red-50 text-red-600 border-red-100/50"
               )}
             >
               <span className={cn(
                 "w-2 h-2 rounded-full",
-                module.status === 'active' ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-gray-300"
+                module.status === 'active' ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-red-500"
               )} />
               {module.status === 'active' ? "ACTIVE" : "DEPRECATED"}
               <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showStatusMenu && "rotate-180")} />
@@ -120,7 +129,7 @@ export function ServiceCard({ module, onClick }: { module: SystemModuleStats; on
                   </button>
                   <button 
                     onClick={() => handleUpdateStatus('deprecated')}
-                    className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-gray-50 text-gray-400 flex items-center justify-between border-t border-gray-50"
+                    className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-red-50 text-red-700 flex items-center justify-between border-t border-gray-50"
                   >
                     Deprecated {module.status === 'deprecated' && <Check className="w-3.5 h-3.5" />}
                   </button>
@@ -182,39 +191,62 @@ export function ServiceCard({ module, onClick }: { module: SystemModuleStats; on
         </div>
       </div>
 
-      {/* 内容主体：服务名称及可编辑的责任人 */}
+      {/* 内容主体：服务名称及活跃信息 */}
       <div className="mb-8">
-        <h3 className="text-2xl font-black text-gray-900 mb-4 truncate tracking-tight uppercase group-hover:text-blue-600 transition-colors">
-          {module.name}
-        </h3>
-        
-        <div className="relative group/owner min-h-[24px]">
-          {isEditingOwner ? (
-            <div className="flex items-center gap-2 bg-blue-50/50 p-2 rounded-lg" onClick={(e) => e.stopPropagation()}>
-              <input 
-                autoFocus
-                className="bg-transparent border-none outline-none text-sm font-bold text-blue-700 w-full"
-                value={tempOwner}
-                onChange={(e) => setTempOwner(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleUpdateOwner()}
-              />
-              <button onClick={handleUpdateOwner} className="text-blue-600 hover:bg-blue-100 p-1 rounded"><Check className="w-3.5 h-3.5" /></button>
-              <button onClick={() => { setIsEditingOwner(false); setTempOwner(module.owner || "") }} className="text-gray-400 hover:bg-gray-100 p-1 rounded"><X className="w-3.5 h-3.5" /></button>
-            </div>
-          ) : (
-            <div 
-              className="flex items-center gap-2 text-gray-500 font-bold text-sm tracking-tight"
-              onClick={(e) => { e.stopPropagation(); setIsEditingOwner(true) }}
-            >
-              <span className="opacity-70 flex items-center gap-1.5 uppercase text-[10px] tracking-widest">
-                Owner:
-              </span>
-              <span className="text-gray-900 border-b border-dashed border-gray-200 group-hover/owner:border-blue-400 group-hover/owner:text-blue-600 transition-all">
-                {module.owner || "未指定"}
-              </span>
-              <Edit2 className="w-3.5 h-3.5 opacity-0 group-hover/owner:opacity-100 text-blue-500 transition-opacity" />
+        <div className="flex justify-between items-start gap-4 mb-4">
+          <h3 className="text-2xl font-black text-gray-900 truncate tracking-tight uppercase group-hover:text-blue-600 transition-colors">
+            {module.name}
+          </h3>
+          {module.status === 'deprecated' && module.deprecated_at && (
+            <div className="flex flex-col items-end shrink-0">
+               <span className="text-[9px] font-black text-red-400 uppercase tracking-widest">弃用于</span>
+               <span className="text-[10px] font-bold text-red-500 flex items-center gap-1">
+                 <CalendarOff className="w-3 h-3" />
+                 {new Date(module.deprecated_at).toLocaleDateString('zh-CN')}
+               </span>
             </div>
           )}
+        </div>
+        
+        <div className="space-y-3">
+          {/* 责任人展示/编辑 */}
+          <div className="relative group/owner min-h-[24px]">
+            {isEditingOwner ? (
+              <div className="flex items-center gap-2 bg-blue-50/50 p-2 rounded-lg" onClick={(e) => e.stopPropagation()}>
+                <input 
+                  autoFocus
+                  className="bg-transparent border-none outline-none text-sm font-bold text-blue-700 w-full"
+                  value={tempOwner}
+                  onChange={(e) => setTempOwner(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUpdateOwner()}
+                />
+                <button onClick={handleUpdateOwner} className="text-blue-600 hover:bg-blue-100 p-1 rounded"><Check className="w-3.5 h-3.5" /></button>
+                <button onClick={() => { setIsEditingOwner(false); setTempOwner(module.owner || "") }} className="text-gray-400 hover:bg-gray-100 p-1 rounded"><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ) : (
+              <div 
+                className="flex items-center gap-2 text-gray-500 font-bold text-sm tracking-tight"
+                onClick={(e) => { e.stopPropagation(); setIsEditingOwner(true) }}
+              >
+                <span className="opacity-70 flex items-center gap-1.5 uppercase text-[10px] tracking-widest">
+                  Owner:
+                </span>
+                <span className="text-gray-900 border-b border-dashed border-gray-200 group-hover/owner:border-blue-400 group-hover/owner:text-blue-600 transition-all">
+                  {module.owner || "未指定"}
+                </span>
+                <Edit2 className="w-3.5 h-3.5 opacity-0 group-hover/owner:opacity-100 text-blue-500 transition-opacity" />
+              </div>
+            )}
+          </div>
+
+          {/* 最后活跃时间 */}
+          <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 tracking-tight">
+            <Clock className={cn("w-3.5 h-3.5", module.last_active_at ? "text-blue-400" : "text-gray-200")} />
+            <span className="uppercase text-[9px] tracking-widest opacity-70">最后活跃:</span>
+            <span className={cn(module.last_active_at ? "text-gray-600" : "italic")}>
+              {formatRelativeTime(module.last_active_at)}
+            </span>
+          </div>
         </div>
       </div>
 

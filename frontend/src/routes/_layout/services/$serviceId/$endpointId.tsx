@@ -205,12 +205,12 @@ function EndpointDetailPage() {
                        <span className="font-mono text-[10px] font-black text-on-surface-variant uppercase">{record.method}</span>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="font-mono text-xs text-primary-fixed break-all line-clamp-1" title={record.real_uri}>
-                         {record.real_uri}
+                      <p className="font-mono text-xs text-primary-fixed break-all line-clamp-1" title={record.original_path}>
+                         {record.original_path}
                       </p>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
-                       <span className="text-xs font-bold text-on-surface">{record.source_ip || "Internal"}</span>
+                       <span className="text-xs font-bold text-on-surface">{record.client_ip || "Internal"}</span>
                     </td>
                     <td className="px-6 py-5 text-right whitespace-nowrap">
                       <span className="text-xs font-medium text-on-surface-variant">{formatRelativeTime(record.created_at)}</span>

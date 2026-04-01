@@ -68,13 +68,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     # command: sleep infinity  # Infinite loop to keep container alive doing nothing
-    command: >
-      bash -c "python3 -m venv /app/.venv --clear && 
-      /app/.venv/bin/pip install 'urllib3<2.0' 'charset-normalizer<4' 'chardet<6' -i https://pypi.tuna.tsinghua.edu.cn/simple --default-timeout=100 &&
-      /app/.venv/bin/pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple --default-timeout=100 && 
-      /app/.venv/bin/pip install debugpy sentry-sdk fastapi[all] uvicorn[standard] sqlalchemy sqlmodel pydantic-settings loguru httpx emails email-validator jinja2 pwdlib[argon2] python-jose[cryptography] PyJWT python-multipart alembic bcrypt psycopg[binary] requests python-dotenv starlette-core greenlet celery redis -i https://pypi.tuna.tsinghua.edu.cn/simple --default-timeout=100 && 
-      /app/.venv/bin/pip uninstall -y typing && 
-      /app/.venv/bin/python -m debugpy --listen 0.0.0.0:5678 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+    command: python -m debugpy --listen 0.0.0.0:5678 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
     develop:  
       watch:
         - path: ./backend
@@ -106,40 +100,12 @@ services:
       - "1025:1025"
 
   redis:
-    image: redis:7
-    ports:
-      - "6380:6379"
+    restart: "no"
 
   celery-worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    # Use the same pip install command to make sure it has the same dependencies as backend
-    command: >
-      bash -c "python3 -m venv /app/.venv --clear && 
-      /app/.venv/bin/pip install 'urllib3<2.0' 'charset-normalizer<4' 'chardet<6' &&
-      /app/.venv/bin/pip install --upgrade pip && 
-      /app/.venv/bin/pip install debugpy sentry-sdk fastapi[all] uvicorn[standard] sqlalchemy sqlmodel pydantic-settings loguru httpx emails email-validator jinja2 pwdlib[argon2] python-jose[cryptography] PyJWT python-multipart alembic bcrypt psycopg[binary] requests python-dotenv starlette-core greenlet celery redis && 
-      /app/.venv/bin/pip uninstall -y typing && 
-      /app/.venv/bin/celery -A app.worker worker --loglevel=info"
     volumes:
       - ./backend:/app/backend
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - POSTGRES_SERVER=db
-      - POSTGRES_PORT=5432  # 修正：内部服务通信端口
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - PROJECT_NAME=${PROJECT_NAME}
-      - FIRST_SUPERUSER=${FIRST_SUPERUSER}
-      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD}
-      - DOMAIN=${DOMAIN}
-      - SECRET_KEY=${SECRET_KEY}
-    depends_on:
-      - redis
-      - db
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info
 
   frontend:
     restart: "no"

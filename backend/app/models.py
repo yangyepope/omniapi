@@ -396,14 +396,7 @@ class ApiEndpoint(ApiEndpointBase, table=True):
     )
     # 指向父模块的反向关联关系
     module: SystemModule | None = Relationship(back_populates="endpoints")
-    # 与该接口关联的所有流量记录的关系，允许级联删除
-    traffic_records: list["TrafficRecord"] = Relationship(
-        back_populates="endpoint",
-        cascade_delete=True,
-    )
-    # --- v3.0 新增关系 ---
     # 与该接口关联的精选流量（去重后的永久存储）
-    # 建立此关系的目的是为了在资产管理界面能够直接下钻查看该接口捕获到的所有典型报文
     filtered_flows: list["FilteredFlow"] = Relationship(
         back_populates="endpoint",
         cascade_delete=True,
@@ -422,41 +415,21 @@ class ApiEndpointsPublic(SQLModel):
     count: int
 
 # 3. Traffic Record (单次流量快照)
-class TrafficRecordBase(SQLModel):
-    # 将此流量记录链接到其定义的 ApiEndpoint 的外键
-    endpoint_id: uuid.UUID | None = Field(default=None, foreign_key="apiendpoint.id")
-    # 此特定请求中使用的 HTTP 方法
-    method: str = Field(max_length=10)
-    # 实际请求的真实 URI（例如 /api/v1/users/123）
-    real_uri: str = Field(max_length=1024)
-    # 在数据库中作为 JSON 列存储的请求头
-    headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
-    # 作为文本列存储的请求体，以容纳大型 Payload
-    body: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
-    # 发起请求的客户端的真实 IP 地址
-    source_ip: str | None = Field(default=None, max_length=50)
-
-class TrafficRecord(TrafficRecordBase, table=True):
-    # 流量记录的主键 UUID
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # 捕获流量记录的时间戳，默认为当前 UTC 时间
-    created_at: datetime | None = Field(
-        default_factory=get_datetime_utc,
-        sa_type=cast(Any, DateTime(timezone=True)),
-    )
-    # 指向匹配的 ApiEndpoint 的反向关联关系
-    endpoint: ApiEndpoint | None = Relationship(back_populates="traffic_records")
-
-class TrafficRecordPublic(TrafficRecordBase):
-    # 在公共 API 响应中暴露的 ID
+# Filtered Flow Public Models (用于前端展示)
+class FilteredFlowPublic(SQLModel):
     id: uuid.UUID
-    # 在公共 API 响应中暴露的创建时间戳
+    endpoint_id: uuid.UUID
+    method: str
+    original_path: str
+    headers: dict[str, Any] | None = None
+    body: str | None = None # 将 bytes 转换为 str 返回给前端
+    client_ip: str | None = None
     created_at: datetime | None
+    variant_count: int = 0
+    replay_count: int = 0
 
-class TrafficRecordsPublic(SQLModel):
-    # 公共流量记录表示的列表
-    data: list[TrafficRecordPublic]
-    # 用于分页的总流量记录数量
+class FilteredFlowsPublic(SQLModel):
+    data: list[FilteredFlowPublic]
     count: int
 
 # 4. Global Config (全局配置，如流量采集开关)
@@ -573,17 +546,18 @@ class RawFlow(SQLModel, table=True):
     __tablename__ = "raw_flows"
     # 主键 ID，使用 UUID v4 保证分布式环境下的唯一性，避免 ID 预测攻击
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # 服务标识，冗余存储以便在未关联到具体接口前进行按服务筛选
-    service_id: str = Field(max_length=64, index=True)
-    # 流量捕获的时间戳，必须带时区以支持全球时区对齐分析
+    # --- Step 1: 精确字段抽取 ---
+    # 服务名称，从 URL 第一层路径提取（例如 /sts/list -> sts），建立索引以加速服务归核分析
+    service_name: str = Field(max_length=128, index=True)
+    # 流量捕获的时间戳，具备毫秒级精度，带时区以进行全球时限追溯
     captured_at: datetime = Field(
         sa_type=cast(Any, DateTime(timezone=True)),
         index=True
     )
-    # HTTP 方法名（GET/POST等），建立索引以加速基于动作类型的搜索
-    method: str = Field(max_length=10)
-    # 原始完整 URL，用于后续的路径归一化匹配引擎处理
-    url: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    # HTTP 方法名（GET/POST/PUT/DELETE 等）
+    method: str = Field(max_length=10, index=True)
+    # 完整接口路径（URL Path，保留完整路径，含原始 Query 以备分析）
+    interface_path: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
     # 请求头，使用 JSONB 存储以便支持灵活的 Key-Value 检索
     headers: dict[str, Any] | None = Field(
         default=None,
@@ -632,9 +606,9 @@ class FilteredFlow(SQLModel, table=True):
     captured_at: datetime = Field(sa_type=cast(Any, DateTime(timezone=True)))
     # 标准 HTTP 方法
     method: str = Field(max_length=10)
-    # 原始请求路径（包含 Query），保留原始样貌以支持参数模板提取
+    # 原始请求路径（保留 URL Path + Query），作为资产样板呈现
     original_path: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
-    # 经过过滤清洗（剔除 Token/时间戳等）后的标准请求头
+    # 原样接收的请求头（包含授权/时间戳，暂不脱敏以备业务调试），JSONB 存储
     headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
     # 请求体原文，用于重现业务逻辑的 Payload
     body: bytes | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary))
