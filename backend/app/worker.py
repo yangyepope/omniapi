@@ -3,6 +3,7 @@ import re
 import asyncio
 from celery import Celery
 from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.core.db import engine
 from app.models import (
@@ -33,13 +34,14 @@ def find_matching_endpoint(session: Session, method: str, norm_uri: str, service
     """
     [功能]：查找匹配的 ApiEndpoint。
     [逻辑]：在指定 Service 下查找匹配，先精确后正则。
+    [并发安全]：精确匹配时加行锁 (FOR UPDATE)，防止多个 Worker 同时读到 None 后重复创建。
     """
-    # 增加 service_name 过滤，防止跨服务路径冲突
+    # 精确匹配加行锁：若已存在则锁住该行，避免并发写入重复记录
     statement = select(ApiEndpoint).where(
-        ApiEndpoint.method == method, 
+        ApiEndpoint.method == method,
         ApiEndpoint.path == norm_uri,
         ApiEndpoint.service_name == service_name
-    )
+    ).with_for_update()
     exact_match = session.exec(statement).first()
     if exact_match:
         return exact_match
@@ -144,7 +146,7 @@ def process_raw_flow_task(raw_flow_id: str) -> str:
             
             # [分支 B]：发现唯一流量 -> 创建记录并双项累加
             endpoint = find_matching_endpoint(session, raw_flow.method, norm_uri, raw_flow.service_name)
-            
+
             if not endpoint:
                 mod = get_or_create_module_by_uri(session, raw_flow.service_name)
                 endpoint = ApiEndpoint(
@@ -156,7 +158,25 @@ def process_raw_flow_task(raw_flow_id: str) -> str:
                     source_type="auto_discovered"
                 )
                 session.add(endpoint)
-                session.flush() # 核心：flush 而非 commit，确保事务连贯
+                try:
+                    # flush 触发 DB 写入；若并发 Worker 抢先插入了相同记录，
+                    # 唯一约束会抛 IntegrityError，此时回退并重新查询已存在的行
+                    session.flush()
+                except IntegrityError:
+                    # 另一个 Worker 已在极短窗口内插入了相同的 (method, path, service_name)
+                    session.rollback()
+                    # 重新查询已存在的接口（此时不再加锁，只读即可）
+                    endpoint = session.exec(
+                        select(ApiEndpoint).where(
+                            ApiEndpoint.method == raw_flow.method,
+                            ApiEndpoint.path == norm_uri,
+                            ApiEndpoint.service_name == raw_flow.service_name,
+                        )
+                    ).first()
+                    if not endpoint:
+                        # 极端情况：查不到则放弃本次流量，避免死循环
+                        logger.error(f"无法定位接口 {raw_flow.method} {norm_uri}，放弃处理")
+                        return f"Error: endpoint not found after IntegrityError for {raw_flow.method} {norm_uri}"
             
             # 归档精选流量
             filtered_flow = FilteredFlow(
