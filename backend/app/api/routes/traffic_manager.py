@@ -2,44 +2,57 @@ from typing import Any # 导入 Any 用于类型提示灵活的字典
 from fastapi import APIRouter, HTTPException, Depends # 导入 FastAPI 路由和依赖注入组件
 from sqlmodel import select, func # 导入 SQLModel 的查询和聚合函数
 from app.api.deps import SessionDep # 导入数据库会话依赖
-from app.models import GlobalConfig, SystemModule, ApiEndpoint, FilteredFlow, FilteredFlowPublic, FilteredFlowsPublic # 导入新的流量流水模型
+from app.models import GlobalConfig, SystemModule, ApiEndpoint, FilteredFlow, FilteredFlowPublic, FilteredFlowsPublic, get_datetime_utc # 导入模型与工具函数
 import uuid # 导入 uuid 用于处理和提示 UUID 类型
 
 # 创建一个新的 APIRouter 实例，并指定路由前缀和标签
 router = APIRouter(prefix="/traffic-manager", tags=["traffic-manager"])
 
-# 定义一个 GET 接口，用于获取当前的流量采集配置
-@router.get("/config", summary="Get Traffic Collection Config")
+# 定义一个 GET 接口，用于获取当前的全局配置快照
+@router.get("/config", summary="Get Global Governance Config")
 def get_config(session: SessionDep) -> dict[str, Any]:
-    # 构建查询语句，查找流量采集的全局配置键
-    statement = select(GlobalConfig).where(GlobalConfig.key == "traffic_collection_enabled")
-    # 执行查询并获取第一个匹配的结果
-    config = session.exec(statement).first()
-    # 返回包含布尔值的字典；如果未找到配置，则默认返回 True
-    return {"traffic_collection_enabled": config.value.lower() == "true" if config else True}
+    # 预定义核心治理键
+    keys = ["traffic_collection_enabled", "loopback_interception_enabled"]
+    # 批量查询配置
+    statement = select(GlobalConfig).where(GlobalConfig.key.in_(keys))
+    configs = session.exec(statement).all()
+    
+    # 结果字典化，默认值均为 True
+    config_map = {c.key: c.value.lower() == "true" for c in configs}
+    for key in keys:
+        if key not in config_map:
+            config_map[key] = True
+            
+    return config_map
 
-# 定义一个 POST 接口，用于开启或关闭流量采集功能
-@router.post("/config", summary="Toggle Traffic Collection")
-def toggle_config(enabled: bool, session: SessionDep) -> dict[str, Any]:
-    # 查询数据库中已有的流量采集配置
-    statement = select(GlobalConfig).where(GlobalConfig.key == "traffic_collection_enabled")
-    # 执行查询以检索配置记录
+# 定义一个 POST 接口，用于开启或关闭特定的治理功能
+@router.post("/config", summary="Update Governance Config")
+def update_config(key: str, enabled: bool, session: SessionDep) -> dict[str, Any]:
+    # 安全检查：仅允许更新预定义的键
+    if key not in ["traffic_collection_enabled", "loopback_interception_enabled"]:
+        raise HTTPException(status_code=400, detail="Invalid config key")
+        
+    # 查询数据库中已有的配置记录
+    statement = select(GlobalConfig).where(GlobalConfig.key == key)
     config = session.exec(statement).first()
-    # 检查配置记录是否不存在
+    
     if not config:
-        # 如果不存在，则使用提供的布尔值（转换为字符串）创建一条新记录
-        config = GlobalConfig(key="traffic_collection_enabled", value=str(enabled), description="Enable or disable traffic collection globally")
-        # 将新记录添加到数据库会话中
+        # 如果不存在，则创建新记录
+        config = GlobalConfig(
+            key=key, 
+            value=str(enabled).lower(), 
+            description=f"Governance toggle for {key}",
+            updated_at=get_datetime_utc()
+        )
         session.add(config)
     else:
-        # 如果存在，则更新现有记录的值
-        config.value = str(enabled)
-        # 将更新后的记录添加回会话
+        # 如果存在，则更新值并强制物理刷新时间戳
+        config.value = str(enabled).lower()
+        config.updated_at = get_datetime_utc()
         session.add(config)
-    # 提交事务以将更改保存到数据库
+        
     session.commit()
-    # 返回成功消息和新的状态
-    return {"message": "Config updated", "traffic_collection_enabled": enabled}
+    return {"message": "Governance updated", "key": key, "enabled": enabled}
 
 # 定义一个 POST 接口，用于从 Apifox 导出的 JSON 数据中导入 API 定义
 @router.post("/import-apifox", summary="Import Apifox API definitions")

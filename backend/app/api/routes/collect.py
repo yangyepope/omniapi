@@ -17,13 +17,8 @@ from app.worker import process_raw_flow_task
 
 router = APIRouter(prefix="/collect", tags=["collect"])
 
-# [接口完整路径]: POST /v1/collect/
+# [接口完整路径]: POST /v1/collect
 # [设计意图]：作为流量采集的第一站，实现“极速入库”模式。
-# [逻辑说明]：
-# 1. 解析基础信息（URL, Method, IP, 毫秒级时间戳）。
-# 2. 自动识别服务名（URL 首层）。
-# 3. 立即存入 RawFlow 永久表（带 TTL）。
-# 4. 仅触发异步 ID，确保接口性能。
 @router.post(
     "",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -37,20 +32,29 @@ router = APIRouter(prefix="/collect", tags=["collect"])
     include_in_schema=False,
     response_class=Response,
 )
-@router.get("")
-@router.get("/")
-@router.put("")
-@router.put("/")
-@router.delete("")
-@router.delete("/")
 async def collect_traffic(request: Request, session: SessionDep) -> Response:
     try:
-        # --- 1. 采集开关校验 ---
-        # 优先读取流量采集开关，若关闭则直接丢弃报文以节省性能
-        statement = select(GlobalConfig).where(GlobalConfig.key == "traffic_collection_enabled")
-        config = session.exec(statement).first()
-        if config and config.value.lower() == "false":
+        # --- 1. 采集开关与回流拦截校验 ---
+        # 物理物理加固：即便 DB 出错也默认放行采集
+        config_map = {"traffic_collection_enabled": True, "loopback_interception_enabled": True}
+        try:
+            keys = ["traffic_collection_enabled", "loopback_interception_enabled"]
+            configs = session.exec(select(GlobalConfig).where(GlobalConfig.key.in_(keys))).all()
+            if configs:
+                config_map.update({c.key: c.value.lower() == "true" for c in configs})
+        except Exception as db_err:
+            logger.warning(f"⚠️ [Governance Config Fail] Defaulting to safe capture: {db_err}")
+
+        # 第一道防线：全局采集开关
+        if not config_map.get("traffic_collection_enabled", True):
+            logger.debug("⏸️ [Traffic Coll. Disabled] Ignoring incoming flow per governance config.")
             return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+        # 第二道防线：回流流量拦截 (Loopback Detection)
+        if config_map.get("loopback_interception_enabled", True):
+            if request.headers.get("X-AAM-Replay") == "true":
+                logger.warning("🚫 [Loopback Blocked] Detected X-AAM-Replay header")
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
 
         # --- 2. 原始报文读取 ---
         # 异步读取 Body 并获取请求头字典

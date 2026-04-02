@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { DataGovernanceView } from "@/components/BusinessConfig/DataGovernance"
 
 export const Route = createFileRoute("/_layout/business-config/")({
   component: BusinessConfigCenter,
@@ -38,6 +39,7 @@ function BusinessConfigCenter() {
     { id: "replay-config", label: "重放测试配置", icon: RotateCcw, description: "配置流量重放的目标环境与并发策略" },
     { id: "automation", label: "自动化策略", icon: Activity, description: "设置数据定期清理与接口状态维护周期" },
     { id: "endpoint-status", label: "接口状态维护", icon: LayoutGrid, description: "监控与手动调整各个微服务的接口健康度" },
+    { id: "data-governance", label: "全局数据治理", icon: Shield, description: "控制全网流量采集开关与安全回流拦截拦截拦截防线", isDanger: true },
   ]
 
   const activeTabDetails = menuItems.find(item => item.id === activeTab) || menuItems[0]
@@ -148,10 +150,11 @@ function BusinessConfigCenter() {
                 <div className="min-h-[400px]">
                   {activeTab === "route-mapping" && <RouteMappingView key="route" />}
                   {activeTab === "traffic-control" && <TrafficControlView key="traffic" />}
-                  {activeTab === "automation" && <AutomationPolicyView key="auto" />}
+                  {activeTab === "automation" && <AutomationPolicyView key="automation" />}
                   {activeTab === "replay-config" && <ReplayTestingView key="replay" />}
+                  {activeTab === "data-governance" && <DataGovernanceView key="gov" />}
                   {/* 其他 Tab 占位逻辑 */}
-                  {!["route-mapping", "traffic-control", "automation", "replay-config"].includes(activeTab) && (
+                  {!["route-mapping", "traffic-control", "automation", "replay-config", "data-governance"].includes(activeTab) && (
                     <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-300 text-lg font-bold italic tracking-widest opacity-40">
                        <LayoutGrid className="w-12 h-12 mb-4 animate-pulse" />
                        VIEW DEVELOPING...

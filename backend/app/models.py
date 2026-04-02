@@ -386,6 +386,14 @@ class ApiEndpointBase(SQLModel):
     # 将此接口链接到特定 SystemModule 的外键
     module_id: uuid.UUID | None = Field(default=None, foreign_key="systemmodule.id")
 
+    # 统计字段 (由 Worker 原子更新)
+    total_traffic_count: int = Field(default=0)
+    variants_count: int = Field(default=0)
+    last_active_at: datetime | None = Field(
+        default=None,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
+
 class ApiEndpoint(ApiEndpointBase, table=True):
     # API 接口定义的主键 UUID
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -407,6 +415,11 @@ class ApiEndpointPublic(ApiEndpointBase):
     id: uuid.UUID
     # 在公共 API 响应中暴露的创建时间戳
     created_at: datetime | None
+    
+    # 统计项
+    total_traffic_count: int = 0
+    variants_count: int = 0
+    last_active_at: datetime | None = None
 
 class ApiEndpointsPublic(SQLModel):
     # 公共接口表示的列表

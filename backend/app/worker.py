@@ -125,11 +125,18 @@ def process_raw_flow_task(raw_flow_id: str) -> str:
                 existing_filtered.variant_count += 1
                 session.add(existing_filtered)
 
-                # 3. 同步更新模块全局统计 (加锁)
-                mod_stmt = select(SystemModule).where(SystemModule.id == existing_filtered.endpoint.module_id).with_for_update()
+                # 3. 同步更新接口级统计 (加锁)
+                ep_stmt = select(ApiEndpoint).where(ApiEndpoint.id == existing_filtered.endpoint_id).with_for_update()
+                endpoint = session.exec(ep_stmt).one()
+                endpoint.total_traffic_count += 1
+                endpoint.last_active_at = raw_flow.captured_at
+                session.add(endpoint)
+
+                # 4. 同步更新模块全局统计 (加锁)
+                mod_stmt = select(SystemModule).where(SystemModule.id == endpoint.module_id).with_for_update()
                 module = session.exec(mod_stmt).one()
                 module.total_traffic_count += 1
-                module.last_active_at = datetime.now(timezone.utc)
+                module.last_active_at = raw_flow.captured_at
                 session.add(module)
                 
                 session.commit()
@@ -172,12 +179,20 @@ def process_raw_flow_task(raw_flow_id: str) -> str:
             raw_flow.parsed = True
             session.add(raw_flow)
             
+            # 锁定并更新接口统计 (Unique Flow)
+            ep_stmt = select(ApiEndpoint).where(ApiEndpoint.id == endpoint.id).with_for_update()
+            endpoint_locked = session.exec(ep_stmt).one()
+            endpoint_locked.total_traffic_count += 1
+            endpoint_locked.variants_count += 1
+            endpoint_locked.last_active_at = raw_flow.captured_at
+            session.add(endpoint_locked)
+
             # 锁定并更新模块统计 (Unique Flow)
             mod_stmt = select(SystemModule).where(SystemModule.id == endpoint.module_id).with_for_update()
             module = session.exec(mod_stmt).one()
             module.total_traffic_count += 1
             module.unique_traffic_count += 1
-            module.last_active_at = datetime.now(timezone.utc)
+            module.last_active_at = raw_flow.captured_at
             session.add(module)
             
             session.commit()

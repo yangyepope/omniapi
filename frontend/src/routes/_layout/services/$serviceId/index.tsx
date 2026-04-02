@@ -326,20 +326,26 @@ function EndpointListPage() {
 
                     <td className="px-6 py-6">
                       <span className="text-sm font-black text-on-surface tabular-nums">
-                        {Math.floor(Math.random() * 500000).toLocaleString()}
+                        {api.total_traffic_count.toLocaleString()}
                       </span>
                     </td>
 
                     <td className="px-6 py-6">
                       <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-surface-container-high border border-outline-variant/10 text-[10px] font-black text-on-surface-variant">
-                        {Math.floor(Math.random() * 12) + 1}
+                        {api.variants_count}
                       </div>
                     </td>
 
                     <td className="px-6 py-6">
                       <div className="flex flex-col text-[10px] tabular-nums font-bold text-on-surface-variant/70">
-                        <span>2023-11-24</span>
-                        <span className="text-[9px] opacity-40">14:20:01</span>
+                        {api.last_active_at ? (
+                          <>
+                            <span>{new Date(api.last_active_at).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\//g, "-")}</span>
+                            <span className="text-[9px] opacity-40">{new Date(api.last_active_at).toLocaleTimeString("zh-CN", { hour12: false })}</span>
+                          </>
+                        ) : (
+                          <span>Never</span>
+                        )}
                       </div>
                     </td>
 
@@ -347,15 +353,12 @@ function EndpointListPage() {
                       <div className="flex items-center justify-end gap-5">
                         <Link 
                            to="/services/$serviceId/$endpointId"
-                           params={{ serviceId, endpointId: api?.id || "unknown" }}
+                           params={{ serviceId, endpointId: api.id }}
                            search={(prev) => ({ ...prev })}
                            className="text-xs font-black text-primary-fixed hover:underline underline-offset-4 transition-all"
                         >
                           详情
                         </Link>
-                        <button className="text-xs font-black text-on-surface-variant hover:text-on-surface transition-colors">
-                          流量列表
-                        </button>
                       </div>
                     </td>
                   </motion.tr>
