@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Bell, Globe, Lock, Shield, Zap, Activity, Clock, Database, Server, Copy, Check } from "lucide-react"
+import { ArrowLeft, Activity, Clock, Database, Copy, Check, Server, Shield } from "lucide-react"
 import { useMemo, useState } from "react"
 import { z } from "zod"
 import { motion } from "motion/react"
@@ -16,6 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ChevronDown } from "lucide-react"
 
 const formatRelativeTime = (value?: string | null) => {
   if (!value) return "未知"
@@ -46,6 +53,19 @@ const formatAbsoluteTime = (value?: string | null) => {
   return `${y}-${m}-${d} ${h}:${min}:${s}`
 }
 
+// execCommand 降级复制：兼容 HTTP 内网环境（navigator.clipboard 需要 HTTPS）
+function copyViaExecCommand(text: string): void {
+  const el = document.createElement("textarea")
+  el.value = text
+  el.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;"
+  document.body.appendChild(el)
+  el.focus()
+  el.select()
+  try {
+    ;(document as unknown as { execCommand: (cmd: string) => boolean }).execCommand("copy")
+  } finally { document.body.removeChild(el) }
+}
+
 const PayloadDisplay = ({ body }: { body: string }) => {
   const [copied, setCopied] = useState(false)
 
@@ -60,9 +80,16 @@ const PayloadDisplay = ({ body }: { body: string }) => {
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
-    navigator.clipboard.writeText(body)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    // 优先 Clipboard API，降级到 execCommand（兼容 HTTP 内网环境）
+    const write = navigator?.clipboard
+      ? navigator.clipboard.writeText(formattedBody).catch(() => {
+          copyViaExecCommand(formattedBody)
+        })
+      : Promise.resolve(copyViaExecCommand(formattedBody))
+    write.then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
 
   return (
@@ -99,21 +126,36 @@ const searchSchema = z.object({
   pageSize: z.coerce.number().int().min(10).max(100).default(20),
 })
 
-export const Route = createFileRoute("/_layout/services/$serviceId/$endpointId")({
+export const Route = createFileRoute("/_layout/services/$serviceId/$endpointId/")({
   component: EndpointDetailPage,
   validateSearch: searchSchema,
 })
 
+type TagValue = "已测试" | "未测试" | "高危" | ""
+
+const TAG_STYLES: Record<string, string> = {
+  "已测试": "bg-green-100 text-green-700 border-green-200",
+  "未测试": "bg-gray-100 text-gray-500 border-gray-200",
+  "高危":   "bg-red-100 text-red-600 border-red-200",
+}
+
+const METHOD_STYLES: Record<string, string> = {
+  GET:    "bg-blue-50 text-blue-600 border-blue-200",
+  POST:   "bg-red-50 text-red-500 border-red-200",
+  PUT:    "bg-green-50 text-green-600 border-green-200",
+  DELETE: "bg-orange-50 text-orange-600 border-orange-200",
+  PATCH:  "bg-purple-50 text-purple-600 border-purple-200",
+}
+
 function EndpointDetailPage() {
   const { serviceId, endpointId } = Route.useParams()
+  const [recordTags, setRecordTags] = useState<Record<string, TagValue>>({})
 
   const statsQuery = useQuery({
     queryKey: ["system-modules", "stats"],
     queryFn: () => SystemModulesService.getSystemModulesStats(),
   })
 
-  const modules = statsQuery.data?.data ?? []
-  const currentModule = useMemo(() => modules.find((item) => item.id === serviceId), [modules, serviceId])
 
   const endpointDetailQuery = useQuery({
     queryKey: ["system-modules", "endpoint-detail", serviceId, endpointId],
@@ -139,7 +181,6 @@ function EndpointDetailPage() {
   const trafficRecords = endpointTrafficQuery.data?.data ?? endpointDetailQuery.data?.recent_traffic ?? []
   const trafficCount = endpointDetailQuery.data?.traffic_count ?? endpointTrafficQuery.data?.count ?? 0
   
-  const serviceName = currentModule?.name || "Loading..."
 
   if (isLoadingInitial) {
     return (
@@ -190,20 +231,12 @@ function EndpointDetailPage() {
               <p className="text-sm text-on-surface-variant mt-1 font-medium">{detail.description || "在该服务的安全矩阵中监控此接口的流量态势"}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button className="p-2.5 rounded-xl bg-surface-container-low border border-outline-variant/10 text-on-surface-variant hover:text-primary-fixed transition-colors">
-              <Bell className="w-5 h-5" />
-            </button>
-            <button className="px-4 py-2.5 rounded-xl bg-primary-fixed text-on-primary font-bold text-sm shadow-lg shadow-primary-fixed/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-              重放此接口
-            </button>
-          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-12 gap-8">
         {/* Main Column */}
-        <div className="col-span-12 lg:col-span-8 space-y-8">
+        <div className="col-span-12 space-y-8">
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <motion.div 
@@ -262,8 +295,11 @@ function EndpointDetailPage() {
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Method</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Real URI / Params</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Body</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">字段标签</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">变体数</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Source IP</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">Captured At</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Captured At</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/5">
@@ -274,7 +310,12 @@ function EndpointDetailPage() {
                     className="hover:bg-surface-container-low/40 transition-colors group cursor-pointer"
                   >
                     <td className="px-6 py-5 whitespace-nowrap">
-                       <span className="font-mono text-[10px] font-black text-on-surface-variant uppercase">{record.method}</span>
+                      <span className={cn(
+                        "font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded border",
+                        METHOD_STYLES[record.method?.toUpperCase()] ?? "bg-surface-container-high text-on-surface-variant border-outline-variant/20"
+                      )}>
+                        {record.method}
+                      </span>
                     </td>
                     <td className="px-6 py-5">
                       <p className="font-mono text-xs text-primary-fixed break-all line-clamp-1" title={record.original_path}>
@@ -309,22 +350,90 @@ function EndpointDetailPage() {
                         <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">—</span>
                       )}
                     </td>
+                    {/* 字段标签列：使用 DropdownMenu 实现紧凑的内联标签选择器 */}
+                    <td className="px-6 py-5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        {/* 触发器：以徽章形式呈现，选中后呈现对应颜色语义 */}
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className={cn(
+                              // 基础样式：紧凑行高（py-0.5）、超小字体、圆角胶囊、边框
+                              // duration-200 符合 skill 规定的 150-300ms 平滑过渡
+                              "inline-flex items-center gap-1 px-2 py-0.5 rounded-md border",
+                              "text-[10px] font-bold cursor-pointer transition-all duration-200",
+                              // focus-visible 保留键盘导航的可见焦点环（UX规范要求）
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-fixed/30",
+                              // 已设置标签时切换为对应颜色主题，否则呈淡色占位态
+                              recordTags[record.id]
+                                ? TAG_STYLES[recordTags[record.id]]
+                                : "bg-surface-container-high/40 text-on-surface-variant/30 border-outline-variant/10 hover:border-outline-variant/40 hover:text-on-surface-variant/60"
+                            )}
+                          >
+                            {/* 标签文字：未选时显示灰色占位，已选时显示标签名 */}
+                            <span>{recordTags[record.id] || "设置标签"}</span>
+                            {/* 极小下拉箭头，不破坏紧凑视觉重量 */}
+                            <ChevronDown className="w-2.5 h-2.5 opacity-50 shrink-0" />
+                          </button>
+                        </DropdownMenuTrigger>
+
+                        {/* 下拉面板：复用项目 surface-container 毛玻璃风格，与其他弹窗保持一致 */}
+                        <DropdownMenuContent
+                          align="start"
+                          className="min-w-[96px] p-1 rounded-2xl bg-surface-container-low/95 backdrop-blur-xl border-outline-variant/10 shadow-xl"
+                        >
+                          {/* 已测试：绿色 — 表示该流量已完成安全分析 */}
+                          <DropdownMenuItem
+                            className="text-[11px] font-bold text-green-700 rounded-xl px-3 py-1.5 cursor-pointer focus:bg-green-50/80 focus:text-green-700"
+                            onClick={() => setRecordTags(prev => ({ ...prev, [record.id]: "已测试" }))}
+                          >
+                            已测试
+                          </DropdownMenuItem>
+                          {/* 未测试：灰色 — 表示待分析的捕获流量 */}
+                          <DropdownMenuItem
+                            className="text-[11px] font-bold text-on-surface-variant/60 rounded-xl px-3 py-1.5 cursor-pointer focus:bg-surface-container-high focus:text-on-surface-variant"
+                            onClick={() => setRecordTags(prev => ({ ...prev, [record.id]: "未测试" }))}
+                          >
+                            未测试
+                          </DropdownMenuItem>
+                          {/* 高危：红色 — 表示流量携带安全风险特征 */}
+                          <DropdownMenuItem
+                            className="text-[11px] font-bold text-red-600 rounded-xl px-3 py-1.5 cursor-pointer focus:bg-red-50/80 focus:text-red-600"
+                            onClick={() => setRecordTags(prev => ({ ...prev, [record.id]: "高危" }))}
+                          >
+                            高危
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">—</span>
+                    </td>
                     <td className="px-6 py-5 whitespace-nowrap">
                        <span className="text-xs font-bold text-on-surface">{record.client_ip || "Internal"}</span>
                     </td>
-                    <td className="px-6 py-5 text-right whitespace-nowrap">
-                      <span 
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <span
                         className="text-[10px] font-mono font-medium text-on-surface-variant group-hover:text-primary-fixed transition-colors"
                         title={formatRelativeTime(record.captured_at || record.created_at)}
                       >
                         {formatAbsoluteTime(record.captured_at || record.created_at)}
                       </span>
                     </td>
+                    {/* 操作列：提供进入流量详情页的入口链接 */}
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <Link
+                        to="/services/$serviceId/$endpointId/$trafficId"
+                        params={{ serviceId, endpointId, trafficId: record.id }}
+                        className="text-[10px] font-bold text-primary-fixed hover:underline hover:text-primary-fixed/80 transition-colors duration-200"
+                      >
+                        详情
+                      </Link>
+                    </td>
                   </motion.tr>
                 ))}
                 {trafficRecords.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-20 text-center text-on-surface-variant font-medium opacity-50">
+                    <td colSpan={8} className="px-6 py-20 text-center text-on-surface-variant font-medium opacity-50">
                        目前尚无历史流量捕获记录，正在监听中...
                     </td>
                   </tr>
@@ -334,77 +443,6 @@ function EndpointDetailPage() {
           </div>
         </div>
 
-        {/* Sidebar Column */}
-        <div className="col-span-12 lg:col-span-4 space-y-6">
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all duration-300"
-          >
-            <h3 className="text-lg font-black text-on-surface mb-4 font-headline">安全合规审计</h3>
-            <div className="space-y-4 relative z-10">
-              <div className="flex items-start gap-3">
-                <div className="mt-1 p-1 rounded bg-secondary-fixed/20 text-secondary-fixed">
-                  <Globe className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-on-surface">全球暴露度: 低 (Internal Only)</p>
-                  <p className="text-[10px] text-on-surface-variant mt-0.5 font-medium">该接口仅在 VPC 环境内可路由访问</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="mt-1 p-1 rounded bg-primary-fixed/20 text-primary-fixed">
-                  <Lock className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-on-surface">身份认证: 强制 (RSA-256)</p>
-                  <p className="text-[10px] text-on-surface-variant mt-0.5 font-medium">所有请求必须携带合法的 JWT 凭证</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="mt-1 p-1 rounded bg-secondary-fixed/20 text-secondary-fixed">
-                  <Zap className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-on-surface">限流策略: 500 req/min</p>
-                  <p className="text-[10px] text-on-surface-variant mt-0.5 font-medium">防止大规模暴力破解或服务拒绝攻击</p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-24 h-24 bg-primary-fixed/5 rounded-full blur-2xl group-hover:bg-primary-fixed/10 transition-all" />
-          </motion.div>
-
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm hover:shadow-lg transition-all duration-300"
-          >
-            <h3 className="text-sm font-black text-on-surface mb-4 tracking-tight uppercase">所属微服务节点</h3>
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-primary-fixed/5 text-primary-fixed">
-                <Server className="w-6 h-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black text-on-surface truncate">{serviceName}</p>
-                <Link 
-                  to="/services/$serviceId" 
-                  params={{ serviceId }} 
-                  search={{ page: 1, pageSize: 20, query: "" }} 
-                  className="text-xs font-bold text-primary-fixed hover:underline"
-                >
-                  查看服务全量接口
-                </Link>
-              </div>
-            </div>
-            <div className="mt-6 pt-6 border-t border-outline-variant/10">
-               <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-2">
-                  <span>服务健康度评估</span>
-                  <span className="text-secondary-fixed">HEALTHY</span>
-               </div>
-               <div className="h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
-                  <div className="h-full bg-secondary-fixed w-[92%]" />
-               </div>
-            </div>
-          </motion.div>
-        </div>
       </div>
     </motion.div>
   )

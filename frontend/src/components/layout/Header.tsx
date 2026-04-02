@@ -49,9 +49,13 @@ export function Header() {
         const service = statsQuery.data?.data?.find(s => s.id === seg)
         parts.push({ label: service ? service.name : (seg || "详情"), to: currentPath })
       }
-      // 处理三级目录 (接口 ID)
+      // 处理三级目录 (接口 ID) → 显示为"接口详情"
       else if (index === 2 && segments[0] === "services") {
         parts.push({ label: "接口详情", to: currentPath })
+      }
+      // 处理四级目录 (流量记录 ID) → 显示为"流量详情"，避免 UUID 裸露在面包屑
+      else if (index === 3 && segments[0] === "services") {
+        parts.push({ label: "流量详情", to: currentPath })
       }
       // 兜底处理：防止未知路径导致面包屑缺失
       else if (index > 0 && !parts.find(p => p.to === currentPath)) {

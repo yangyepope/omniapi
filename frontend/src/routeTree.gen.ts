@@ -22,7 +22,8 @@ import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutServicesIndexRouteImport } from './routes/_layout/services/index'
 import { Route as LayoutBusinessConfigIndexRouteImport } from './routes/_layout/business-config/index'
 import { Route as LayoutServicesServiceIdIndexRouteImport } from './routes/_layout/services/$serviceId/index'
-import { Route as LayoutServicesServiceIdEndpointIdRouteImport } from './routes/_layout/services/$serviceId/$endpointId'
+import { Route as LayoutServicesServiceIdEndpointIdIndexRouteImport } from './routes/_layout/services/$serviceId/$endpointId/index'
+import { Route as LayoutServicesServiceIdEndpointIdTrafficIdRouteImport } from './routes/_layout/services/$serviceId/$endpointId/$trafficId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -90,10 +91,16 @@ const LayoutServicesServiceIdIndexRoute =
     path: '/$serviceId/',
     getParentRoute: () => LayoutServicesRoute,
   } as any)
-const LayoutServicesServiceIdEndpointIdRoute =
-  LayoutServicesServiceIdEndpointIdRouteImport.update({
-    id: '/$serviceId/$endpointId',
-    path: '/$serviceId/$endpointId',
+const LayoutServicesServiceIdEndpointIdIndexRoute =
+  LayoutServicesServiceIdEndpointIdIndexRouteImport.update({
+    id: '/$serviceId/$endpointId/',
+    path: '/$serviceId/$endpointId/',
+    getParentRoute: () => LayoutServicesRoute,
+  } as any)
+const LayoutServicesServiceIdEndpointIdTrafficIdRoute =
+  LayoutServicesServiceIdEndpointIdTrafficIdRouteImport.update({
+    id: '/$serviceId/$endpointId/$trafficId',
+    path: '/$serviceId/$endpointId/$trafficId',
     getParentRoute: () => LayoutServicesRoute,
   } as any)
 
@@ -109,8 +116,9 @@ export interface FileRoutesByFullPath {
   '/settings': typeof LayoutSettingsRoute
   '/business-config/': typeof LayoutBusinessConfigIndexRoute
   '/services/': typeof LayoutServicesIndexRoute
-  '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
   '/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
+  '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+  '/services/$serviceId/$endpointId/': typeof LayoutServicesServiceIdEndpointIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -123,8 +131,9 @@ export interface FileRoutesByTo {
   '/': typeof LayoutIndexRoute
   '/business-config': typeof LayoutBusinessConfigIndexRoute
   '/services': typeof LayoutServicesIndexRoute
-  '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
   '/services/$serviceId': typeof LayoutServicesServiceIdIndexRoute
+  '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+  '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -140,8 +149,9 @@ export interface FileRoutesById {
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/business-config/': typeof LayoutBusinessConfigIndexRoute
   '/_layout/services/': typeof LayoutServicesIndexRoute
-  '/_layout/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdRoute
   '/_layout/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
+  '/_layout/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+  '/_layout/services/$serviceId/$endpointId/': typeof LayoutServicesServiceIdEndpointIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,8 +167,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/business-config/'
     | '/services/'
-    | '/services/$serviceId/$endpointId'
     | '/services/$serviceId/'
+    | '/services/$serviceId/$endpointId/$trafficId'
+    | '/services/$serviceId/$endpointId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -171,8 +182,9 @@ export interface FileRouteTypes {
     | '/'
     | '/business-config'
     | '/services'
-    | '/services/$serviceId/$endpointId'
     | '/services/$serviceId'
+    | '/services/$serviceId/$endpointId/$trafficId'
+    | '/services/$serviceId/$endpointId'
   id:
     | '__root__'
     | '/_layout'
@@ -187,8 +199,9 @@ export interface FileRouteTypes {
     | '/_layout/'
     | '/_layout/business-config/'
     | '/_layout/services/'
-    | '/_layout/services/$serviceId/$endpointId'
     | '/_layout/services/$serviceId/'
+    | '/_layout/services/$serviceId/$endpointId/$trafficId'
+    | '/_layout/services/$serviceId/$endpointId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -292,11 +305,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutServicesServiceIdIndexRouteImport
       parentRoute: typeof LayoutServicesRoute
     }
-    '/_layout/services/$serviceId/$endpointId': {
-      id: '/_layout/services/$serviceId/$endpointId'
+    '/_layout/services/$serviceId/$endpointId/': {
+      id: '/_layout/services/$serviceId/$endpointId/'
       path: '/$serviceId/$endpointId'
-      fullPath: '/services/$serviceId/$endpointId'
-      preLoaderRoute: typeof LayoutServicesServiceIdEndpointIdRouteImport
+      fullPath: '/services/$serviceId/$endpointId/'
+      preLoaderRoute: typeof LayoutServicesServiceIdEndpointIdIndexRouteImport
+      parentRoute: typeof LayoutServicesRoute
+    }
+    '/_layout/services/$serviceId/$endpointId/$trafficId': {
+      id: '/_layout/services/$serviceId/$endpointId/$trafficId'
+      path: '/$serviceId/$endpointId/$trafficId'
+      fullPath: '/services/$serviceId/$endpointId/$trafficId'
+      preLoaderRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdRouteImport
       parentRoute: typeof LayoutServicesRoute
     }
   }
@@ -304,15 +324,18 @@ declare module '@tanstack/react-router' {
 
 interface LayoutServicesRouteChildren {
   LayoutServicesIndexRoute: typeof LayoutServicesIndexRoute
-  LayoutServicesServiceIdEndpointIdRoute: typeof LayoutServicesServiceIdEndpointIdRoute
   LayoutServicesServiceIdIndexRoute: typeof LayoutServicesServiceIdIndexRoute
+  LayoutServicesServiceIdEndpointIdTrafficIdRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+  LayoutServicesServiceIdEndpointIdIndexRoute: typeof LayoutServicesServiceIdEndpointIdIndexRoute
 }
 
 const LayoutServicesRouteChildren: LayoutServicesRouteChildren = {
   LayoutServicesIndexRoute: LayoutServicesIndexRoute,
-  LayoutServicesServiceIdEndpointIdRoute:
-    LayoutServicesServiceIdEndpointIdRoute,
   LayoutServicesServiceIdIndexRoute: LayoutServicesServiceIdIndexRoute,
+  LayoutServicesServiceIdEndpointIdTrafficIdRoute:
+    LayoutServicesServiceIdEndpointIdTrafficIdRoute,
+  LayoutServicesServiceIdEndpointIdIndexRoute:
+    LayoutServicesServiceIdEndpointIdIndexRoute,
 }
 
 const LayoutServicesRouteWithChildren = LayoutServicesRoute._addFileChildren(
