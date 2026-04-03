@@ -1,9 +1,4 @@
-"""
-文件职责：接收 Nginx 或其他代理转发过来的镜像流量 (Mirror Traffic)。
-目录原因：属于外部流量入口，因此放置在 app/api/routes/ 目录下。
-接入方式：在 app/main.py 中通过 app.include_router(collect.router, prefix="/v1") 独立注册，避免被全局的 /api/v1 前缀影响。
-"""
-
+from typing import Any
 import json
 from datetime import datetime, timezone
 
@@ -18,7 +13,6 @@ from app.worker import process_raw_flow_task
 router = APIRouter(prefix="/collect", tags=["collect"])
 
 # [接口完整路径]: POST /v1/collect
-# [设计意图]：作为流量采集的第一站，实现“极速入库”模式。
 @router.post(
     "",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -32,7 +26,18 @@ router = APIRouter(prefix="/collect", tags=["collect"])
     include_in_schema=False,
     response_class=Response,
 )
-async def collect_traffic(request: Request, session: SessionDep) -> Response:
+async def collect_traffic(
+    request: Request,
+    session: SessionDep
+) -> Response:
+    """
+    接收来自 Nginx mirror 的流量镜像报文。
+    """
+    # 🌟 核心增强：防止重放攻击流量被二次采集 (Self-Loop Prevention)
+    # 使用 request.headers 避免破坏 Pydantic 注入逻辑
+    if request.headers.get("X-OmniAPI-Replay") == "true" or "OmniAPI-Replayer" in request.headers.get("User-Agent", ""):
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     try:
         # --- 1. 采集开关与回流拦截校验 ---
         # 物理物理加固：即便 DB 出错也默认放行采集
@@ -61,24 +66,32 @@ async def collect_traffic(request: Request, session: SessionDep) -> Response:
         body = await request.body()
         raw_headers = dict(request.headers)
 
-        # --- 3. 核心字段提取 (Step 1 要求) ---
-        # 获取由 Nginx Mirror 模块透传的原始 URI 和方法
-        original_method = raw_headers.get('x-original-method', request.method)
-        original_uri = raw_headers.get('x-original-uri', request.url.path)
-        real_ip = raw_headers.get('x-real-ip', getattr(request.client, 'host', 'Unknown'))
+        # --- 3. 核心字段提取与去污染 (Normalization) ---
+        # 兼容大小写：Nginx 转发头可能有多种写法，提取并彻底移除以还原真实报文
+        def extract_and_pop(headers_dict, target_key):
+            found_key = None
+            for k in headers_dict.keys():
+                if k.lower() == target_key.lower():
+                    found_key = k
+                    break
+            return headers_dict.pop(found_key) if found_key else None
+
+        original_method = extract_and_pop(raw_headers, 'x-original-method') or request.method
+        original_uri = extract_and_pop(raw_headers, 'x-original-uri') or request.url.path
+        real_ip = extract_and_pop(raw_headers, 'x-real-ip') or getattr(request.client, 'host', 'Unknown')
         
         # [服务名称提取逻辑]：取 URL Path 的第一层（例如 /api/v1/users -> api）
         path_parts = [p for p in original_uri.split('/') if p]
         service_name = path_parts[0] if path_parts else "default"
 
         # --- 4. 实例化原始流量对象 ---
-        # 毫秒级时间戳由数据库默认值工厂或此处显式生成
+        # 持久化纯净的 Headers 以保证变体生成的 100% 保真度
         raw_flow = RawFlow(
             service_name=service_name,
             captured_at=datetime.now(timezone.utc),
             method=original_method,
             interface_path=original_uri,
-            headers=raw_headers,
+            headers=raw_headers,  # 此时的 headers 已完全剥离了转发污染
             body=body,
             body_size=len(body),
             client_ip=real_ip,
@@ -99,9 +112,10 @@ async def collect_traffic(request: Request, session: SessionDep) -> Response:
         # 仅向异步任务池发送记录 ID，由 Worker 完成去重和路径发现逻辑
         process_raw_flow_task.delay(raw_flow_id=str(raw_flow.id))
 
-    except Exception as e:
+    except Exception:
+        import traceback
         # 全量异常捕获，确保镜像流量接收端点永不返回 500
-        logger.error(f"🔴 Traffic collection failed: {e}")
+        logger.error(f"🔴 Traffic collection failed: {traceback.format_exc()}")
 
     # 根据 HTTP 规范，处理成功但无内容返回时使用 204 状态码
     return Response(status_code=status.HTTP_204_NO_CONTENT)

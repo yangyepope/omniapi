@@ -316,7 +316,7 @@ class SystemModuleBase(SQLModel):
     owner: str | None = Field(default=None, max_length=255)
     # 服务状态：Active（激活）/ Deprecated（弃用）
     status: ServiceStatus = Field(default=ServiceStatus.active, index=True)
-    
+
     # 统计字段（由 Worker 进程原子更新，列表页直接读取以提升性能）
     total_traffic_count: int = Field(default=0)
     unique_traffic_count: int = Field(default=0)
@@ -372,7 +372,7 @@ class ApiEndpointBase(SQLModel):
     # HTTP 方法（例如 GET, POST），建立索引以便查询
     method: str = Field(max_length=10, index=True)
     # 泛化后的 URI 路径（例如 /api/v1/users/{id}），建立索引以便匹配
-    path: str = Field(max_length=512, index=True) 
+    path: str = Field(max_length=512, index=True)
     # 接口等级：p0/p1/p2/p3，默认 p3
     level: EndpointLevel = Field(default=EndpointLevel.p3, index=True)
     # API 接口的可选名称或摘要
@@ -415,7 +415,7 @@ class ApiEndpointPublic(ApiEndpointBase):
     id: uuid.UUID
     # 在公共 API 响应中暴露的创建时间戳
     created_at: datetime | None
-    
+
     # 统计项
     total_traffic_count: int = 0
     variants_count: int = 0
@@ -635,12 +635,12 @@ class FilteredFlow(SQLModel, table=True):
     endpoint: "ApiEndpoint" = Relationship(back_populates="filtered_flows")
     # 记录入库时间
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
-    
+
     # 统计字段冗余，用于在列表页展示变体丰富度，避免 JOIN 高开销
     variant_count: int = Field(default=0)
     # 统计被引用重放执行的历史次数
     replay_count: int = Field(default=0)
-    
+
     # 关联变体模型，支持基于精选流量衍生出的多种攻击载荷
     variants: list["Variant"] = Relationship(back_populates="root_flow", cascade_delete=True)
     # 关联标签模型，支持用户进行个性化的案例标记（如“高危”、“核心流程”）
@@ -659,46 +659,82 @@ class FlowTag(SQLModel, table=True):
     tag: str = Field(max_length=64, index=True)
     # 创建时间
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
-    
+
     # 反向关联到流量对象
     flow: FilteredFlow = Relationship(back_populates="tags")
 
 # 4. 变体表 (Variant)
 # 作用：基于原始流量修改生成的“攻击载荷”或“测试样本”
-# 设计意图：支持多级 Fork，记录从一个普通报文演变为恶意载荷的全过程（Fork Chain）
-class Variant(SQLModel, table=True):
-    # 表名定义
-    __tablename__ = "variants"
-    # 变体唯一标识
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # 标识是从原始流量变来的，还是从另一个变体 Fork 出来的
-    source_type: str = Field(max_length=20) # 'flow' 或 'variant'
-    # 指向父级对象的 ID，构建变体演进树
-    source_id: uuid.UUID = Field(index=True)
-    # 冗余记录最顶层的根流量 ID，方便直接根据流量查看所有衍生出的变体
-    root_flow_id: uuid.UUID = Field(foreign_key="filtered_flows.id", ondelete="CASCADE")
-    # 存存储完整的演变链条路径（JSON 数组），如 [flow_id, variant_1_id, variant_2_id]
-    fork_chain: list[uuid.UUID] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
-    # 变体的人类可读名称（或攻击类型名称）
+# 设计意图：采用扁平化架构，所有变体直接归属于原始“筛选流量”
+class VariantBase(SQLModel):
+    # 变体名字：由系统生成或用户手动重命名
     name: str = Field(max_length=256)
     # 对该变体设计意图的详细描述
     description: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
-    # 记录修改规则的流水，定义如何从源变到现，用于审计和自动化批量生成
-    transformations: list[dict[str, Any]] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
-    
+
     # 变体执行时的最终请求字段集合
     method: str = Field(max_length=10)
-    url: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    url: str = Field(sa_column=sqlalchemy.Column(sqlalchemy.Text)) # 包含 Host, Path, Query
     headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
-    body: bytes | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary))
-    
+    body_str: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+
+    # 变体来源类型: manual / ai / scan
+    source_type: str = Field(default="manual", max_length=20)
+    # 原始来源标识 (用于标记哪个 AI Agent 或哪个扫描器生成的)
+    origin: str | None = Field(default=None, max_length=128)
+
+    # 记录修改规则的流水（可选，用于追溯生成逻辑）
+    transformations: list[dict[str, Any]] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+
+class VariantCreate(VariantBase):
+    # 创建时必须指定所属的原始流量 ID
+    root_flow_id: uuid.UUID
+
+class VariantUpdate(SQLModel):
+    name: str | None = Field(default=None, max_length=256)
+    description: str | None = None
+    method: str | None = None
+    url: str | None = None
+    headers: dict[str, Any] | None = None
+    body_str: str | None = None
+
+class Variant(VariantBase, table=True):
+    __tablename__ = "variants"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+    # 外键：归属到原始流量所在的接口下
+    root_flow_id: uuid.UUID = Field(foreign_key="filtered_flows.id", ondelete="CASCADE", index=True)
+
     # 该变体被实际执行测试的频率统计
     replay_count: int = Field(default=0)
-    # 创建时间戳
+
+    # --- 记录最近一次执行重放的结果 ---
+    last_response_code: int | None = Field(default=None)
+    last_response_body: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
+    last_latency_ms: int | None = Field(default=None)
+    last_replay_at: datetime | None = Field(
+        default=None,
+        sa_type=cast(Any, DateTime(timezone=True)),
+    )
+
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
-    
+
     # 与根流量的逻辑关联
-    root_flow: FilteredFlow = Relationship(back_populates="variants")
+    root_flow: "FilteredFlow" = Relationship(back_populates="variants")
+
+class VariantPublic(VariantBase):
+    id: uuid.UUID
+    root_flow_id: uuid.UUID
+    replay_count: int
+    last_response_code: int | None
+    last_response_body: str | None
+    last_latency_ms: int | None
+    last_replay_at: datetime | None
+    created_at: datetime | None
+
+class VariantsPublic(SQLModel):
+    data: list[VariantPublic]
+    count: int
 
 # 5. 重放任务表 (ReplayTask)
 # 作用：管理批量重放攻击执行周期
@@ -724,19 +760,19 @@ class ReplayTask(SQLModel, table=True):
     source_config: dict[str, Any] = Field(sa_column=sqlalchemy.Column(sqlalchemy.JSON))
     # 任务状态（等待、运行中、已完成、失败、人工取消）
     status: str = Field(default="pending", max_length=20)
-    
+
     # 进度统计：总计执行数、成功数、失败数
     total_count: int = Field(default=0)
     completed_count: int = Field(default=0)
     failed_count: int = Field(default=0)
-    
+
     # 生命周期时间点追踪
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
     started_at: datetime | None = Field(default=None, sa_type=cast(Any, DateTime(timezone=True)))
     completed_at: datetime | None = Field(default=None, sa_type=cast(Any, DateTime(timezone=True)))
     # 若任务执行层面发生异常，在此记录详细堆栈
     error_message: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
-    
+
     # 关联该任务产生的所有执行细节结果
     results: list["ReplayResult"] = Relationship(back_populates="task", cascade_delete=True)
 
@@ -747,21 +783,23 @@ class ReplayResult(SQLModel, table=True):
     __tablename__ = "replay_results"
     # 执行结果唯一 ID
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # 所属任务 ID，用于聚合分析整次任务的成功率
-    task_id: uuid.UUID = Field(foreign_key="replay_tasks.id", ondelete="CASCADE")
+    # 所属任务 ID，由非空改为可选（允许手动触发记录）
+    task_id: uuid.UUID | None = Field(default=None, foreign_key="replay_tasks.id", ondelete="CASCADE")
+    # 冗余字段：所属原始流量 ID（方便通过流量详情一页扫描所有变体历史）
+    root_flow_id: uuid.UUID | None = Field(default=None, index=True)
     # 标记是针对哪类对象进行的重放
-    source_type: str = Field(max_length=20) # flow 或 variant
-    # 对象 ID
+    source_type: str = Field(default="variant", max_length=20) # flow 或 variant
+    # 对象 ID (Variant ID)
     source_id: uuid.UUID = Field(index=True)
     # 执行时的响应状态（成功/失败/超时/连接错误）
     status: str = Field(max_length=20)
-    
+
     # --- 记录执行时的物理报文快照，作为原始证据 ---
     request_method: str | None = Field(default=None, max_length=10)
     request_url: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
     request_headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
     request_body: bytes | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.LargeBinary))
-    
+
     # --- 记录目标服务的真实返回，用于漏洞挖掘 ---
     response_status: int | None = Field(default=None)
     response_headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
@@ -775,7 +813,7 @@ class ReplayResult(SQLModel, table=True):
     executed_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
     # 详细错误描述
     error_message: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
-    
+
     # 建立与任务对象的逻辑链接
     task: ReplayTask = Relationship(back_populates="results")
 
@@ -801,7 +839,7 @@ class NormalizationRule(SQLModel, table=True):
     enabled: bool = Field(default=True, index=True)
     # 系统内置规则不允许被物理删除，仅允许禁用，确保解析引擎基准稳定
     deletable: bool = Field(default=True)
-    
+
     # 记录元数据，用于审计
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
     updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))

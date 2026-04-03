@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { FiShield, FiUser, FiLock, FiKey, FiAlertTriangle, FiFilter } from "react-icons/fi"
 import useAuth from "@/hooks/useAuth"
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence } from "motion/react"
 import { cn } from "@/lib/utils"
 
 import ChangePassword from "@/components/UserSettings/ChangePassword"

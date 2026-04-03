@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(bun run:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -n 'routeTree\\\\|trafficId\\\\|$trafficId' /root/omniapi/frontend/src/routeTree.gen.ts)",
+      "Bash(xargs ls:*)",
+      "Bash(docker exec omniapi-db-1 psql -U app -d app -c ':*)",
+      "Bash(docker exec omniapi-db-1 psql -U postgres -d app -c ':*)",
+      "Bash(docker exec:*)",
+      "Bash(python -m alembic upgrade head)",
+      "Bash(python3 -m alembic upgrade head)",
+      "Bash(../.venv/bin/python -c ':*)",
+      "Edit(/.claude/skills/db-concurrency-guard/**)"
+    ]
+  }
+}

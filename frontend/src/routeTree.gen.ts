@@ -24,6 +24,7 @@ import { Route as LayoutBusinessConfigIndexRouteImport } from './routes/_layout/
 import { Route as LayoutServicesServiceIdIndexRouteImport } from './routes/_layout/services/$serviceId/index'
 import { Route as LayoutServicesServiceIdEndpointIdIndexRouteImport } from './routes/_layout/services/$serviceId/$endpointId/index'
 import { Route as LayoutServicesServiceIdEndpointIdTrafficIdRouteImport } from './routes/_layout/services/$serviceId/$endpointId/$trafficId'
+import { Route as LayoutServicesServiceIdEndpointIdTrafficIdIndexRouteImport } from './routes/_layout/services/$serviceId/$endpointId/$trafficId/index'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -103,6 +104,12 @@ const LayoutServicesServiceIdEndpointIdTrafficIdRoute =
     path: '/$serviceId/$endpointId/$trafficId',
     getParentRoute: () => LayoutServicesRoute,
   } as any)
+const LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute =
+  LayoutServicesServiceIdEndpointIdTrafficIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LayoutServicesServiceIdEndpointIdTrafficIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -117,8 +124,9 @@ export interface FileRoutesByFullPath {
   '/business-config/': typeof LayoutBusinessConfigIndexRoute
   '/services/': typeof LayoutServicesIndexRoute
   '/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
-  '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+  '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRouteWithChildren
   '/services/$serviceId/$endpointId/': typeof LayoutServicesServiceIdEndpointIdIndexRoute
+  '/services/$serviceId/$endpointId/$trafficId/': typeof LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -132,8 +140,8 @@ export interface FileRoutesByTo {
   '/business-config': typeof LayoutBusinessConfigIndexRoute
   '/services': typeof LayoutServicesIndexRoute
   '/services/$serviceId': typeof LayoutServicesServiceIdIndexRoute
-  '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
   '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdIndexRoute
+  '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -150,8 +158,9 @@ export interface FileRoutesById {
   '/_layout/business-config/': typeof LayoutBusinessConfigIndexRoute
   '/_layout/services/': typeof LayoutServicesIndexRoute
   '/_layout/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
-  '/_layout/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+  '/_layout/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRouteWithChildren
   '/_layout/services/$serviceId/$endpointId/': typeof LayoutServicesServiceIdEndpointIdIndexRoute
+  '/_layout/services/$serviceId/$endpointId/$trafficId/': typeof LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/services/$serviceId/'
     | '/services/$serviceId/$endpointId/$trafficId'
     | '/services/$serviceId/$endpointId/'
+    | '/services/$serviceId/$endpointId/$trafficId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -183,8 +193,8 @@ export interface FileRouteTypes {
     | '/business-config'
     | '/services'
     | '/services/$serviceId'
-    | '/services/$serviceId/$endpointId/$trafficId'
     | '/services/$serviceId/$endpointId'
+    | '/services/$serviceId/$endpointId/$trafficId'
   id:
     | '__root__'
     | '/_layout'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/_layout/services/$serviceId/'
     | '/_layout/services/$serviceId/$endpointId/$trafficId'
     | '/_layout/services/$serviceId/$endpointId/'
+    | '/_layout/services/$serviceId/$endpointId/$trafficId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -319,13 +330,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdRouteImport
       parentRoute: typeof LayoutServicesRoute
     }
+    '/_layout/services/$serviceId/$endpointId/$trafficId/': {
+      id: '/_layout/services/$serviceId/$endpointId/$trafficId/'
+      path: '/'
+      fullPath: '/services/$serviceId/$endpointId/$trafficId/'
+      preLoaderRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdIndexRouteImport
+      parentRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+    }
   }
 }
+
+interface LayoutServicesServiceIdEndpointIdTrafficIdRouteChildren {
+  LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute
+}
+
+const LayoutServicesServiceIdEndpointIdTrafficIdRouteChildren: LayoutServicesServiceIdEndpointIdTrafficIdRouteChildren =
+  {
+    LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute:
+      LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute,
+  }
+
+const LayoutServicesServiceIdEndpointIdTrafficIdRouteWithChildren =
+  LayoutServicesServiceIdEndpointIdTrafficIdRoute._addFileChildren(
+    LayoutServicesServiceIdEndpointIdTrafficIdRouteChildren,
+  )
 
 interface LayoutServicesRouteChildren {
   LayoutServicesIndexRoute: typeof LayoutServicesIndexRoute
   LayoutServicesServiceIdIndexRoute: typeof LayoutServicesServiceIdIndexRoute
-  LayoutServicesServiceIdEndpointIdTrafficIdRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdRoute
+  LayoutServicesServiceIdEndpointIdTrafficIdRoute: typeof LayoutServicesServiceIdEndpointIdTrafficIdRouteWithChildren
   LayoutServicesServiceIdEndpointIdIndexRoute: typeof LayoutServicesServiceIdEndpointIdIndexRoute
 }
 
@@ -333,7 +366,7 @@ const LayoutServicesRouteChildren: LayoutServicesRouteChildren = {
   LayoutServicesIndexRoute: LayoutServicesIndexRoute,
   LayoutServicesServiceIdIndexRoute: LayoutServicesServiceIdIndexRoute,
   LayoutServicesServiceIdEndpointIdTrafficIdRoute:
-    LayoutServicesServiceIdEndpointIdTrafficIdRoute,
+    LayoutServicesServiceIdEndpointIdTrafficIdRouteWithChildren,
   LayoutServicesServiceIdEndpointIdIndexRoute:
     LayoutServicesServiceIdEndpointIdIndexRoute,
 }

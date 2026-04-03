@@ -12,6 +12,8 @@ from app.api.routes import (
     traffic_manager,
     users,
     utils,
+    variants,
+    replays,
 )
 from app.core.config import settings  # 导入全局配置
 
@@ -36,6 +38,10 @@ api_router.include_router(sec_assets.router)
 api_router.include_router(traffic_manager.router)
 # 注册系统模块（接口中心）相关路由
 api_router.include_router(system_modules.router)
+# 注册变体管理相关路由
+api_router.include_router(variants.router)
+# 注册攻击重放相关路由
+api_router.include_router(replays.router, prefix="/replays", tags=["replays"])
 
 # 如果当前环境为本地开发环境，则暴露一些仅供内部测试的私有接口
 if settings.ENVIRONMENT == "local":

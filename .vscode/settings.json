@@ -59,6 +59,7 @@
     // 2. 强制指定你已经测通的那个“物理大桥”
     "http.proxy": "http://127.0.0.1:7891",
     "http.proxySupport": "on",
+    "basedpyright.disableLanguageServices": true,
     // 3. 极其重要：必须是字符串！防止内部回环通讯被拦截
  //    "http.noProxy": "127.0.0.1,localhost,::1",
   //  "remote.SSH.useLocalServer": false,
