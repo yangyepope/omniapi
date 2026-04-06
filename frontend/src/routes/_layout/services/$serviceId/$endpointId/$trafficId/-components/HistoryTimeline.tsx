@@ -34,6 +34,9 @@ interface ReplayHistoryItem {
 interface HistoryTimelineProps {
   history: ReplayHistoryItem[]
   variantNames: Record<string, string>
+  currentPage: number        // 📜 新增：当前页码
+  totalCount: number          // 📜 新增：服务端返回的总条数
+  onPageChange: (page: number) => void // 📜 新增：翻页回调
   onReplay?: (variantId: string) => void
   onView?: (item: ReplayHistoryItem) => void 
   onClone?: (item: ReplayHistoryItem) => void
@@ -59,14 +62,16 @@ const formatFullDateTime = (value?: string | null): string => {
 export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({ 
   history, 
   variantNames,
+  currentPage,
+  totalCount,
+  onPageChange,
   onReplay,
   onView,
   onClone
 }) => {
   // ────────────────────────────────────────────────────────────────────────────
-  // 1. 状态管理 (States)
+  // 1. 状态管理 (已简化：page 状态上移至父组件)
   // ────────────────────────────────────────────────────────────────────────────
-  const [page, setPage] = useState(1)
   const [filterKeyword, setFilterKeyword] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterHost, setFilterHost] = useState("all")
@@ -77,17 +82,17 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
   // 2. 数据统计聚合 (Stats Aggregation)
   // ────────────────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
-    const total = history.length
+    const total = (history || []).length
     if (total === 0) return null
 
-    const successCount = history.filter(h => h.response_status && h.response_status < 400).length
+    const successCount = (history || []).filter(h => h.response_status && h.response_status < 400).length
     const errorCount = total - successCount
     const successRate = total > 0 ? Math.round((successCount / total) * 100) : 0
     
-    const avgLatency = total > 0 ? Math.round(history.reduce((acc, curr) => acc + (curr.latency_ms || 0), 0) / total) : 0
+    const avgLatency = total > 0 ? Math.round((history || []).reduce((acc, curr) => acc + (curr.latency_ms || 0), 0) / total) : 0
     
     // 最近 15 次重放的延迟趋势数据
-    const trendData = history.slice(0, 15).reverse().map(h => ({
+    const trendData = (history || []).slice(0, 15).reverse().map(h => ({
       val: h.latency_ms || 0,
       status: h.response_status
     }))
@@ -99,7 +104,7 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
   // 3. 联动过滤逻辑 (Multi-dimensional Filter)
   // ────────────────────────────────────────────────────────────────────────────
   const filteredHistory = useMemo(() => {
-    return history.filter(item => {
+    return (history || []).filter(item => {
       // a. 关键字检索 (URL 或 变体名)
       const matchesKeyword = item.request_url.toLowerCase().includes(filterKeyword.toLowerCase()) || 
                              (variantNames[item.source_id]?.toLowerCase().includes(filterKeyword.toLowerCase()))
@@ -124,8 +129,8 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
     })
   }, [history, filterKeyword, filterStatus, filterHost, latencyRange, variantNames])
 
-  const totalPages = Math.ceil(filteredHistory.length / perPage)
-  const paginatedHistory = filteredHistory.slice((page - 1) * perPage, page * perPage)
+  const totalPages = Math.ceil(totalCount / perPage)
+  const paginatedHistory = history // 直接使用父组件传入的当前页数据
 
   return (
     <div className="flex flex-col h-full bg-surface">
@@ -162,7 +167,7 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
         {/* 右侧：延迟趋势分布 */}
         <div className="col-span-4 p-5 rounded-[2.5rem] border border-outline-variant/10 bg-surface-container-low/20 flex flex-col">
            <div className="flex items-center justify-between mb-6">
-              <span className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-[0.2em]">响应趋势 (Last 15)</span>
+              <span className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-[0.2em]">{`响应趋势 (Last 15)`}</span>
               <BarChart3 className="w-4 h-4 opacity-20" />
            </div>
            <div className="flex-1 flex items-end justify-between gap-1.5 h-32 mb-2">
@@ -203,7 +208,7 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
                <input 
                   type="text" placeholder="输入搜索词..." 
                   value={filterKeyword}
-                  onChange={(e) => { setFilterKeyword(e.target.value); setPage(1); }}
+                  onChange={(e) => { setFilterKeyword(e.target.value); onPageChange(1); }}
                   className="w-full pl-9 pr-4 py-3 bg-white/80 backdrop-blur-sm rounded-xl border border-outline-variant/10 text-xs font-bold text-on-surface placeholder:text-on-surface-variant/20 focus:ring-1 focus:ring-primary-fixed/30 transition-all shadow-sm" 
                />
             </div>
@@ -213,7 +218,7 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
             <span className="text-[9px] font-black text-on-surface-variant/40 uppercase tracking-widest">目标环境过滤</span>
             <select 
                value={filterHost}
-               onChange={(e) => { setFilterHost(e.target.value); setPage(1); }}
+               onChange={(e) => { setFilterHost(e.target.value); onPageChange(1); }}
                className="w-full bg-white/80 backdrop-blur-sm px-4 py-3 rounded-xl border border-outline-variant/10 text-xs font-bold text-on-surface focus:ring-1 focus:ring-primary-fixed/30 transition-all cursor-pointer shadow-sm"
             >
                <option value="all">全部环境</option>
@@ -227,7 +232,7 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
             <span className="text-[9px] font-black text-on-surface-variant/40 uppercase tracking-widest">诊断器状态</span>
             <select 
                value={filterStatus}
-               onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+               onChange={(e) => { setFilterStatus(e.target.value); onPageChange(1); }}
                className="w-full bg-white/80 backdrop-blur-sm px-4 py-3 rounded-xl border border-outline-variant/10 text-xs font-bold text-on-surface focus:ring-1 focus:ring-primary-fixed/30 transition-all cursor-pointer shadow-sm"
             >
                <option value="all">所有记录码</option>
@@ -243,13 +248,13 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
                <input 
                   type="number" placeholder="Min" 
                   value={latencyRange.min || ""}
-                  onChange={(e) => { setLatencyRange(prev => ({ ...prev, min: parseInt(e.target.value) || undefined })); setPage(1); }}
+                  onChange={(e) => { setLatencyRange(prev => ({ ...prev, min: parseInt(e.target.value) || undefined })); onPageChange(1); }}
                   className="w-full bg-white/80 backdrop-blur-sm px-3 py-3 rounded-xl border border-outline-variant/10 text-xs font-bold font-mono text-on-surface placeholder:text-on-surface-variant/20 focus:ring-1 focus:ring-primary-fixed/30 shadow-sm" 
                />
                <input 
                   type="number" placeholder="Max" 
                   value={latencyRange.max || ""}
-                  onChange={(e) => { setLatencyRange(prev => ({ ...prev, max: parseInt(e.target.value) || undefined })); setPage(1); }}
+                  onChange={(e) => { setLatencyRange(prev => ({ ...prev, max: parseInt(e.target.value) || undefined })); onPageChange(1); }}
                   className="w-full bg-white/80 backdrop-blur-sm px-3 py-3 rounded-xl border border-outline-variant/10 text-xs font-bold font-mono text-on-surface placeholder:text-on-surface-variant/20 focus:ring-1 focus:ring-primary-fixed/30 shadow-sm" 
                />
             </div>
@@ -258,7 +263,7 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
          <div className="col-span-1 flex flex-col gap-2">
             <span className="text-[9px] font-black text-on-surface-variant/40 uppercase tracking-widest opacity-0 px-1">RESET</span>
             <button 
-              onClick={() => { setFilterKeyword(""); setFilterStatus("all"); setFilterHost("all"); setLatencyRange({}); setPage(1); }}
+              onClick={() => { setFilterKeyword(""); setFilterStatus("all"); setFilterHost("all"); setLatencyRange({}); onPageChange(1); }}
               className="w-full h-[46px] bg-primary-fixed/10 hover:bg-primary-fixed text-primary-fixed hover:text-on-primary rounded-xl flex items-center justify-center transition-all active:scale-95 border border-primary-fixed/10"
             >
                <RotateCw className="w-5 h-5" />
@@ -278,7 +283,7 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
            <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline-variant/5">
                  <Search className="w-3.5 h-3.5 opacity-20" />
-                 <span className="text-[10px] font-bold text-on-surface-variant/40">已过滤 {filteredHistory.length} / {history.length} 条</span>
+                 <span className="text-[10px] font-bold text-on-surface-variant/40">已过滤 {totalCount} 条</span>
               </div>
            </div>
         </div>
@@ -373,13 +378,13 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
 
         <div className="px-8 py-10 bg-transparent flex items-center justify-between border-t border-gray-100">
            <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">
-              显示第 {(page - 1) * perPage + 1} 到 {Math.min(page * perPage, filteredHistory.length)} 条结果
+              显示第 {(currentPage - 1) * perPage + 1} 到 {Math.min(currentPage * perPage, totalCount)} 条结果，共 {totalCount} 条
            </span>
 
            <div className="flex items-center gap-2">
               <button 
-                 disabled={page <= 1}
-                 onClick={() => setPage(p => p - 1)}
+                 disabled={currentPage <= 1}
+                 onClick={() => onPageChange(currentPage - 1)}
                  className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 transition-colors disabled:opacity-30"
               >
                  <ChevronLeft className="w-5 h-5" />
@@ -387,15 +392,15 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
               
               <div className="flex items-center gap-1">
                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                 .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                 .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                  .map((p, i, arr) => (
                    <React.Fragment key={p}>
                      {i > 0 && arr[i-1] !== p - 1 && <span className="px-2 text-gray-400/30 text-xs text-center">...</span>}
                      <button 
-                       onClick={() => setPage(p)}
+                       onClick={() => onPageChange(p)}
                        className={cn(
                          "w-10 h-10 flex items-center justify-center rounded-xl text-xs font-black transition-all",
-                         p === page 
+                         p === currentPage 
                            ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
                            : "border border-gray-100 text-gray-400 hover:bg-gray-50"
                        )}
@@ -407,8 +412,8 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
               </div>
 
               <button 
-                 disabled={page >= totalPages}
-                 onClick={() => setPage(p => p + 1)}
+                 disabled={currentPage >= totalPages}
+                 onClick={() => onPageChange(currentPage + 1)}
                  className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 transition-colors disabled:opacity-30"
               >
                  <ChevronRight className="w-5 h-5" />

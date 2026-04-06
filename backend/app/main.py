@@ -11,6 +11,7 @@ from app.api.main import api_router  # 导入核心 API 路由
 from app.core.config import settings  # 导入全局配置
 from app.core.http_client import close_client, get_client  # 导入 HTTP 客户端生命周期管理函数
 from app.core.logger import setup_logger  # 导入日志初始化函数
+from loguru import logger
 
 # 初始化自定义日志配置
 setup_logger()
@@ -18,6 +19,18 @@ setup_logger()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # [ULTRA CONCURRENCY TUNING]：解决 AnyIO 线程池默认 40 的瓶颈
+    # 为同步路由（def execute_replay）解锁更多物理线程。调优目标：200
+    from anyio.lowlevel import RunVar
+    from anyio import CapacityLimiter
+    try:
+        RunVar("_default_thread_limiter").set(CapacityLimiter(200))
+        logger.success("🚀 [Concurrency] AnyIO thread pool expanded to 200.")
+    except Exception as e:
+        logger.warning(f"⚠️ [Concurrency] Failed to set AnyIO limiter: {e}")
+
+    logger.info("✅ [FastAPI] Startup complete.")
+
     # FastAPI 应用启动时执行：初始化全局 HTTP 客户端
     await get_client()
     yield  # 挂起，应用运行期间保持状态

@@ -13,16 +13,17 @@ router = APIRouter()
     summary="Execute Baseline Replay",
     description="Replay the original captured flow to get a baseline response for DIFF comparison."
 )
-async def execute_baseline(
+def execute_baseline(
     flow_id: uuid.UUID,
     session: SessionDep,
     current_user: Annotated[User, Depends(get_current_active_superuser)]
 ) -> BaselineResult:
     """
-    [接口职责]：执行流量基准重放（方案 B 核心）。
+    [接口职责]：执行流量基准重放。
+    [Gevent 对齐]：内部是同步调用，移除 async 以启用 FastAPI 线程池分配。
     """
     try:
-        result = await ReplayEngine.execute_baseline_by_flow_id(flow_id, session)
+        result = ReplayEngine.execute_baseline_by_flow_id(flow_id, session)
         return BaselineResult(**result)
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
@@ -35,17 +36,17 @@ async def execute_baseline(
     summary="Execute Replay for Variant",
     description="Trigger an asynchronous-ish HTTP request to replay a captured variant and update its state."
 )
-async def execute_replay(
+def execute_replay(
     variant_id: uuid.UUID,
     session: SessionDep,
     current_user: Annotated[User, Depends(get_current_active_superuser)]
 ) -> Variant:
     """
     [接口职责]：执行单点重放。
-    [业务约束]：目前仅由同步请求完成，后续可扩展为异步 Task。
+    [Gevent 对齐]：内部是同步执行，交由 FastAPI 线程池并发处理，防止阻塞主事件循环。
     """
     try:
-        updated_variant = await ReplayEngine.execute_variant(variant_id, session)
+        updated_variant = ReplayEngine.execute_variant(variant_id, session)
         return updated_variant
     except ValueError as ve:
         raise HTTPException(

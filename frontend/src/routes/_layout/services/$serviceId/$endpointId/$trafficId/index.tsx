@@ -77,6 +77,7 @@ function TrafficDetailIndex() {
   const [showDiff, setShowDiff] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [page, setPage] = useState(1)
+  const [historyPage, setHistoryPage] = useState(1) // 📜 新增：重放历史专用分页状态
   const [replayingIds, setReplayingIds] = useState<Set<string>>(new Set()) // 进度追踪
   const [baselineResult, setBaselineResult] = useState<BaselineResult | null>(null)
   const [isFetchingBaseline, setIsFetchingBaseline] = useState(false)
@@ -138,16 +139,20 @@ function TrafficDetailIndex() {
     },
   })
 
-  // 3. 获取历史执行流水
+  // 3. 获取历史执行流水 (服务端分页模式)
   const historyQuery = useQuery({
-    queryKey: ["history", trafficId],
+    queryKey: ["history", trafficId, historyPage],
     queryFn: async () => {
        const res = await __request(OpenAPI, {
           method: "GET",
           url: "/api/v1/variants/history",
-          query: { root_flow_id: trafficId }
+          query: { 
+            root_flow_id: trafficId,
+            skip: (historyPage - 1) * limit,
+            limit: limit
+          }
        })
-       return res as { data: any[] }
+       return res as { data: any[], count: number }
     },
     enabled: activeTab === "history"
   })
@@ -396,6 +401,9 @@ function TrafficDetailIndex() {
                    <HistoryTimeline 
                      history={historyQuery.data?.data ?? []} 
                      variantNames={variantNames} 
+                     currentPage={historyPage}
+                     totalCount={historyQuery.data?.count ?? 0}
+                     onPageChange={setHistoryPage}
                      onReplay={handleReplay}
                      onView={(item) => {
                         // 构建一个临时的变体对象用于详情展示

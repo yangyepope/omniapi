@@ -152,6 +152,11 @@ def get_replay_history(
     获取流量及其变体的所有历史执行记录。
     """
     from app.models import ReplayResult
+    
+    # 🌟 物理总数统计：确保前端分页器知道有 1000+ 条记录
+    count_statement = select(func.count()).select_from(ReplayResult).where(ReplayResult.root_flow_id == root_flow_id)
+    count = session.exec(count_statement).one()
+
     statement = (
         select(ReplayResult)
         .where(ReplayResult.root_flow_id == root_flow_id)
@@ -160,4 +165,4 @@ def get_replay_history(
         .limit(limit)
     )
     results = session.exec(statement).all()
-    return {"data": results}
+    return {"data": results, "count": count}

@@ -26,7 +26,8 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - PYTHONDONTWRITEBYTECODE=1
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q celery
+      - CELERY_WORKER_TYPE=gevent
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q celery -P gevent -c 100
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -53,7 +54,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - POSTGRES_PORT=5432
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_TYPE=gevent  # [Why]：用于在 app/worker.py 中精准触发 gevent.monkey.patch_all()
+      - CELERY_WORKER_TYPE=gevent
     # [Why]：使用 -P gevent 开启协程池，-c 1000 开启高并发
     command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q replay -P gevent -c 1000
     build:
@@ -63,6 +64,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
   db:  # PostgreSQL 数据库服务（存储用户、业务数据等）
     image: postgres:18  # 数据库镜像版本：PostgreSQL 18
     restart: always  # 容器异常退出时自动重启（提升可用性）
+    command: postgres -c max_connections=500
     healthcheck:  # 健康检查：用于 depends_on.condition=service_healthy 等场景
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]  # 使用 pg_isready 探活
       interval: 10s  # 检查间隔
@@ -139,6 +141,10 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
   backend:  # 后端 API 服务（FastAPI）
     image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'  # 后端镜像（可由 CI/CD 推送）
     restart: always  # 容器异常退出时自动重启
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     networks:  # 加入 traefik-public 供 Traefik 反代；default 用于与 db 等服务内部通信
       - traefik-public
       - default
@@ -172,6 +178,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - SENTRY_DSN=${SENTRY_DSN}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: /usr/local/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --backlog 2048 --timeout-keep-alive 30
 
     healthcheck:  # 健康检查：用于判断后端是否对外可用（Traefik/depends_on 可用）
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]  # 调用健康检查接口

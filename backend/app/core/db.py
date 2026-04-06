@@ -5,7 +5,15 @@ from app.core.config import settings  # 导入全局配置
 from app.models import User, UserCreate  # 导入用户相关的数据库模型
 
 # 根据配置中的数据库 URI 创建全局同步数据库引擎
-engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+# [Unified Gevent Refactor]：极致性能加固 (十万级零丢失优化)
+engine = create_engine(
+    str(settings.SQLALCHEMY_DATABASE_URI),
+    pool_size=100,          # 常驻连接数
+    max_overflow=100,       # 溢出连接数
+    pool_pre_ping=True,      # 稳定性探测
+    pool_recycle=3600,      # 连接每小时强制回收，防止 TCP 虚连接
+    pool_timeout=45,        # 峰值排队等待时间增至 45s
+)
 
 
 # 确保在初始化数据库之前已经导入了所有的 SQLModel 模型 (app.models)

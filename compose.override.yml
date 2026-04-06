@@ -49,6 +49,7 @@ services:
     restart: "no"
     ports:
       - "5332:5432"
+    command: postgres -c max_connections=500
 
   prestart:
     volumes:
@@ -105,7 +106,9 @@ services:
   celery-worker-default:  # 默认 Worker 开发模式：挂载本地源码
     volumes:
       - ./backend:/app/backend
-    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q celery
+    environment:
+      - CELERY_WORKER_TYPE=gevent
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q celery -P gevent -c 100
 
   celery-worker-replay:  # 重放 Worker 开发模式：挂载本地源码
     volumes:

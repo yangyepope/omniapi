@@ -5,14 +5,15 @@ import uuid
 from datetime import datetime, timezone
 
 # ❗ [CRITICAL]：防御性 Monkey Patch
-# 仅当处于 Celery Gevent Worker 环境时才执行补丁，防止干扰 FastAPI (uvloop) 进程
+# 仅当显式注入 CELERY_WORKER_TYPE=gevent 时才开启 Patch
+# 这能保护 FastAPI (uvloop) 进程不被 Gevent 劫持，从而避免 LoopExit 冲突崩溃
 if os.getenv("CELERY_WORKER_TYPE") == "gevent":
     try:
         import gevent.monkey
         gevent.monkey.patch_all()
-        logging.info("💪 [Gevent] Monkey patch applied successfully.")
+        logging.info("💪 [Gevent] Monkey patch applied for Worker process.")
     except ImportError:
-        logging.warning("⚠️ [Gevent] gevent not found, skipping monkey patch.")
+        logging.warning("⚠️ [Gevent] gevent not found, skipping patch.")
 
 from celery import Celery
 from sqlalchemy import select, text, update
