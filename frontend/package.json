@@ -11,6 +11,8 @@
     "generate-client": "openapi-ts",
     "test": "bunx playwright test",
     "test:ui": "bunx playwright test --ui",
+    "test:e2e:variant": "bunx playwright test tests/create-variant.spec.ts --project=chromium",
+    "test:e2e:variant:open": "bunx playwright test tests/create-variant.spec.ts --project=chromium && bunx playwright show-report",
     "mcp:setup": "export $(cat .env | xargs) && npx stitch-mcp-server setup",
     "mcp:bridge": "export $(cat .env | xargs) && PORT=3000 node mcp-sse-bridge.js",
     "stitch": "node ../.agent/plugins/ecc/skills/stitch-mcp/scripts/stitch-cli.js",

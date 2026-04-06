@@ -177,9 +177,15 @@ function EndpointDetailPage() {
   })
 
   const isLoadingInitial = endpointDetailQuery.isLoading || statsQuery.isLoading
+  // 从后端响应中提取统计数据：
+  // 1. detail: 接口基础元数据
   const detail = endpointDetailQuery.data?.endpoint
+  // 2. trafficRecords: 最近捕获的流量记录列表（优先使用专门的流量查询结果，降级使用详情接口附带的近期记录）
   const trafficRecords = endpointTrafficQuery.data?.data ?? endpointDetailQuery.data?.recent_traffic ?? []
-  const trafficCount = endpointDetailQuery.data?.traffic_count ?? endpointTrafficQuery.data?.count ?? 0
+  // 3. trafficCount: 映射至 total_traffic_count，展示该接口历史报文总命中数
+  const trafficCount = endpointDetailQuery.data?.total_traffic_count ?? 0
+  // 4. uniqueCount: 映射至 dedup_traffic_count，展示经过指纹去重后的唯一报文样例数
+  const uniqueCount = endpointDetailQuery.data?.dedup_traffic_count ?? 0
   
 
   if (isLoadingInitial) {
@@ -238,7 +244,7 @@ function EndpointDetailPage() {
         {/* Main Column */}
         <div className="col-span-12 space-y-8">
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <motion.div 
               whileHover={{ y: -5, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -274,11 +280,25 @@ function EndpointDetailPage() {
             >
               <div className="flex items-center gap-2 mb-3">
                 <Database className="w-4 h-4 text-primary-fixed" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">流量总量</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">原始总流量</span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-3xl font-black text-primary-fixed tracking-tighter">{trafficCount}</span>
-                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Unites captured</span>
+                <span className="text-3xl font-black text-on-surface tracking-tighter">{trafficCount}</span>
+                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Units captured</span>
+              </div>
+            </motion.div>
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="w-4 h-4 text-primary-fixed" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">剔重后流量</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-primary-fixed tracking-tighter">{uniqueCount}</span>
+                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Unique samples</span>
               </div>
             </motion.div>
           </div>
@@ -297,6 +317,7 @@ function EndpointDetailPage() {
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Body</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">字段标签</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">变体数</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-center">命中数 (Hits)</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Source IP</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Captured At</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">操作</th>
@@ -405,8 +426,13 @@ function EndpointDetailPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">—</span>
+                    <td className="px-6 py-5 whitespace-nowrap text-center">
+                       <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">—</span>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap text-center">
+                       <Badge variant="neutral" className="bg-primary-fixed/5 text-primary-fixed border-primary-fixed/10 font-black min-w-[32px] justify-center">
+                         {record.occurrence_count || 1}
+                       </Badge>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
                        <span className="text-xs font-bold text-on-surface">{record.client_ip || "Internal"}</span>

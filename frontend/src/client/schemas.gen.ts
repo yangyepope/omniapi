@@ -103,6 +103,10 @@ export const ApiEndpointDetailResponseSchema = {
             type: 'integer',
             title: 'Traffic Count'
         },
+        dedup_traffic_count: {
+            type: 'integer',
+            title: 'Dedup Traffic Count'
+        },
         last_seen_at: {
             anyOf: [
                 {
@@ -117,14 +121,14 @@ export const ApiEndpointDetailResponseSchema = {
         },
         recent_traffic: {
             items: {
-                '$ref': '#/components/schemas/TrafficRecordPublic'
+                '$ref': '#/components/schemas/FilteredFlowPublic'
             },
             type: 'array',
             title: 'Recent Traffic'
         }
     },
     type: 'object',
-    required: ['endpoint', 'module_name', 'traffic_count', 'last_seen_at', 'recent_traffic'],
+    required: ['endpoint', 'module_name', 'traffic_count', 'dedup_traffic_count', 'last_seen_at', 'recent_traffic'],
     title: 'ApiEndpointDetailResponse'
 } as const;
 
@@ -195,6 +199,28 @@ export const ApiEndpointPublicSchema = {
                 }
             ],
             title: 'Module Id'
+        },
+        total_traffic_count: {
+            type: 'integer',
+            title: 'Total Traffic Count',
+            default: 0
+        },
+        variants_count: {
+            type: 'integer',
+            title: 'Variants Count',
+            default: 0
+        },
+        last_active_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Active At'
         },
         id: {
             type: 'string',
@@ -443,6 +469,107 @@ export const EndpointLevelSchema = {
     type: 'string',
     enum: ['p0', 'p1', 'p2', 'p3'],
     title: 'EndpointLevel'
+} as const;
+
+export const FilteredFlowPublicSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        endpoint_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Endpoint Id'
+        },
+        method: {
+            type: 'string',
+            title: 'Method'
+        },
+        original_path: {
+            type: 'string',
+            title: 'Original Path'
+        },
+        headers: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Headers'
+        },
+        body: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Body'
+        },
+        client_ip: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Client Ip'
+        },
+        created_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Created At'
+        },
+        variant_count: {
+            type: 'integer',
+            title: 'Variant Count',
+            default: 0
+        },
+        replay_count: {
+            type: 'integer',
+            title: 'Replay Count',
+            default: 0
+        }
+    },
+    type: 'object',
+    required: ['id', 'endpoint_id', 'method', 'original_path', 'created_at'],
+    title: 'FilteredFlowPublic'
+} as const;
+
+export const FilteredFlowsPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/FilteredFlowPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'FilteredFlowsPublic'
 } as const;
 
 export const HTTPValidationErrorSchema = {
@@ -1209,107 +1336,6 @@ export const TokenSchema = {
     title: 'Token'
 } as const;
 
-export const TrafficRecordPublicSchema = {
-    properties: {
-        endpoint_id: {
-            anyOf: [
-                {
-                    type: 'string',
-                    format: 'uuid'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Endpoint Id'
-        },
-        method: {
-            type: 'string',
-            maxLength: 10,
-            title: 'Method'
-        },
-        real_uri: {
-            type: 'string',
-            maxLength: 1024,
-            title: 'Real Uri'
-        },
-        headers: {
-            anyOf: [
-                {
-                    additionalProperties: true,
-                    type: 'object'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Headers'
-        },
-        body: {
-            anyOf: [
-                {
-                    type: 'string'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Body'
-        },
-        source_ip: {
-            anyOf: [
-                {
-                    type: 'string',
-                    maxLength: 50
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Source Ip'
-        },
-        id: {
-            type: 'string',
-            format: 'uuid',
-            title: 'Id'
-        },
-        created_at: {
-            anyOf: [
-                {
-                    type: 'string',
-                    format: 'date-time'
-                },
-                {
-                    type: 'null'
-                }
-            ],
-            title: 'Created At'
-        }
-    },
-    type: 'object',
-    required: ['method', 'real_uri', 'id', 'created_at'],
-    title: 'TrafficRecordPublic'
-} as const;
-
-export const TrafficRecordsPublicSchema = {
-    properties: {
-        data: {
-            items: {
-                '$ref': '#/components/schemas/TrafficRecordPublic'
-            },
-            type: 'array',
-            title: 'Data'
-        },
-        count: {
-            type: 'integer',
-            title: 'Count'
-        }
-    },
-    type: 'object',
-    required: ['data', 'count'],
-    title: 'TrafficRecordsPublic'
-} as const;
-
 export const UpdatePasswordSchema = {
     properties: {
         current_password: {
@@ -1598,6 +1624,354 @@ export const ValidationErrorSchema = {
     type: 'object',
     required: ['loc', 'msg', 'type'],
     title: 'ValidationError'
+} as const;
+
+export const VariantCreateSchema = {
+    properties: {
+        name: {
+            type: 'string',
+            maxLength: 256,
+            title: 'Name'
+        },
+        description: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Description'
+        },
+        method: {
+            type: 'string',
+            maxLength: 10,
+            title: 'Method'
+        },
+        url: {
+            type: 'string',
+            title: 'Url'
+        },
+        headers: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Headers'
+        },
+        body_str: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Body Str'
+        },
+        source_type: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Source Type',
+            default: 'manual'
+        },
+        origin: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 128
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Origin'
+        },
+        transformations: {
+            anyOf: [
+                {
+                    items: {
+                        additionalProperties: true,
+                        type: 'object'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transformations'
+        },
+        root_flow_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Root Flow Id'
+        }
+    },
+    type: 'object',
+    required: ['name', 'method', 'url', 'root_flow_id'],
+    title: 'VariantCreate'
+} as const;
+
+export const VariantPublicSchema = {
+    properties: {
+        name: {
+            type: 'string',
+            maxLength: 256,
+            title: 'Name'
+        },
+        description: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Description'
+        },
+        method: {
+            type: 'string',
+            maxLength: 10,
+            title: 'Method'
+        },
+        url: {
+            type: 'string',
+            title: 'Url'
+        },
+        headers: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Headers'
+        },
+        body_str: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Body Str'
+        },
+        source_type: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Source Type',
+            default: 'manual'
+        },
+        origin: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 128
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Origin'
+        },
+        transformations: {
+            anyOf: [
+                {
+                    items: {
+                        additionalProperties: true,
+                        type: 'object'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Transformations'
+        },
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        root_flow_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Root Flow Id'
+        },
+        replay_count: {
+            type: 'integer',
+            title: 'Replay Count'
+        },
+        last_response_code: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Response Code'
+        },
+        last_response_body: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Response Body'
+        },
+        last_latency_ms: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Latency Ms'
+        },
+        last_replay_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Replay At'
+        },
+        created_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Created At'
+        }
+    },
+    type: 'object',
+    required: ['name', 'method', 'url', 'id', 'root_flow_id', 'replay_count', 'last_response_code', 'last_response_body', 'last_latency_ms', 'last_replay_at', 'created_at'],
+    title: 'VariantPublic'
+} as const;
+
+export const VariantUpdateSchema = {
+    properties: {
+        name: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 256
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Name'
+        },
+        description: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Description'
+        },
+        method: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Method'
+        },
+        url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Url'
+        },
+        headers: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Headers'
+        },
+        body_str: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Body Str'
+        }
+    },
+    type: 'object',
+    title: 'VariantUpdate'
+} as const;
+
+export const VariantsPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/VariantPublic'
+            },
+            type: 'array',
+            title: 'Data'
+        },
+        count: {
+            type: 'integer',
+            title: 'Count'
+        }
+    },
+    type: 'object',
+    required: ['data', 'count'],
+    title: 'VariantsPublic'
 } as const;
 
 export const VideoDataSchema = {

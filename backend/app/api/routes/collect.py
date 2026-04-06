@@ -1,10 +1,9 @@
-from typing import Any
-import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request, Response, status
 from loguru import logger
 from sqlmodel import select
+from starlette.requests import ClientDisconnect
 
 from app.api.deps import SessionDep
 from app.models import GlobalConfig, RawFlow
@@ -79,7 +78,7 @@ async def collect_traffic(
         original_method = extract_and_pop(raw_headers, 'x-original-method') or request.method
         original_uri = extract_and_pop(raw_headers, 'x-original-uri') or request.url.path
         real_ip = extract_and_pop(raw_headers, 'x-real-ip') or getattr(request.client, 'host', 'Unknown')
-        
+
         # [服务名称提取逻辑]：取 URL Path 的第一层（例如 /api/v1/users -> api）
         path_parts = [p for p in original_uri.split('/') if p]
         service_name = path_parts[0] if path_parts else "default"
@@ -112,8 +111,13 @@ async def collect_traffic(
         # 仅向异步任务池发送记录 ID，由 Worker 完成去重和路径发现逻辑
         process_raw_flow_task.delay(raw_flow_id=str(raw_flow.id))
 
+    except ClientDisconnect:
+        # [Why]：高并发压测下，Client 可能在 Body 读取完前就关闭连接
+        # 这属于镜像采集中的预期正常损耗，静默处理即可。
+        logger.debug("🌐 [Client Disconnect] Caller dropped before body read.")
     except Exception:
         import traceback
+
         # 全量异常捕获，确保镜像流量接收端点永不返回 500
         logger.error(f"🔴 Traffic collection failed: {traceback.format_exc()}")
 

@@ -153,18 +153,18 @@ function EndpointListPage() {
           </div>
         </motion.div>
         
-        {/* Total Traffic */}
+        {/* Total Traffic (Raw) */}
         <motion.div 
           variants={itemVariants} 
           className="bg-surface-container-low/40 p-8 rounded-[2rem] border border-outline-variant/5 flex flex-col justify-between group hover:bg-surface-container-lowest transition-all duration-500"
         >
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">总流量 (Total)</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">原始流量 (总)</span>
           <div className="mt-4 flex items-end justify-between">
             <div className="text-4xl font-black text-on-surface tracking-tighter">
-              1.2M
+              {currentModule?.total_traffic_count?.toLocaleString() || 0}
             </div>
             <div className="flex items-center text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
-              +12%
+              Live
             </div>
           </div>
           <div className="mt-4 h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
@@ -172,15 +172,15 @@ function EndpointListPage() {
           </div>
         </motion.div>
         
-        {/* Unique Flows */}
+        {/* Deduplicated Flows */}
         <motion.div 
           variants={itemVariants} 
           className="bg-surface-container-low/40 p-8 rounded-[2rem] border border-outline-variant/5 flex flex-col justify-between group hover:bg-surface-container-lowest transition-all duration-500"
         >
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">唯一流量 (Unique)</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">剔重后流量</span>
           <div className="mt-4 flex items-end justify-between">
             <div className="text-4xl font-black text-on-surface tracking-tighter">
-              842K
+              {currentModule?.unique_traffic_count?.toLocaleString() || 0}
             </div>
             <Activity className="w-5 h-5 text-on-surface-variant/20 group-hover:text-amber-500 transition-colors" />
           </div>
@@ -269,8 +269,8 @@ function EndpointListPage() {
                 <th className="px-8 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">归一化路径</th>
                 <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">方法</th>
                 <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">状态</th>
-                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">流量统计</th>
-                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">变体数</th>
+                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">原始流量</th>
+                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">剔重后流量</th>
                 <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">最后活跃</th>
                 <th className="px-8 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em] text-right">操作</th>
               </tr>
@@ -332,7 +332,7 @@ function EndpointListPage() {
 
                     <td className="px-6 py-6">
                       <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-surface-container-high border border-outline-variant/10 text-[10px] font-black text-on-surface-variant">
-                        {api.variants_count}
+                        {api.unique_traffic_count}
                       </div>
                     </td>
 

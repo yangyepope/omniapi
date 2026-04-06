@@ -31,6 +31,8 @@ export default defineConfig({
     trace: 'on-first-retry',
     /* 开启截图功能：默认在测试运行后保留截图 */
     screenshot: 'on',
+    /* 📹 开启录屏功能：物理捕获三层钻取的执行全过程 */
+    video: 'on',
   },
 
   /* Configure projects for major browsers */

@@ -8,7 +8,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
     networks:
       - default
 
-  celery-worker:  # Celery Worker：处理流量异步去重、接口发现等后台任务
+  celery-worker-default:  # 默认 Worker：保持 prefork 模型，处理剔重等 CPU/DB 密集型任务
     image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
     restart: always
     networks:
@@ -16,23 +16,46 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
     depends_on:
       db:
         condition: service_healthy
-        restart: true
       redis:
         condition: service_started
     env_file:
       - .env
     environment:
-      - DOMAIN=${DOMAIN}
-      - ENVIRONMENT=${ENVIRONMENT}
-      - SECRET_KEY=${SECRET_KEY?Variable not set}
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - PYTHONDONTWRITEBYTECODE=1
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q celery
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+
+  celery-worker-replay:  # 重放专用 Worker：切换为 gevent 协程模型，支持 10 万级 I/O 并发
+    image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
+    restart: always
+    ulimits:  # [Why]：支撑海量并发连接所需的句柄数
+      nproc: 65535
+      nofile:
+        soft: 655350
+        hard: 655350
+    networks:
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_WORKER_TYPE=gevent  # [Why]：用于在 app/worker.py 中精准触发 gevent.monkey.patch_all()
+    # [Why]：使用 -P gevent 开启协程池，-c 1000 开启高并发
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q replay -P gevent -c 1000
     build:
       context: .
       dockerfile: backend/Dockerfile

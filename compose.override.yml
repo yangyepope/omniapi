@@ -102,10 +102,19 @@ services:
   redis:
     restart: "no"
 
-  celery-worker:
+  celery-worker-default:  # 默认 Worker 开发模式：挂载本地源码
     volumes:
       - ./backend:/app/backend
-    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q celery
+
+  celery-worker-replay:  # 重放 Worker 开发模式：挂载本地源码
+    volumes:
+      - ./backend:/app/backend
+    environment:
+      - CELERY_WORKER_TYPE=gevent
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    command: /app/.venv/bin/celery -A app.worker worker --loglevel=info -Q replay -P gevent
 
   frontend:
     restart: "no"

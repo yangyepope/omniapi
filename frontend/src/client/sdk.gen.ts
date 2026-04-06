@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ApiKeysReadApiKeysData, ApiKeysReadApiKeysResponse, ApiKeysCreateApiKeyData, ApiKeysCreateApiKeyResponse, ApiKeysDeleteApiKeyData, ApiKeysDeleteApiKeyResponse, CollectCollectTrafficResponse, CollectCollectTraffic1Response, CollectCollectTraffic2Response, CollectCollectTraffic3Response, CollectCollectTraffic4Response, CollectCollectTraffic5Response, CollectCollectTraffic6Response, DouyinFetchOneVideoByShareUrlData, DouyinFetchOneVideoByShareUrlResponse, ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, SecurityAssetsReadAssetsData, SecurityAssetsReadAssetsResponse, SecurityAssetsTriggerScanData, SecurityAssetsTriggerScanResponse, SecurityAssetsReadReportsData, SecurityAssetsReadReportsResponse, SystemModulesGetSystemModulesStatsResponse, SystemModulesCreateSystemModuleData, SystemModulesCreateSystemModuleResponse, SystemModulesUpdateSystemModuleData, SystemModulesUpdateSystemModuleResponse, SystemModulesDeleteSystemModuleData, SystemModulesDeleteSystemModuleResponse, SystemModulesGetModuleEndpointsData, SystemModulesGetModuleEndpointsResponse, SystemModulesGetModuleEndpointDetailData, SystemModulesGetModuleEndpointDetailResponse, TrafficManagerGetConfigResponse, TrafficManagerToggleConfigData, TrafficManagerToggleConfigResponse, TrafficManagerImportApifoxData, TrafficManagerImportApifoxResponse, TrafficManagerGetEndpointTrafficData, TrafficManagerGetEndpointTrafficResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { ApiKeysReadApiKeysData, ApiKeysReadApiKeysResponse, ApiKeysCreateApiKeyData, ApiKeysCreateApiKeyResponse, ApiKeysDeleteApiKeyData, ApiKeysDeleteApiKeyResponse, CollectCollectTrafficResponse, DouyinFetchOneVideoByShareUrlData, DouyinFetchOneVideoByShareUrlResponse, ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ReplaysExecuteReplayData, ReplaysExecuteReplayResponse, SecurityAssetsReadAssetsData, SecurityAssetsReadAssetsResponse, SecurityAssetsTriggerScanData, SecurityAssetsTriggerScanResponse, SecurityAssetsReadReportsData, SecurityAssetsReadReportsResponse, SystemModulesGetSystemModulesStatsResponse, SystemModulesCreateSystemModuleData, SystemModulesCreateSystemModuleResponse, SystemModulesUpdateSystemModuleData, SystemModulesUpdateSystemModuleResponse, SystemModulesDeleteSystemModuleData, SystemModulesDeleteSystemModuleResponse, SystemModulesGetModuleEndpointsData, SystemModulesGetModuleEndpointsResponse, SystemModulesGetModuleEndpointDetailData, SystemModulesGetModuleEndpointDetailResponse, TrafficManagerGetConfigResponse, TrafficManagerUpdateConfigData, TrafficManagerUpdateConfigResponse, TrafficManagerImportApifoxData, TrafficManagerImportApifoxResponse, TrafficManagerGetEndpointTrafficData, TrafficManagerGetEndpointTrafficResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse, VariantsGetVariantsData, VariantsGetVariantsResponse, VariantsCreateVariantData, VariantsCreateVariantResponse, VariantsPushVariantData, VariantsPushVariantResponse, VariantsUpdateVariantData, VariantsUpdateVariantResponse, VariantsDeleteVariantData, VariantsDeleteVariantResponse, VariantsReplayVariantData, VariantsReplayVariantResponse, VariantsGetReplayHistoryData, VariantsGetReplayHistoryResponse } from './types.gen';
 
 export class ApiKeysService {
     /**
@@ -76,86 +76,14 @@ export class ApiKeysService {
 
 export class CollectService {
     /**
-     * Collect Traffic
-     * @returns unknown Successful Response
+     * Collect Mirror Traffic
+     * Endpoint for Step 1: Immediate ingestion into RawFlow table.
+     * @returns void Successful Response
      * @throws ApiError
      */
     public static collectTraffic(): CancelablePromise<CollectCollectTrafficResponse> {
         return __request(OpenAPI, {
-            method: 'GET',
-            url: '/v1/collect/'
-        });
-    }
-    
-    /**
-     * Collect Traffic
-     * @returns unknown Successful Response
-     * @throws ApiError
-     */
-    public static collectTraffic1(): CancelablePromise<CollectCollectTraffic1Response> {
-        return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/v1/collect/'
-        });
-    }
-    
-    /**
-     * Collect Traffic
-     * @returns unknown Successful Response
-     * @throws ApiError
-     */
-    public static collectTraffic2(): CancelablePromise<CollectCollectTraffic2Response> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/v1/collect/'
-        });
-    }
-    
-    /**
-     * Collect Traffic
-     * @returns unknown Successful Response
-     * @throws ApiError
-     */
-    public static collectTraffic3(): CancelablePromise<CollectCollectTraffic3Response> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/v1/collect'
-        });
-    }
-    
-    /**
-     * Collect Traffic
-     * @returns unknown Successful Response
-     * @throws ApiError
-     */
-    public static collectTraffic4(): CancelablePromise<CollectCollectTraffic4Response> {
-        return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/v1/collect'
-        });
-    }
-    
-    /**
-     * Collect Mirror Traffic
-     * Endpoint to receive asynchronous mirror traffic from Nginx. Returns 204 immediately.
-     * @returns void Successful Response
-     * @throws ApiError
-     */
-    public static collectTraffic5(): CancelablePromise<CollectCollectTraffic5Response> {
-        return __request(OpenAPI, {
             method: 'POST',
-            url: '/v1/collect'
-        });
-    }
-    
-    /**
-     * Collect Traffic
-     * @returns unknown Successful Response
-     * @throws ApiError
-     */
-    public static collectTraffic6(): CancelablePromise<CollectCollectTraffic6Response> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
             url: '/v1/collect'
         });
     }
@@ -464,6 +392,29 @@ export class PrivateService {
     }
 }
 
+export class ReplaysService {
+    /**
+     * Execute Replay for Variant
+     * Trigger an asynchronous-ish HTTP request to replay a captured variant and update its state.
+     * @param data The data for the request.
+     * @param data.variantId
+     * @returns VariantPublic Successful Response
+     * @throws ApiError
+     */
+    public static executeReplay(data: ReplaysExecuteReplayData): CancelablePromise<ReplaysExecuteReplayResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/replays/{variant_id}',
+            path: {
+                variant_id: data.variantId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
 export class SecurityAssetsService {
     /**
      * Read Assets
@@ -666,7 +617,7 @@ export class SystemModulesService {
 
 export class TrafficManagerService {
     /**
-     * Get Traffic Collection Config
+     * Get Global Governance Config
      * @returns unknown Successful Response
      * @throws ApiError
      */
@@ -678,17 +629,19 @@ export class TrafficManagerService {
     }
     
     /**
-     * Toggle Traffic Collection
+     * Update Governance Config
      * @param data The data for the request.
+     * @param data.key
      * @param data.enabled
      * @returns unknown Successful Response
      * @throws ApiError
      */
-    public static toggleConfig(data: TrafficManagerToggleConfigData): CancelablePromise<TrafficManagerToggleConfigResponse> {
+    public static updateConfig(data: TrafficManagerUpdateConfigData): CancelablePromise<TrafficManagerUpdateConfigResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/traffic-manager/config',
             query: {
+                key: data.key,
                 enabled: data.enabled
             },
             errors: {
@@ -720,12 +673,12 @@ export class TrafficManagerService {
     
     /**
      * Get traffic for an endpoint
-     * 按时间倒序查询某个接口下的所有流量快照。
+     * 按时间倒序查询某个接口下的所有精选流量快照。
      * @param data The data for the request.
      * @param data.endpointId
      * @param data.skip
      * @param data.limit
-     * @returns TrafficRecordsPublic Successful Response
+     * @returns FilteredFlowsPublic Successful Response
      * @throws ApiError
      */
     public static getEndpointTraffic(data: TrafficManagerGetEndpointTrafficData): CancelablePromise<TrafficManagerGetEndpointTrafficResponse> {
@@ -984,6 +937,165 @@ export class UtilsService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/utils/health-check/'
+        });
+    }
+}
+
+export class VariantsService {
+    /**
+     * Get variants for a flow
+     * 获取属于特定原始流量的所有变体（扁平化结构）。
+     * @param data The data for the request.
+     * @param data.rootFlowId
+     * @param data.skip
+     * @param data.limit
+     * @returns VariantsPublic Successful Response
+     * @throws ApiError
+     */
+    public static getVariants(data: VariantsGetVariantsData): CancelablePromise<VariantsGetVariantsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/variants/',
+            query: {
+                root_flow_id: data.rootFlowId,
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create a new variant manual
+     * 手动创建变体。
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns VariantPublic Successful Response
+     * @throws ApiError
+     */
+    public static createVariant(data: VariantsCreateVariantData): CancelablePromise<VariantsCreateVariantResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/variants/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * API Push for external AI Agents
+     * 供外部 AI Agent 或大模型推送变体数据。
+     * 逻辑与创建一致，但可扩展外部来源标记等。
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns VariantPublic Successful Response
+     * @throws ApiError
+     */
+    public static pushVariant(data: VariantsPushVariantData): CancelablePromise<VariantsPushVariantResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/variants/push',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update variant details
+     * 重命名或修改变体参数。
+     * @param data The data for the request.
+     * @param data.id
+     * @param data.requestBody
+     * @returns VariantPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateVariant(data: VariantsUpdateVariantData): CancelablePromise<VariantsUpdateVariantResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/variants/{id}',
+            path: {
+                id: data.id
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete a variant
+     * 物理删除变体。
+     * @param data The data for the request.
+     * @param data.id
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static deleteVariant(data: VariantsDeleteVariantData): CancelablePromise<VariantsDeleteVariantResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/variants/{id}',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Trigger replay for variant
+     * 触发变体重放执行。
+     * @param data The data for the request.
+     * @param data.id
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static replayVariant(data: VariantsReplayVariantData): CancelablePromise<VariantsReplayVariantResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/variants/{id}/replay',
+            path: {
+                id: data.id
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get replay history for a flow
+     * 获取流量及其变体的所有历史执行记录。
+     * @param data The data for the request.
+     * @param data.rootFlowId
+     * @param data.skip
+     * @param data.limit
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getReplayHistory(data: VariantsGetReplayHistoryData): CancelablePromise<VariantsGetReplayHistoryResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/variants/history',
+            query: {
+                root_flow_id: data.rootFlowId,
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
         });
     }
 }

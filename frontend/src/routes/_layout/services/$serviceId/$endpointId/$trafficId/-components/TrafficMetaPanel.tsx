@@ -7,6 +7,7 @@ interface TrafficMetaPanelProps {
   record: {
     method: string
     real_uri?: string
+    original_path?: string
     headers?: Record<string, any> | null
     source_ip?: string | null
     created_at?: string | null
@@ -45,7 +46,7 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export function TrafficMetaPanel({ record }: TrafficMetaPanelProps) {
-  const { method, real_uri, headers, source_ip, created_at } = record
+  const { method, real_uri, original_path, headers, source_ip, created_at } = record
   const [copiedHeaders, setCopiedHeaders] = useState(false)
   const [copiedUri, setCopiedUri] = useState(false)
   const [copiedIp, setCopiedIp] = useState(false)
@@ -86,7 +87,6 @@ export function TrafficMetaPanel({ record }: TrafficMetaPanelProps) {
 
   return (
     <div className="space-y-6">
-      {/* 基本指标卡片 */}
       <section className="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-outline-variant/5 bg-surface-container-low/30 flex items-center gap-2">
           <Info className="w-3.5 h-3.5 text-primary-fixed" />
@@ -103,9 +103,9 @@ export function TrafficMetaPanel({ record }: TrafficMetaPanelProps) {
             </span>
           </MetaRow>
           <MetaRow label="原始路径">
-            <div className="flex items-center gap-2 group/uri cursor-pointer" onClick={() => real_uri && handleCopyText(real_uri, setCopiedUri)}>
-              <span className="text-primary-fixed font-mono">{real_uri || "—"}</span>
-              {real_uri && (
+            <div className="flex items-center gap-2 group/uri cursor-pointer" onClick={() => (original_path || real_uri) && handleCopyText(original_path || real_uri || "", setCopiedUri)}>
+              <span className="text-primary-fixed font-mono">{original_path || real_uri || "—"}</span>
+              {(original_path || real_uri) && (
                 <div className="bg-surface-container-high/50 p-1 rounded-md opacity-0 group-hover/uri:opacity-100 transition-all">
                   {copiedUri ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-2.5 h-2.5 text-on-surface-variant/40" />}
                 </div>
@@ -128,7 +128,6 @@ export function TrafficMetaPanel({ record }: TrafficMetaPanelProps) {
         </div>
       </section>
 
-      {/* HTTP Headers 卡片 */}
       <section className="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-outline-variant/5 bg-surface-container-low/30 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -141,13 +140,15 @@ export function TrafficMetaPanel({ record }: TrafficMetaPanelProps) {
                 <span className="text-[9px] font-black uppercase tracking-tighter">{copiedHeaders ? "Copied" : "Copy JSON"}</span>
              </button>
           </div>
-          <Badge variant="neutral" className="text-[9px] font-black">{Object.keys(headers || {}).length} KEYS</Badge>
+          <Badge variant="neutral" className="text-[9px] font-black">
+            {Object.keys(headers || {}).filter(k => k.toLowerCase() !== "x-original-uri").length} KEYS
+          </Badge>
         </div>
         <div className="divide-y divide-outline-variant/5">
-          {Object.entries(headers || {}).length === 0 ? (
+          {Object.entries(headers || {}).filter(([k]) => k.toLowerCase() !== "x-original-uri").length === 0 ? (
              <div className="p-8 text-center text-[10px] text-on-surface-variant/30 font-bold italic">No headers captured</div>
           ) : (
-            Object.entries(headers || {}).map(([k, v]) => (
+            Object.entries(headers || {}).filter(([k]) => k.toLowerCase() !== "x-original-uri").map(([k, v]) => (
               <div key={k} className="px-5 py-3 flex items-start gap-4 hover:bg-surface-container-low/20 transition-colors">
                 <span className="text-[10px] font-bold text-primary-fixed/80 w-28 shrink-0 truncate">{k}</span>
                 <span className="text-[10px] text-on-surface-variant/70 font-mono break-all">{String(v)}</span>

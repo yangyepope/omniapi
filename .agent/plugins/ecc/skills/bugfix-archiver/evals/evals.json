@@ -1,0 +1,11 @@
+{
+  "skill_name": "bugfix-archiver",
+  "evals": [
+    {
+      "id": 1,
+      "name": "backend-serialization-fix",
+      "prompt": "刚刚修复了 backend/app/models.py 中的 VariantPublic 序列化错误。原因是 legacy 数据库记录中的 JSON 格式不规范导致字段验证失败。我已经把验证器移到了 VariantCreate 和 VariantUpdate 中。请帮我回档这次修复过程到 bugfix 文件夹。",
+      "expected_output": "包含描述、根因、git diff 摘要和验证结果的 Markdown 文件，路径为 /root/omniapi/bugfix/YYYYMMDD_backend_serialization_fix.md"
+    }
+  ]
+}

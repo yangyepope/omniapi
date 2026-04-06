@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
   GitBranch,
@@ -10,11 +10,13 @@ import {
   Plus,
   X,
   Trash2,
-  Search,
   ChevronLeft,
   ChevronRight,
+  AlertCircle,
+  ArrowRightLeft,
 } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
+import { toast } from "sonner"
 
 import { TrafficManagerService } from "@/client"
 import { OpenAPI } from "@/client/core/OpenAPI"
@@ -43,6 +45,8 @@ export type VariantPublic = {
   body_str?: string | null
   last_response_code?: number | null
   last_response_body?: string | null
+  last_response_headers?: Record<string, any> | null
+  last_request_curl?: string | null
   last_latency_ms?: number | null
   last_replay_at?: string | null
   created_at: string
@@ -53,6 +57,13 @@ export type VariantsPublic = {
   count: number
 }
 
+export type BaselineResult = {
+  status_code: number
+  body: string
+  headers: Record<string, any>
+  latency_ms: number
+}
+
 export const Route = createFileRoute(
   "/_layout/services/$serviceId/$endpointId/$trafficId/",
 )({
@@ -61,13 +72,51 @@ export const Route = createFileRoute(
 
 function TrafficDetailIndex() {
   const { serviceId, endpointId, trafficId } = Route.useParams() as any
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<"info" | "variants" | "history">("info")
   const [selectedVariant, setSelectedVariant] = useState<VariantPublic | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [page, setPage] = useState(1)
+  const [replayingIds, setReplayingIds] = useState<Set<string>>(new Set()) // 进度追踪
+  const [baselineResult, setBaselineResult] = useState<BaselineResult | null>(null)
+  const [isFetchingBaseline, setIsFetchingBaseline] = useState(false)
   const limit = 10
+
+  // 防止侧滑层打开时出现双滚动条
+  React.useEffect(() => {
+    if (selectedVariant) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [selectedVariant])
+
+  const handleFetchBaseline = async () => {
+    if (baselineResult || isFetchingBaseline) return
+    setIsFetchingBaseline(true)
+    try {
+      const res = await __request(OpenAPI, {
+        method: "POST",
+        url: `/api/v1/replays/baseline/${trafficId}`
+      })
+      setBaselineResult(res as BaselineResult)
+    } catch (e: any) {
+      console.error("Fetch baseline failed:", e)
+      toast.error("获取基准响应失败，请重试")
+    } finally {
+      setIsFetchingBaseline(false)
+    }
+  }
+
+  const handleToggleDiff = (val: boolean) => {
+    setShowDiff(val)
+    if (val && !baselineResult) {
+      handleFetchBaseline()
+    }
+  }
 
   // 1. 获取主流量记录
   const trafficQuery = useQuery({
@@ -109,17 +158,36 @@ function TrafficDetailIndex() {
   }, {})
 
   const handleReplay = async (id: string) => {
-    try {
-      // 修正路径：同步至最新的 /api/v1/replays/{id} 架构
-      await __request(OpenAPI, { 
-        method: "POST", 
-        url: `/api/v1/replays/${id}` 
-      })
-      // 采用数据失效机制，静默刷新列表以显示最新状态码
-      variantsQuery.refetch()
-    } catch (e) { 
-      console.error("Replay execution failed:", e)
-    }
+    toast.promise(
+      (async () => {
+        try {
+          setReplayingIds(prev => new Set(prev).add(id))
+          await __request(OpenAPI, { 
+            method: "POST", 
+            url: `/api/v1/replays/${id}` 
+          })
+          // 给数据库一点缓冲时间再刷新列表
+          await new Promise(resolve => setTimeout(resolve, 500))
+          await variantsQuery.refetch()
+        } catch (e: any) {
+          console.error("Replay execution failed:", e)
+          // 提取后端返回的详细错误
+          const detail = e.body?.detail || e.message || "未知原因导致重放失败"
+          throw new Error(detail)
+        } finally {
+          setReplayingIds(prev => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        }
+      })(),
+      {
+        loading: "🚀 正在触发重放攻击 (Executing Replay)...",
+        success: "✅ 重放请求已发送并执行成功！",
+        error: (err) => `❌ 重放执行失败: ${err.message}`
+      }
+    )
   }
 
   if (trafficQuery.isLoading) return <div className="p-20 text-center font-bold opacity-30 animate-pulse">正在解析报文...</div>
@@ -222,7 +290,7 @@ function TrafficDetailIndex() {
                     trafficId={trafficId}
                     initialData={{
                       method: record.method,
-                      url: (record as any).path || (record as any).url || "/",
+                      url: record.original_path || "/",
                       headers: typeof record.headers === "string" ? JSON.parse(record.headers || "{}") : record.headers,
                       body: record.body || "",
                     }}
@@ -262,6 +330,7 @@ function TrafficDetailIndex() {
                             index={(page - 1) * limit + i}
                             onSelect={setSelectedVariant}
                             onReplay={handleReplay}
+                            isReplaying={replayingIds.has(v.id)}
                           />
                         ))}
                         
@@ -319,13 +388,37 @@ function TrafficDetailIndex() {
           )}
 
           {activeTab === "history" && (
-             <div className="space-y-6 max-w-4xl mx-auto">
+             <div className="space-y-6">
                 {historyQuery.isLoading ? (
                    <div className="py-20 text-center text-xs font-black opacity-30 animate-pulse uppercase tracking-widest">加载审计流水中...</div>
                 ) : (
+                   /* 绑定重放回调与详情查看回调 */
                    <HistoryTimeline 
                      history={historyQuery.data?.data ?? []} 
                      variantNames={variantNames} 
+                     onReplay={handleReplay}
+                     onView={(item) => {
+                        // 构建一个临时的变体对象用于详情展示
+                        setSelectedVariant({
+                           id: item.source_id,
+                           name: variantNames[item.source_id] || "未知变体",
+                           root_flow_id: trafficId,
+                           method: item.request_method,
+                           url: item.request_url,
+                           last_response_code: item.response_status,
+                           last_response_body: item.error_message || "无需进一步诊断信息",
+                           latency_ms: item.latency_ms,
+                           created_at: item.executed_at,
+                           last_request_curl: "", // 历史记录暂不存储 curl
+                        } as any)
+                     }}
+                     onClone={(item) => {
+                        // 克隆逻辑：切换至变体页并打开编辑器 (Clone & Split integration)
+                        setActiveTab("variants")
+                        setIsCreating(true)
+                        // 这里的方案预留了对编辑器初始值的扩展支持
+                        toast.info(`正在基于 ${variantNames[item.source_id] || '历史记录'} 构造新变体`)
+                     }}
                    />
                 )}
              </div>
@@ -342,10 +435,10 @@ function TrafficDetailIndex() {
               initial={{ x: "100%" }} 
               animate={{ x: 0 }} 
               exit={{ x: "100%" }} 
-              transition={{ type: "spring", damping: 25, stiffness: 200 }} 
+              transition={{ type: "spring", damping: 30, stiffness: 300 }} 
               className={cn(
-                "fixed top-0 right-0 bottom-0 z-[120] bg-surface-container-lowest shadow-2xl flex flex-col border-l border-outline-variant/10 transition-all duration-500 ease-in-out",
-                showDiff ? "w-[90vw] max-w-6xl" : "w-full max-w-2xl"
+                "fixed top-0 right-0 bottom-0 z-[120] bg-surface-container-lowest shadow-2xl flex flex-col border-l border-outline-variant/10 transition-all duration-300 ease-in-out",
+                showDiff ? "w-[95vw] max-w-7xl" : "w-full max-w-2xl"
               )}
             >
               <div className="px-8 py-6 border-b border-outline-variant/5 flex items-center justify-between">
@@ -359,11 +452,11 @@ function TrafficDetailIndex() {
                 <div className="flex items-center gap-3">
                    <div className="flex items-center bg-surface-container-high rounded-xl p-1 border border-outline-variant/10 mr-2">
                       <button 
-                        onClick={() => setShowDiff(false)}
+                        onClick={() => handleToggleDiff(false)}
                         className={cn("px-3 py-1.5 text-[10px] font-black rounded-lg transition-all", !showDiff ? "bg-surface-container-lowest text-primary-fixed shadow-sm" : "text-on-surface-variant/50")}
                       >RESULT</button>
                       <button 
-                        onClick={() => setShowDiff(true)}
+                        onClick={() => handleToggleDiff(true)}
                         className={cn("px-3 py-1.5 text-[10px] font-black rounded-lg transition-all", showDiff ? "bg-surface-container-lowest text-primary-fixed shadow-sm" : "text-on-surface-variant/50")}
                       >DIFF</button>
                    </div>
@@ -373,8 +466,10 @@ function TrafficDetailIndex() {
               <div className="flex-1 overflow-auto p-8 space-y-8">
                  {showDiff ? (
                     <DiffCodeViewer 
-                      original={record.body} 
+                      original={baselineResult?.body} 
                       current={selectedVariant.last_response_body} 
+                      originalTitle={isFetchingBaseline ? "正在获取基准..." : "基准响应 (Baseline)"}
+                      currentTitle="变体响应 (Variant)"
                     />
                  ) : (
                     <>
@@ -388,9 +483,94 @@ function TrafficDetailIndex() {
                           </div>
                       </section>
                       <section className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase text-on-surface-variant/40 tracking-widest">最近执行响应 (Last Response)</h4>
-                          {selectedVariant.last_response_code ? (
-                            <BodyCodeViewer body={selectedVariant.last_response_body} title={`HTTP ${selectedVariant.last_response_code} Response`} />
+                          <h4 className="text-[10px] font-black uppercase text-on-surface-variant/40 tracking-widest flex items-center gap-2">
+                             <Play className="w-3 h-3" /> 请求审计 (Request Audit - CURL)
+                          </h4>
+                          <div className="bg-surface-container-low rounded-2xl border border-outline-variant/10 overflow-hidden">
+                              <div className="px-4 py-2 bg-surface-container-high/50 border-b border-outline-variant/5 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 flex justify-between items-center">
+                                 <span>CURL Command</span>
+                                 <button 
+                                   onClick={() => selectedVariant.last_request_curl && navigator.clipboard.writeText(selectedVariant.last_request_curl)}
+                                   className="text-[8px] hover:text-primary-fixed transition-colors"
+                                 >
+                                   COPY
+                                 </button>
+                              </div>
+                              <pre className="p-4 text-[10px] font-mono text-primary-fixed bg-black/5 max-h-40 overflow-auto tracking-normal leading-relaxed break-all whitespace-pre-wrap">
+                                 {selectedVariant.last_request_curl || "// No request data captured yet"}
+                              </pre>
+                          </div>
+                      </section>
+
+                      <section className="space-y-4">
+                          <h4 className="text-[10px] font-black uppercase text-on-surface-variant/40 tracking-widest flex items-center gap-2">
+                             <ArrowRightLeft className="w-3 h-3" /> 最近执行响应 (Last Response)
+                          </h4>
+                          {selectedVariant.last_response_code !== null ? (
+                            <div className="space-y-4">
+                               {/* 响应头审计区 */}
+                               {selectedVariant.last_response_code !== 0 && (
+                                 <div className="bg-surface-container-low rounded-2xl border border-outline-variant/10 overflow-hidden">
+                                    <div className="px-4 py-2 bg-surface-container-high/50 border-b border-outline-variant/5 text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60">Response Headers</div>
+                                    <pre className="p-4 text-[10px] font-mono text-on-surface-variant/80 max-h-40 overflow-auto leading-relaxed">
+                                       {selectedVariant.last_response_headers ? JSON.stringify(selectedVariant.last_response_headers, null, 2) : "// No headers captured"}
+                                    </pre>
+                                 </div>
+                               )}
+
+                               {selectedVariant.last_response_code === 0 ? (
+                                 <div className="p-10 rounded-[3rem] bg-red-500/5 border border-red-500/20 space-y-6">
+                                    <div className="flex items-center gap-4 text-red-500">
+                                       <div className="p-3 rounded-2xl bg-red-500/10 shadow-inner"><AlertCircle className="w-6 h-6" /></div>
+                                       <div>
+                                          <h5 className="font-black text-sm uppercase tracking-tight">网络连接故障审计</h5>
+                                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em] leading-none mt-1">Connection Audit Failure</p>
+                                       </div>
+                                    </div>
+                                    <div className="space-y-6">
+                                       <div className="space-y-2">
+                                          <p className="text-[11px] font-black text-red-600/50 uppercase tracking-widest px-1">异常诊断记录 (DIAGNOSTIC LOGS)</p>
+                                          <pre className="p-6 rounded-3xl bg-black/20 text-xs font-mono text-red-500/90 leading-relaxed whitespace-pre-wrap border border-red-500/10 shadow-2xl">
+                                             {selectedVariant.last_response_body || "Unknown network error occurred during replay execution."}
+                                          </pre>
+                                       </div>
+                                       
+                                       <div className="space-y-3">
+                                          <div className="p-5 rounded-2xl bg-white/5 border border-red-500/5 flex items-start gap-4">
+                                             <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-[10px] font-black text-red-500 shrink-0">A</div>
+                                             <div>
+                                                <p className="text-[10px] font-black text-on-surface-variant/30 uppercase tracking-widest mb-1">物理可达性检查</p>
+                                                <p className="text-xs font-bold text-on-surface-variant/80">检查目标 Host 是否解析正确，或服务是否因宕机、限流导致连接重置。</p>
+                                             </div>
+                                          </div>
+                                          <div className="p-5 rounded-2xl bg-white/5 border border-red-500/5 flex items-start gap-4">
+                                             <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-[10px] font-black text-red-500 shrink-0">B</div>
+                                             <div>
+                                                <p className="text-[10px] font-black text-on-surface-variant/30 uppercase tracking-widest mb-1">虚拟网络环境</p>
+                                                <p className="text-xs font-bold text-on-surface-variant/80">若身处 Docker 或私有网络，请优先尝试使用宿主机映射名 <span className="text-primary-fixed">host.docker.internal</span>。</p>
+                                             </div>
+                                          </div>
+                                       </div>
+
+                                       <div className="p-6 rounded-2xl bg-black/10 text-xs text-on-surface-variant/40 italic leading-relaxed border-t border-white/5">
+                                          <span className="text-red-500/60 font-black not-italic mr-2">PRO TIP:</span>
+                                          HTTP 状态码 0 通常意味着握手阶段失败。请确认防火墙规则与本地代理（如拦截类扩展）未对该域名执行静默拦截。
+                                       </div>
+                                    </div>
+                                 </div>
+                               ) : selectedVariant.last_response_body?.includes("[PRE-FLIGHT FORMAT ERROR]") ? (
+                                 <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20 space-y-3">
+                                    <div className="flex items-center gap-2 text-red-500 font-black text-[10px] uppercase tracking-tighter">
+                                       <AlertCircle className="w-4 h-4" /> 格式诊断异常 (Diagnostic Error)
+                                    </div>
+                                    <pre className="text-xs font-mono text-red-600/80 leading-relaxed whitespace-pre-wrap italic">
+                                       {selectedVariant.last_response_body}
+                                    </pre>
+                                 </div>
+                               ) : (
+                                 <BodyCodeViewer body={selectedVariant.last_response_body} title={`HTTP ${selectedVariant.last_response_code} Response Body`} />
+                               )}
+                            </div>
                           ) : (
                             <div className="p-10 rounded-3xl border border-dashed border-outline-variant/20 text-center opacity-40 font-bold text-xs uppercase tracking-widest">No replay history found</div>
                           )}

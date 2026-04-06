@@ -1,10 +1,19 @@
-from typing import Any
-from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import select, func
-from sqlalchemy import update
 import uuid
-from app.api.deps import SessionDep, get_current_active_superuser
-from app.models import Variant, VariantCreate, VariantPublic, VariantsPublic, VariantUpdate, FilteredFlow, get_datetime_utc
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+from sqlalchemy import update
+from sqlmodel import func, select
+
+from app.api.deps import SessionDep
+from app.models import (
+    FilteredFlow,
+    Variant,
+    VariantCreate,
+    VariantPublic,
+    VariantsPublic,
+    VariantUpdate,
+)
 
 router = APIRouter(prefix="/variants", tags=["variants"])
 
@@ -21,13 +30,16 @@ def get_variants(
     statement = (
         select(Variant)
         .where(Variant.root_flow_id == root_flow_id)
+        .order_by(
+            func.coalesce(Variant.last_replay_at, Variant.created_at).desc()
+        )
         .offset(skip)
         .limit(limit)
     )
     results = session.exec(statement).all()
     count_statement = select(func.count()).select_from(Variant).where(Variant.root_flow_id == root_flow_id)
     count = session.exec(count_statement).one()
-    
+
     return {"data": results, "count": count}
 
 @router.post("/", response_model=VariantPublic, summary="Create a new variant manual")
@@ -42,17 +54,17 @@ def create_variant(
     flow = session.get(FilteredFlow, variant_in.root_flow_id)
     if not flow:
         raise HTTPException(status_code=404, detail="Root flow not found")
-        
+
     db_variant = Variant.model_validate(variant_in)
     session.add(db_variant)
 
     # [原子 SQL] 更新原始流量的变体计数
-    # [Why]：SQL 表达式 `variant_count + 1` 由数据库层面执行，
-    # 规避并发请求同时创建变体时 ORM 读旧值覆写的竞态问题
-    session.exec(
+    # [Why]：SQL 表达式 `occurrence_count + 1` 由数据库层面执行，确保高并发采样的原子增量。
+    # 相比于在 Python 层计算后写回，这能彻底避免“归零”风险。
+    session.execute(
         update(FilteredFlow)
         .where(FilteredFlow.id == variant_in.root_flow_id)
-        .values(variant_count=FilteredFlow.variant_count + 1)
+        .values(occurrence_count=FilteredFlow.occurrence_count + 1)
     )
 
     session.commit()
@@ -82,11 +94,11 @@ def update_variant(
     db_variant = session.get(Variant, id)
     if not db_variant:
         raise HTTPException(status_code=404, detail="Variant not found")
-    
+
     update_data = variant_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_variant, key, value)
-        
+
     session.add(db_variant)
     session.commit()
     session.refresh(db_variant)
@@ -100,13 +112,14 @@ def delete_variant(id: uuid.UUID, session: SessionDep) -> Any:
     db_variant = session.get(Variant, id)
     if not db_variant:
         raise HTTPException(status_code=404, detail="Variant not found")
-        
+
     # [原子 SQL] 减少原始流量的变体计数，下限为 0 防止负数
-    # [Why]：GREATEST(variant_count - 1, 0) 保证并发删除时计数不会变为负数
-    session.exec(
+    # [Why]：GREATEST(occurrence_count - 1, 0) 保证并发删除时计数不会变为负数。
+    # 这是高并发数据一致性的标准防护模式。
+    session.execute(
         update(FilteredFlow)
         .where(FilteredFlow.id == db_variant.root_flow_id)
-        .values(variant_count=func.greatest(FilteredFlow.variant_count - 1, 0))
+        .values(occurrence_count=func.greatest(FilteredFlow.occurrence_count - 1, 0))
     )
 
     session.delete(db_variant)
@@ -122,10 +135,10 @@ def replay_variant(id: uuid.UUID, session: SessionDep) -> Any:
     db_variant = session.get(Variant, id)
     if not db_variant:
         raise HTTPException(status_code=404, detail="Variant not found")
-        
+
     # 发送 Celery 延迟任务
     celery_app.send_task("replay_variant_task", args=[str(id)])
-    
+
     return {"message": "Replay task queued", "variant_id": id}
 
 @router.get("/history", summary="Get replay history for a flow")

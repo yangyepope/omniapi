@@ -19,7 +19,7 @@ function Layout() {
     <div className="min-h-screen bg-surface text-on-surface flex overflow-hidden relative">
       <Header />
       <Sidebar />
-      <main className="flex-1 ml-64 mt-16 p-8 overflow-y-auto bg-transparent relative z-0 min-h-[calc(100vh-64px)]">
+      <main className="flex-1 ml-64 mt-16 p-8 overflow-y-auto bg-transparent relative min-h-[calc(100vh-64px)]">
         <div className="mx-auto max-w-[1600px]">
           <Outlet />
         </div>

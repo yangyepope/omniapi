@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { Server, Trash2, Edit2, ArrowRight, ChevronDown, Check, X, Clock, CalendarOff } from "lucide-react"
+import { Server, Trash2, ArrowRight, ChevronDown, Check, Clock, CalendarOff } from "lucide-react"
 
 import { type SystemModuleStats } from "@/client"
 import { useSystemModules } from "@/hooks/useSystemModules"
@@ -254,7 +254,7 @@ export function ServiceCard({ module, onClick }: { module: SystemModuleStats; on
           </p>
         </div>
         <div className="bg-white p-5 text-center transition-colors group-hover:bg-blue-50/20 border-x border-gray-100">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">唯一流量</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">剔重后流量</p>
           <p className="text-xl font-black text-gray-900 leading-none tracking-tighter">
             {(module.unique_traffic_count || 0).toLocaleString()}
           </p>

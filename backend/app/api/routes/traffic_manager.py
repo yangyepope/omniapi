@@ -162,7 +162,7 @@ def get_endpoint_traffic(
                 body=r.body.decode("utf-8", errors="replace") if r.body else None,
                 client_ip=r.client_ip,
                 created_at=r.created_at,
-                variant_count=r.variant_count,
+                occurrence_count=r.occurrence_count,
                 replay_count=r.replay_count
             )
         )

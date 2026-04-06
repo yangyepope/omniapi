@@ -12,13 +12,13 @@ from app.models import (
     ApiEndpoint,
     ApiEndpointPublic,
     ApiEndpointsPublic,
+    FilteredFlow,  # 替代 TrafficRecord
+    FilteredFlowPublic,  # 替代 TrafficRecordPublic
+    ServiceStatus,
     SourceType,
     SystemModule,
-    FilteredFlow, # 替代 TrafficRecord
-    FilteredFlowPublic, # 替代 TrafficRecordPublic
     SystemModuleCreate,
     SystemModuleUpdate,
-    ServiceStatus,
 )
 
 router = APIRouter(prefix="/system-modules", tags=["system-modules"])
@@ -35,7 +35,7 @@ class SystemModuleStats(BaseModel):
     documented: int
     shadow: int
     last_scanned_at: datetime | None
-    
+
     # v3.0 新增持久化统计与元数据字段
     owner: str | None
     status: ServiceStatus
@@ -48,10 +48,19 @@ class SystemModulesStatsResponse(BaseModel):
     data: list[SystemModuleStats]
 
 class ApiEndpointDetailResponse(BaseModel):
+    # 基础接口定义详情
     endpoint: ApiEndpointPublic
+    # 所属模块名称
     module_name: str
+    # [兼容性补正]：目前前端可能仍在使用此字段，暂时保留，并指向新的推导计数。
     traffic_count: int
+    # 原始请求总次数（累加 occurrence_count）
+    total_traffic_count: int
+    # 剔重后的唯一请求指纹数（FilteredFlow 记录总数）
+    dedup_traffic_count: int
+    # 最后捕获时间点
     last_seen_at: datetime | None
+    # 最近的流量捕获样本记录
     recent_traffic: list[FilteredFlowPublic]
 
 def _clean_service_name(value: str | None) -> str | None:
@@ -89,11 +98,30 @@ def get_system_modules_stats(session: SessionDep) -> Any:
             stats["documented"] += 1
         else:
             stats["shadow"] += 1
-        
+
         # 更新该模块的最晚扫描时间（接口创建时间）
         if ep.created_at:
             if stats["last_scan"] is None or ep.created_at > stats["last_scan"]:
                 stats["last_scan"] = ep.created_at
+
+    # [核心修复]：实时聚合流量计数，消除 Worker 增量统计带来的数据漂移。
+    # 按照模块 ID 分组，统计唯一采样数（count）和原始总流量（sum of occurrence_count）。
+    module_traffic_stmt = (
+        select(
+            ApiEndpoint.module_id,
+            func.count(FilteredFlow.id).label("unique_count"),
+            func.sum(func.greatest(func.coalesce(FilteredFlow.occurrence_count, 1), 1)).label("total_count"),
+            func.max(FilteredFlow.created_at).label("last_active")
+        )
+        .join(FilteredFlow, ApiEndpoint.id == FilteredFlow.endpoint_id)
+        .group_by(ApiEndpoint.module_id)
+    )
+    module_traffic_results = session.exec(module_traffic_stmt).all()
+    # 建立映射表以便快速查找
+    traffic_map = {
+        str(row[0]): {"unique": row[1], "total": int(row[2]) if row[2] else 0, "last": row[3]}
+        for row in module_traffic_results
+    }
 
     stats_list = []
     for module in modules:
@@ -103,8 +131,9 @@ def get_system_modules_stats(session: SessionDep) -> Any:
             continue
 
         m_stats = module_eps_stats.get(module.id, {"total": 0, "documented": 0, "shadow": 0, "last_scan": None})
+        m_traffic = traffic_map.get(str(module.id), {"unique": 0, "total": 0, "last": None})
 
-        # 组装响应模型，优先使用持久化字段
+        # 组装响应模型，优先使用实时聚合出的流量数据。
         stats = SystemModuleStats(
             id=str(module.id),
             name=module.name,
@@ -113,12 +142,12 @@ def get_system_modules_stats(session: SessionDep) -> Any:
             documented=m_stats["documented"],
             shadow=m_stats["shadow"],
             last_scanned_at=m_stats["last_scan"],
-            # v3.0 新增字段映射
+            # v3.0：直接使用实时聚合值，解决用户反馈的“计数有误”问题。
             owner=module.owner,
             status=module.status,
-            total_traffic_count=module.total_traffic_count,
-            unique_traffic_count=module.unique_traffic_count,
-            last_active_at=module.last_active_at,
+            total_traffic_count=m_traffic["total"] or module.total_traffic_count,
+            unique_traffic_count=m_traffic["unique"] or module.unique_traffic_count,
+            last_active_at=m_traffic["last"] or module.last_active_at,
             deprecated_at=module.deprecated_at,
         )
         stats_list.append(stats)
@@ -135,7 +164,7 @@ def create_system_module(module_in: SystemModuleCreate, session: SessionDep) -> 
     existing = session.exec(select(SystemModule).where(SystemModule.name == module_in.name)).first()
     if existing:
         raise HTTPException(status_code=400, detail="服务名称已存在")
-    
+
     db_module = SystemModule.model_validate(module_in)
     session.add(db_module)
     session.commit()
@@ -149,9 +178,9 @@ def update_system_module(module_id: uuid.UUID, module_in: SystemModuleUpdate, se
     db_module = session.get(SystemModule, module_id)
     if not db_module:
         raise HTTPException(status_code=404, detail="模块未找到")
-    
+
     update_data = module_in.model_dump(exclude_unset=True)
-    
+
     # 状态切换逻辑处理
     if "status" in update_data and update_data["status"] != db_module.status:
         if update_data["status"] == ServiceStatus.deprecated:
@@ -161,7 +190,7 @@ def update_system_module(module_id: uuid.UUID, module_in: SystemModuleUpdate, se
 
     for key, value in update_data.items():
         setattr(db_module, key, value)
-    
+
     session.add(db_module)
     session.commit()
     session.refresh(db_module)
@@ -174,7 +203,7 @@ def delete_system_module(module_id: uuid.UUID, session: SessionDep) -> Any:
     db_module = session.get(SystemModule, module_id)
     if not db_module:
         raise HTTPException(status_code=404, detail="模块未找到")
-    
+
     session.delete(db_module)
     session.commit()
     return {"message": "服务模块及关联数据已彻底清理"}
@@ -233,6 +262,34 @@ def get_module_endpoints(
 
     paginated_endpoints = valid_endpoints[skip : skip + limit]  # 最后一步才分页：保证 count 反映的是“过滤后总量”。
 
+    # [核心修复]：针对当前页展现的接口列表，执行实时聚合计算流量。
+    # 避免列表页展示过时的 ApiEndpoint 持久化磁盘字段，确保与详情页数据完全对齐。
+    ep_ids = [ep.id for ep in paginated_endpoints]
+    if ep_ids:
+        # 同时统计唯一记录数和 occurrence 总和。
+        ep_traffic_stmt = (
+            select(
+                FilteredFlow.endpoint_id,
+                func.count(FilteredFlow.id).label("unique_count"),
+                func.sum(func.greatest(func.coalesce(FilteredFlow.occurrence_count, 1), 1)).label("total_count")
+            )
+            .where(FilteredFlow.endpoint_id.in_(ep_ids))
+            .group_by(FilteredFlow.endpoint_id)
+        )
+        ep_traffic_results = session.exec(ep_traffic_stmt).all()
+        # 建立映射表
+        ep_traffic_map = {
+            str(row[0]): {"unique": row[1], "total": int(row[2]) if row[2] else 0}
+            for row in ep_traffic_results
+        }
+        
+        # 将聚合出的真实数据回填至 paginated_endpoints 对象（仅用于响应，不 commit）。
+        for ep in paginated_endpoints:
+            m_traffic = ep_traffic_map.get(str(ep.id), {"unique": 0, "total": 0})
+            if m_traffic["unique"] > 0:
+                ep.unique_traffic_count = m_traffic["unique"]
+                ep.total_traffic_count = m_traffic["total"]
+
     return {
         # 返回当前页数据（由 skip/limit 截取后的子集）。
         "data": paginated_endpoints,  # 当前页记录，供前端表格渲染。
@@ -259,6 +316,7 @@ def get_module_endpoint_detail(
     if not endpoint or endpoint.module_id != module_id:
         raise HTTPException(status_code=404, detail="Endpoint not found")
 
+    # 构建精选流量流量记录查询：按创建时间倒序排列，拉取最近的 N 条记录供前端展示。
     traffic_statement = (
         select(FilteredFlow)
         .where(FilteredFlow.endpoint_id == endpoint_id)
@@ -267,14 +325,39 @@ def get_module_endpoint_detail(
     )
     records = session.exec(traffic_statement).all()
 
+    # 统计数据：在此统一计算总请求量与唯一流量量级。
+    # 1. 唯一流量 (UniqueCount): 统计 FilteredFlow 中该接口对应的记录行数。
     count_statement = (
-        select(func.count())
-        .select_from(FilteredFlow)
+        select(func.count(FilteredFlow.id))
         .where(FilteredFlow.endpoint_id == endpoint_id)
     )
-    traffic_count = session.exec(count_statement).one()
+    recalculated_dedup_count = session.exec(count_statement).one()
 
-    # 数据格式转换 (bytes -> str)
+    # 2. 原始总流量 (TotalCount): 累加 FilteredFlow 中所有记录的 occurrence_count 原始命中值。
+    sum_statement = (
+        select(func.sum(func.greatest(func.coalesce(FilteredFlow.occurrence_count, 1), 1)))
+        .where(FilteredFlow.endpoint_id == endpoint_id)
+    )
+    recalculated_total_count = session.exec(sum_statement).one() or 0
+
+    # [Deduplication Logic Fallback]:
+    # 如果 FilteredFlow 由于由于由于某些原因未捕获到具体变体（实时计算为 0），
+    # 但 ApiEndpoint 元数据中记录了通过 Worker 统计的总数（大于 0），
+    # 则优先使用元数据字段作为展示数据，避免 UI 显示为 0 误导用户。
+    dedup_traffic_count = (
+        recalculated_dedup_count
+        if recalculated_dedup_count > 0
+        else endpoint.unique_traffic_count
+    )
+    total_traffic_count = (
+        recalculated_total_count
+        if recalculated_total_count > 0
+        else endpoint.total_traffic_count
+    )
+
+    # 数据格式转换 (bytes -> str)：
+    # 由于原始 Payload 是以二进制 (bytes) 方式存入 DB 以保证兼容性，
+    # 在此手动解码为 UTF-8 字符串返回给前端用于可视展示。
     recent_traffic = []
     for r in records:
         recent_traffic.append(
@@ -287,11 +370,12 @@ def get_module_endpoint_detail(
                 body=r.body.decode("utf-8", errors="replace") if r.body else None,
                 client_ip=r.client_ip,
                 created_at=r.created_at,
-                variant_count=r.variant_count,
+                occurrence_count=r.occurrence_count,
                 replay_count=r.replay_count
             )
         )
 
+    # 提取最后活动时间点：若存在流量记录，则使用最新一条记录的时间戳。
     last_seen_at = None
     if recent_traffic:
         last_seen_at = recent_traffic[0].created_at
@@ -299,7 +383,10 @@ def get_module_endpoint_detail(
     return {
         "endpoint": endpoint,
         "module_name": module.name,
-        "traffic_count": traffic_count,
+        # traffic_count 目前映射到剔重后的流量计数，保持向后兼容性。
+        "traffic_count": dedup_traffic_count,
+        "total_traffic_count": total_traffic_count,
+        "dedup_traffic_count": dedup_traffic_count,
         "last_seen_at": last_seen_at,
         "recent_traffic": recent_traffic,
     }

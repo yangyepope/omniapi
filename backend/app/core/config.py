@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # 60 minutes * 24 hours * 8 days = 8 days  # token 过期时间默认 8 天
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # JWT access token 的有效期（分钟）
     FRONTEND_HOST: str = "http://localhost:5173"  # 前端默认地址（用于 CORS 拼接）
+
+    # ── Celery 配置 ────────────────────────────────────────────────────────────
+    # [Why]：显式声明后，Pydantic 会自动从环境变量（如 CELERY_BROKER_URL）加载。
+    CELERY_BROKER_URL: str = "redis://redis:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
+
     ENVIRONMENT: Literal["local", "staging", "production"] = (
         "local"  # 环境标识：影响日志/安全策略
     )

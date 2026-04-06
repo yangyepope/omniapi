@@ -1,13 +1,33 @@
-from typing import Annotated
 import uuid
+from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session
-
 from app.api.deps import SessionDep, get_current_active_superuser
-from app.models import Variant, VariantPublic, User
+from app.models import Variant, VariantPublic, User, BaselineResult
 from app.services.replay import ReplayEngine
 
 router = APIRouter()
+
+@router.post(
+    "/baseline/{flow_id}",
+    response_model=BaselineResult,
+    summary="Execute Baseline Replay",
+    description="Replay the original captured flow to get a baseline response for DIFF comparison."
+)
+async def execute_baseline(
+    flow_id: uuid.UUID,
+    session: SessionDep,
+    current_user: Annotated[User, Depends(get_current_active_superuser)]
+) -> BaselineResult:
+    """
+    [接口职责]：执行流量基准重放（方案 B 核心）。
+    """
+    try:
+        result = await ReplayEngine.execute_baseline_by_flow_id(flow_id, session)
+        return BaselineResult(**result)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.post(
     "/{variant_id}",

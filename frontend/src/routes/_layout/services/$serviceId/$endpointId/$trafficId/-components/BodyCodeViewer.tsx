@@ -12,7 +12,7 @@ interface BodyCodeViewerProps {
 
 export function BodyCodeViewer({ 
   body, 
-  title = "Request Body", 
+  title = "请求体", 
   contentType = "application/json",
   maxHeight = "420px" 
 }: BodyCodeViewerProps) {
@@ -49,30 +49,31 @@ export function BodyCodeViewer({
 
   return (
     <>
-      <div className="relative group/viewer">
-        <div className="flex items-center justify-between px-4 py-2 bg-surface-container-low/50 border-b border-outline-variant/5">
-          <div className="flex items-center gap-2">
-            <Badge variant="neutral" className="text-[9px] font-black uppercase">{contentType.split("/").pop()}</Badge>
-            <span className="text-[10px] font-bold text-on-surface-variant/60">{title}</span>
+      <div className="relative group/viewer rounded-2xl overflow-hidden border border-outline-variant/5 shadow-inner">
+        <div className="flex items-center justify-between px-6 py-2.5 bg-surface-container-low/40 backdrop-blur-md border-b border-outline-variant/10">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-primary-fixed/20 animate-pulse" />
+            <Badge variant="neutral" className="text-[10px] font-black uppercase bg-primary-fixed/5 text-primary-fixed/60 border-primary-fixed/10">{contentType.split("/").pop()}</Badge>
+            <span className="text-[10px] font-black text-on-surface-variant/50 uppercase tracking-widest">{title}</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface-variant hover:text-primary-fixed transition-all"
+              className="flex items-center gap-2 text-[10px] font-black text-on-surface-variant/40 hover:text-primary-fixed transition-all group/copy"
             >
-              {copied ? <Check className="w-3 h-3 text-secondary-fixed" /> : <Copy className="w-3 h-3" />}
-              {copied ? "已复制" : "复制"}
+              {copied ? <Check className="w-3.5 h-3.5 text-secondary-fixed" /> : <Copy className="w-3.5 h-3.5 group-hover/copy:scale-110 transition-transform" />}
+              {copied ? "COPIED" : "COPY"}
             </button>
             <button
               onClick={() => setFullscreen(true)}
-              className="p-1 rounded-lg text-on-surface-variant hover:text-primary-fixed hover:bg-primary-fixed/5 transition-all"
+              className="p-1.5 rounded-lg text-on-surface-variant/30 hover:text-primary-fixed hover:bg-primary-fixed/5 transition-all"
             >
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Maximize2 className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div className="bg-[#1a1d23] overflow-auto" style={{ maxHeight }}>
-          <pre className="p-6 text-[12px] font-mono text-[#9cdcfe] leading-relaxed whitespace-pre">
+        <div className="bg-[#0b0e14] overflow-auto shadow-[inset_0_2px_20px_rgba(0,0,0,0.5)] custom-scrollbar" style={{ maxHeight }}>
+          <pre className="p-8 text-[13px] font-mono text-blue-300/90 leading-[1.8] whitespace-pre-wrap break-all">
             {formatted}
           </pre>
         </div>

@@ -23,8 +23,10 @@ export type ApiEndpointDetailResponse = {
     endpoint: ApiEndpointPublic;
     module_name: string;
     traffic_count: number;
+    total_traffic_count: number;
+    dedup_traffic_count: number;
     last_seen_at: (string | null);
-    recent_traffic: Array<TrafficRecordPublic>;
+    recent_traffic: Array<FilteredFlowPublic>;
 };
 
 export type ApiEndpointPublic = {
@@ -36,6 +38,9 @@ export type ApiEndpointPublic = {
     service_name?: (string | null);
     source_type?: SourceType;
     module_id?: (string | null);
+    total_traffic_count?: number;
+    variants_count?: number;
+    last_active_at?: (string | null);
     id: string;
     created_at: (string | null);
 };
@@ -80,6 +85,26 @@ export type Body_login_login_access_token = {
 };
 
 export type EndpointLevel = 'p0' | 'p1' | 'p2' | 'p3';
+
+export type FilteredFlowPublic = {
+    id: string;
+    endpoint_id: string;
+    method: string;
+    original_path: string;
+    headers?: ({
+    [key: string]: unknown;
+} | null);
+    body?: (string | null);
+    client_ip?: (string | null);
+    created_at: (string | null);
+    variant_count?: number;
+    replay_count?: number;
+};
+
+export type FilteredFlowsPublic = {
+    data: Array<FilteredFlowPublic>;
+    count: number;
+};
 
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
@@ -228,24 +253,6 @@ export type Token = {
     token_type?: string;
 };
 
-export type TrafficRecordPublic = {
-    endpoint_id?: (string | null);
-    method: string;
-    real_uri: string;
-    headers?: ({
-    [key: string]: unknown;
-} | null);
-    body?: (string | null);
-    source_ip?: (string | null);
-    id: string;
-    created_at: (string | null);
-};
-
-export type TrafficRecordsPublic = {
-    data: Array<TrafficRecordPublic>;
-    count: number;
-};
-
 export type UpdatePassword = {
     current_password: string;
     new_password: string;
@@ -300,6 +307,63 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+export type VariantCreate = {
+    name: string;
+    description?: (string | null);
+    method: string;
+    url: string;
+    headers?: ({
+    [key: string]: unknown;
+} | null);
+    body_str?: (string | null);
+    source_type?: string;
+    origin?: (string | null);
+    transformations?: (Array<{
+    [key: string]: unknown;
+}> | null);
+    root_flow_id: string;
+};
+
+export type VariantPublic = {
+    name: string;
+    description?: (string | null);
+    method: string;
+    url: string;
+    headers?: ({
+    [key: string]: unknown;
+} | null);
+    body_str?: (string | null);
+    source_type?: string;
+    origin?: (string | null);
+    transformations?: (Array<{
+    [key: string]: unknown;
+}> | null);
+    id: string;
+    root_flow_id: string;
+    replay_count: number;
+    last_response_code: (number | null);
+    last_response_body: (string | null);
+    last_latency_ms: (number | null);
+    last_replay_at: (string | null);
+    created_at: (string | null);
+};
+
+export type VariantsPublic = {
+    data: Array<VariantPublic>;
+    count: number;
+};
+
+export type VariantUpdate = {
+    name?: (string | null);
+    description?: (string | null);
+    method?: (string | null);
+    url?: (string | null);
+    headers?: ({
+    [key: string]: unknown;
+} | null);
+    body_str?: (string | null);
 };
 
 export type VideoData = {
@@ -371,19 +435,7 @@ export type ApiKeysDeleteApiKeyData = {
 
 export type ApiKeysDeleteApiKeyResponse = (Message);
 
-export type CollectCollectTrafficResponse = (unknown);
-
-export type CollectCollectTraffic1Response = (unknown);
-
-export type CollectCollectTraffic2Response = (unknown);
-
-export type CollectCollectTraffic3Response = (unknown);
-
-export type CollectCollectTraffic4Response = (unknown);
-
-export type CollectCollectTraffic5Response = (void);
-
-export type CollectCollectTraffic6Response = (unknown);
+export type CollectCollectTrafficResponse = (void);
 
 export type DouyinFetchOneVideoByShareUrlData = {
     /**
@@ -458,6 +510,12 @@ export type PrivateCreateUserData = {
 
 export type PrivateCreateUserResponse = (UserPublic);
 
+export type ReplaysExecuteReplayData = {
+    variantId: string;
+};
+
+export type ReplaysExecuteReplayResponse = (VariantPublic);
+
 export type SecurityAssetsReadAssetsData = {
     limit?: number;
     skip?: number;
@@ -520,11 +578,12 @@ export type TrafficManagerGetConfigResponse = ({
     [key: string]: unknown;
 });
 
-export type TrafficManagerToggleConfigData = {
+export type TrafficManagerUpdateConfigData = {
     enabled: boolean;
+    key: string;
 };
 
-export type TrafficManagerToggleConfigResponse = ({
+export type TrafficManagerUpdateConfigResponse = ({
     [key: string]: unknown;
 });
 
@@ -544,7 +603,7 @@ export type TrafficManagerGetEndpointTrafficData = {
     skip?: number;
 };
 
-export type TrafficManagerGetEndpointTrafficResponse = (TrafficRecordsPublic);
+export type TrafficManagerGetEndpointTrafficResponse = (FilteredFlowsPublic);
 
 export type UsersReadUsersData = {
     limit?: number;
@@ -607,3 +666,50 @@ export type UtilsTestEmailData = {
 export type UtilsTestEmailResponse = (Message);
 
 export type UtilsHealthCheckResponse = (boolean);
+
+export type VariantsGetVariantsData = {
+    limit?: number;
+    rootFlowId: string;
+    skip?: number;
+};
+
+export type VariantsGetVariantsResponse = (VariantsPublic);
+
+export type VariantsCreateVariantData = {
+    requestBody: VariantCreate;
+};
+
+export type VariantsCreateVariantResponse = (VariantPublic);
+
+export type VariantsPushVariantData = {
+    requestBody: VariantCreate;
+};
+
+export type VariantsPushVariantResponse = (VariantPublic);
+
+export type VariantsUpdateVariantData = {
+    id: string;
+    requestBody: VariantUpdate;
+};
+
+export type VariantsUpdateVariantResponse = (VariantPublic);
+
+export type VariantsDeleteVariantData = {
+    id: string;
+};
+
+export type VariantsDeleteVariantResponse = (unknown);
+
+export type VariantsReplayVariantData = {
+    id: string;
+};
+
+export type VariantsReplayVariantResponse = (unknown);
+
+export type VariantsGetReplayHistoryData = {
+    limit?: number;
+    rootFlowId: string;
+    skip?: number;
+};
+
+export type VariantsGetReplayHistoryResponse = (unknown);

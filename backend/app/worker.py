@@ -1,407 +1,371 @@
+# ❗ [CRITICAL]：必须在物理第一行执行 Monkey Patch，确保所有底层阻塞库（socket, ssl, threading）被协程化
+import logging
+import os
+import uuid
 from datetime import datetime, timezone
-import re
-import asyncio
+
+# ❗ [CRITICAL]：防御性 Monkey Patch
+# 仅当处于 Celery Gevent Worker 环境时才执行补丁，防止干扰 FastAPI (uvloop) 进程
+if os.getenv("CELERY_WORKER_TYPE") == "gevent":
+    try:
+        import gevent.monkey
+        gevent.monkey.patch_all()
+        logging.info("💪 [Gevent] Monkey patch applied successfully.")
+    except ImportError:
+        logging.warning("⚠️ [Gevent] gevent not found, skipping monkey patch.")
+
 from celery import Celery
-from sqlmodel import Session, func, select
-from sqlalchemy import update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select, text, update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import OperationalError
+
 from app.core.config import settings
 from app.core.db import engine
-from app.models import (
-    ApiAsset, 
-    ApiEndpoint, 
-    SystemModule, 
-    ServiceStatus,
-    RawFlow,
-    FilteredFlow,
-    Variant
-)
-from app.services.discovery import (
-    normalize_uri, 
-    generate_dedup_key
-)
-from app.services.scanner import run_scan_for_asset
-import logging
-import httpx
+from app.models import ApiEndpoint, FilteredFlow, RawFlow, SystemModule
 
 logger = logging.getLogger(__name__)
 
-# Initialize Celery
+# ── Celery 初始化 ────────────────────────────────────────────────────────────
+# [Why]：配置已在 config.py 中通过 Settings 统一管理，直接引用即可。
 celery_app = Celery(
-    "worker",
-    broker=settings.CELERY_BROKER_URL if hasattr(settings, "CELERY_BROKER_URL") else "redis://localhost:6379/0",
-    backend=settings.CELERY_RESULT_BACKEND if hasattr(settings, "CELERY_RESULT_BACKEND") else "redis://localhost:6379/0"
+    "worker", 
+    broker=settings.CELERY_BROKER_URL, 
+    backend=settings.CELERY_RESULT_BACKEND
+)
+celery_app.conf.update(
+    task_serializer="json",
+    result_serializer="json",
+    accept_content=["json"],
+    timezone="UTC",
+    enable_utc=True,
+    task_track_started=True,  # 让监控系统能感知到 STARTED 状态
 )
 
 
-# [设计意图]：以 FilteredFlow 事实表为唯一来源重算 Endpoint 统计，确保“流量到达即正确”。
-# [参数说明]：session 为当前事务会话；endpoint_id 为需要重算的接口主键。
-# [注意]：先锁定 Endpoint 行再聚合，避免并发事务覆盖导致的计数回退。
-def reconcile_endpoint_stats_from_source(session: Session, endpoint_id) -> ApiEndpoint:
-    endpoint = session.exec(
-        select(ApiEndpoint).where(ApiEndpoint.id == endpoint_id).with_for_update()
-    ).one()
-
-    stats = session.exec(
-        select(
-            func.count(FilteredFlow.id).label("unique_count"),
-            func.coalesce(func.sum(FilteredFlow.variant_count), 0).label("duplicate_count"),
-            func.max(FilteredFlow.captured_at).label("last_active"),
-        ).where(FilteredFlow.endpoint_id == endpoint_id)
-    ).one()
-
-    unique_count = int(stats[0] or 0)
-    duplicate_count = int(stats[1] or 0)
-    last_active = stats[2]
-
-    endpoint.total_traffic_count = unique_count + duplicate_count
-    endpoint.variants_count = unique_count
-    endpoint.last_active_at = last_active
-    session.add(endpoint)
-    return endpoint
+# ── 工具函数 ──────────────────────────────────────────────────────────────────
 
 
-# [设计意图]：以 Endpoint 聚合结果重算模块统计，保证模块总览与接口明细强一致。
-# [参数说明]：session 为当前事务会话；module_id 为需要重算的模块主键。
-# [注意]：同样先锁模块行，确保高并发下不会出现旧值回写。
-def reconcile_module_stats_from_source(session: Session, module_id) -> None:
-    module = session.exec(
-        select(SystemModule).where(SystemModule.id == module_id).with_for_update()
-    ).one()
+def safe_encode(data: bytes | str | None) -> bytes | None:
+    """将任意输入统一转为 bytes，用于 bytea 列存储；None 原样透传。"""
+    if data is None:
+        return None
+    if isinstance(data, bytes):
+        return data
+    return str(data).encode("utf-8")
 
-    stats = session.exec(
-        select(
-            func.coalesce(func.sum(ApiEndpoint.total_traffic_count), 0).label("total"),
-            func.coalesce(func.sum(ApiEndpoint.variants_count), 0).label("unique_total"),
-            func.max(ApiEndpoint.last_active_at).label("last_active"),
-        ).where(ApiEndpoint.module_id == module_id)
-    ).one()
 
-    module.total_traffic_count = int(stats[0] or 0)
-    module.unique_traffic_count = int(stats[1] or 0)
-    module.last_active_at = stats[2]
-    session.add(module)
+# ── DB 辅助（原子 SQL，绕过 ORM 避免 Identity Map 并发问题）───────────────────
 
-def find_matching_endpoint(session: Session, method: str, norm_uri: str, service_name: str) -> ApiEndpoint | None:
+
+def _find_endpoint(
+    conn, method: str, path: str, service_name: str
+) -> tuple[str, str | None] | None:
     """
-    [功能]：查找匹配的 ApiEndpoint。
-    [逻辑]：在指定 Service 下查找匹配，先精确后正则。
-    [并发安全]：精确匹配时加行锁 (FOR UPDATE)，防止多个 Worker 同时读到 None 后重复创建。
-    """
-    # 精确匹配加行锁：若已存在则锁住该行，避免并发写入重复记录
-    statement = select(ApiEndpoint).where(
-        ApiEndpoint.method == method,
-        ApiEndpoint.path == norm_uri,
-        ApiEndpoint.service_name == service_name
-    ).with_for_update()
-    exact_match = session.exec(statement).first()
-    if exact_match:
-        return exact_match
-        
-    endpoints = session.exec(select(ApiEndpoint).where(
-        ApiEndpoint.method == method,
-        ApiEndpoint.service_name == service_name
-    )).all()
-    for ep in endpoints:
-        # 将 {id} 或其他花括号占位符替换为正则通配符
-        pattern = re.sub(r'\{[^}]+\}', r'[^/]+', ep.path)
-        if re.match(f"^{pattern}$", norm_uri):
-            return ep
-            
-    return None
+    查询 apiendpoint，返回 (ep_id, mod_id) 或 None。
 
-def get_or_create_module_by_uri(session: Session, service_name: str) -> SystemModule:
+    [Why 同时返回 module_id]：调用方步骤 3 需要 module_id 做统计更新；
+    合并进同一次 SELECT 省去一次额外的 DB 往返（每条消息节省 1 次 round-trip）。
+    [Why 不加 FOR UPDATE]：后续写入全走 ON CONFLICT，加锁只会与
+    _get_or_create_module 形成 AB/BA 死锁。
     """
-    [功能]：根据服务名称获取或创建系统模块 (SystemModule)。
-    [并发安全]：with_for_update() 在行已存在时锁住该行；行不存在时 flush() 触发写入，
-    若另一 Worker 在极短窗口内抢先插入同名模块，捕获 IntegrityError 后回退并重新查询，
-    与 ApiEndpoint 的创建逻辑保持一致的防护级别。
-    """
-    statement = select(SystemModule).where(SystemModule.name == service_name).with_for_update()
-    mod = session.exec(statement).first()
+    row = conn.execute(
+        text(
+            "SELECT id, module_id FROM apiendpoint "
+            "WHERE method = :m AND path = :p AND service_name = :s"
+        ),
+        {"m": method, "p": path, "s": service_name},
+    ).fetchone()
+    if not row:
+        return None
+    return str(row[0]), str(row[1]) if row[1] else None
 
-    if not mod:
-        # 若模块不存在则自动创建，默认分配责任人为 Unknown
-        mod = SystemModule(
+
+def _get_or_create_module(conn, service_name: str) -> str:
+    """
+    [Elegant Version]：原子查找或创建 SystemModule。
+    [Lock Order]：所有的死锁防御都起始于此地。
+    """
+    stmt = (
+        insert(SystemModule)
+        .values(
+            id=uuid.uuid4(),
             name=service_name,
             service_prefix=f"/{service_name}",
-            owner="Unknown",
-            description=f"Auto-generated module for {service_name} service",
-            status=ServiceStatus.active,
+            owner="Auto",
+            status="active",
         )
-        session.add(mod)
-        try:
-            session.flush()  # 获取 ID 以备后用
-        except IntegrityError:
-            # [Why]：另一 Worker 已在并发窗口内插入了同名模块，
-            # 回退本次插入并查出已有记录，避免 Task 因未捕获异常而失败
-            session.rollback()
-            mod = session.exec(
-                select(SystemModule).where(SystemModule.name == service_name)
-            ).first()
-            if not mod:
-                logger.error(f"无法定位模块 {service_name}，IntegrityError 后仍查不到记录")
-                raise
+        .on_conflict_do_update(
+            index_elements=[SystemModule.name],
+            set_={SystemModule.name: SystemModule.name},  # 无损更新以触发 RETURNING
+        )
+        .returning(SystemModule.id)
+    )
 
-    return mod
+    row = conn.execute(stmt).fetchone()
+    if not row:
+        raise RuntimeError(f"无法获取或创建 SystemModule: {service_name!r}")
+    return str(row[0])
 
-@celery_app.task(name="process_raw_flow_task")
-def process_raw_flow_task(raw_flow_id: str) -> str:
+
+def _get_or_create_endpoint(
+    conn, method: str, path: str, service_name: str, module_id: str
+) -> str:
     """
-    [任务职责]：流量处理三阶段流水线的核心逻辑 (V3.2 Pydantic 规范版)。
-    1. 提取原始报文。
-    2. 计算指纹。
-    3. [规范化] 通过 Pydantic 实例操作与 DB 行锁实现统计更新。
+    [Elegant Version]：原子获取或创建 ApiEndpoint。
+    [Lock Order]：由调用方确保已持有对应 SystemModule 的锁。
     """
+    stmt = (
+        insert(ApiEndpoint)
+        .values(
+            id=uuid.uuid4(),
+            method=method,
+            path=path,
+            name=f"Auto: {method} {path}",
+            service_name=service_name,
+            module_id=module_id,
+            source_type="auto_discovered",
+            total_traffic_count=0,
+            unique_traffic_count=0,
+        )
+        .on_conflict_do_update(
+            index_elements=[
+                ApiEndpoint.method,
+                ApiEndpoint.path,
+                ApiEndpoint.service_name,
+            ],
+            set_={ApiEndpoint.name: ApiEndpoint.name},
+        )
+        .returning(ApiEndpoint.id)
+    )
+
+    row = conn.execute(stmt).fetchone()
+    if not row:
+        raise RuntimeError(f"无法获取或创建 ApiEndpoint: {method} {path}")
+    return str(row[0])
+
+
+# ── Celery Tasks ──────────────────────────────────────────────────────────────
+
+
+@celery_app.task(
+    name="process_raw_flow_task",
+    bind=True,
+    max_retries=5,  # [Why]：死锁在高并发下是预期行为，增加重试上限
+    default_retry_delay=2,
+    acks_late=True,
+)
+def process_raw_flow_task(self, raw_flow_id: str) -> str:
+    """
+    流量处理流水线 (Deadlock Resilient V5.0)。
+    通过严格锁序 (Module -> Endpoint -> Flow) 与快速事务机制终结死锁。
+    """
+    import random
+
+    from app.services.discovery import generate_dedup_key, normalize_uri
+
     try:
-        import uuid
         raw_uuid = uuid.UUID(raw_flow_id)
-        
-        with Session(engine) as session:
-            # 1. 读取原始流量记录
-            raw_flow = session.get(RawFlow, raw_uuid)
-            if not raw_flow:
-                return f"Error: RawFlow {raw_flow_id} not found"
-            
-            # 2. 路径归一化
-            norm_uri = normalize_uri(raw_flow.interface_path)
-            
-            # 3. 生成去重指纹
-            dedup_key = generate_dedup_key(
-                service_name=raw_flow.service_name,
-                path=norm_uri,
-                method=raw_flow.method,
-                headers=raw_flow.headers,
-                body=raw_flow.body
-            )
-            
-            # 4. 幂等性检查（加行锁）
-            # [Why]：with_for_update() 确保两个 Worker 同时处理相同 dedup_key 时，
-            # 只有一个能读到行并继续，另一个阻塞等待前者 commit 后再判断，
-            # 防止分支 A 中 variant_count += 1 因并发读到旧值而丢失更新。
-            statement = select(FilteredFlow).where(
-                FilteredFlow.dedup_key == dedup_key
-            ).with_for_update()
-            existing_filtered = session.exec(statement).first()
-            
-            if existing_filtered:
-                # [分支 A]：发现重复流量 -> 更新现有的精选流量记录及其统计
-                # 1. 更新原始记录指纹状态
-                raw_flow.deduped = True
-                raw_flow.dedup_key = dedup_key
-                raw_flow.parsed = True
-                session.add(raw_flow)
 
-                # 2. [原子 SQL] 更新精选流量的"捕获时间"和"变体计数"
-                # [Why]：SQL 表达式 `variant_count + 1` 由数据库层面执行，
-                # 规避 ORM 身份映射缓存导致的并发丢失更新问题
-                session.exec(
-                    update(FilteredFlow)
-                    .where(FilteredFlow.id == existing_filtered.id)
-                    .values(
-                        variant_count=FilteredFlow.variant_count + 1,
-                        captured_at=raw_flow.captured_at,
-                    )
+        # ── 1. 事务外：读取原始流量并计算特征 ───────────────────────────────
+        with engine.connect() as conn:
+            stmt = select(
+                RawFlow.service_name,
+                RawFlow.interface_path,
+                RawFlow.method,
+                RawFlow.headers,
+                RawFlow.body,
+                RawFlow.body_size,
+                RawFlow.client_ip,
+            ).where(RawFlow.id == raw_uuid)
+            row = conn.execute(stmt).fetchone()
+            if not row:
+                return f"Skipped: {raw_flow_id} not found"
+            svc, path, mth, hdrs, bdy, bsize, cip = row
+
+        capt = datetime.now(timezone.utc)
+        norm_uri = normalize_uri(path)
+        dedup_key = generate_dedup_key(svc, norm_uri, mth, hdrs, bdy)
+
+        # ── 2. 事务内：严格锁序写入 ─────────────────────────────────────────
+        with engine.begin() as conn:
+            # [Lock 1]：SystemModule
+            mod_id = _get_or_create_module(conn, svc)
+
+            # [Lock 2]：ApiEndpoint
+            ep_id = _get_or_create_endpoint(conn, mth, norm_uri, svc, mod_id)
+
+            # [Lock 3]：FilteredFlow (Upsert)
+            flow_uuid = uuid.uuid4()
+            upsert_stmt = (
+                insert(FilteredFlow)
+                .values(
+                    id=flow_uuid,
+                    endpoint_id=ep_id,
+                    raw_flow_id=raw_uuid,
+                    captured_at=capt,
+                    method=mth,
+                    original_path=path,
+                    headers=hdrs,  # SQLAlchemy 为 JSON 列处理序列化
+                    body=safe_encode(bdy),
+                    body_size=bsize if bsize else (len(bdy) if bdy else 0),
+                    client_ip=cip,
+                    dedup_key=dedup_key,
+                    occurrence_count=1,
+                    replay_count=0,
                 )
-
-                # 3. 以事实表重算当前 endpoint/module 统计（不走脚本，不走读时纠偏）
-                endpoint = reconcile_endpoint_stats_from_source(
-                    session=session,
-                    endpoint_id=existing_filtered.endpoint_id,
+                .on_conflict_do_update(
+                    index_elements=[FilteredFlow.dedup_key],
+                    set_={
+                        FilteredFlow.occurrence_count: FilteredFlow.occurrence_count
+                        + 1,
+                        FilteredFlow.captured_at: capt,
+                    },
                 )
-                reconcile_module_stats_from_source(session=session, module_id=endpoint.module_id)
-
-                session.commit()
-                return f"Duplicate flow detected (Key: {dedup_key}). Timestamp updated & Counter incremented."
-            
-            # [分支 B]：发现唯一流量 -> 创建记录并双项累加
-            endpoint = find_matching_endpoint(session, raw_flow.method, norm_uri, raw_flow.service_name)
-
-            if not endpoint:
-                mod = get_or_create_module_by_uri(session, raw_flow.service_name)
-                endpoint = ApiEndpoint(
-                    method=raw_flow.method,
-                    path=norm_uri,
-                    name=f"Discovery: {raw_flow.method} {norm_uri}",
-                    service_name=raw_flow.service_name,
-                    module_id=mod.id,
-                    source_type="auto_discovered"
+                .returning(
+                    FilteredFlow.id,
+                    (FilteredFlow.occurrence_count == 1).label("is_new"),
                 )
-                session.add(endpoint)
-                try:
-                    # flush 触发 DB 写入；若并发 Worker 抢先插入了相同记录，
-                    # 唯一约束会抛 IntegrityError，此时回退并重新查询已存在的行
-                    session.flush()
-                except IntegrityError:
-                    # 另一个 Worker 已在极短窗口内插入了相同的 (method, path, service_name)
-                    session.rollback()
-                    # 重新查询已存在的接口（此时不再加锁，只读即可）
-                    endpoint = session.exec(
-                        select(ApiEndpoint).where(
-                            ApiEndpoint.method == raw_flow.method,
-                            ApiEndpoint.path == norm_uri,
-                            ApiEndpoint.service_name == raw_flow.service_name,
-                        )
-                    ).first()
-                    if not endpoint:
-                        # 极端情况：查不到则放弃本次流量，避免死循环
-                        logger.error(f"无法定位接口 {raw_flow.method} {norm_uri}，放弃处理")
-                        return f"Error: endpoint not found after IntegrityError for {raw_flow.method} {norm_uri}"
-            
-            # 归档精选流量
-            filtered_flow = FilteredFlow(
-                endpoint_id=endpoint.id,
-                raw_flow_id=raw_flow.id,
-                captured_at=raw_flow.captured_at,
-                method=raw_flow.method,
-                original_path=raw_flow.interface_path,
-                headers=raw_flow.headers,
-                body=raw_flow.body,
-                body_size=raw_flow.body_size,
-                client_ip=raw_flow.client_ip,
-                dedup_key=dedup_key
             )
-            session.add(filtered_flow)
-            
-            # 更新原始表
-            raw_flow.deduped = False
-            raw_flow.dedup_key = dedup_key
-            raw_flow.parsed = True
-            session.add(raw_flow)
 
-            # [Why]：先将本次新增的 FilteredFlow 持久化到当前事务可见状态，
-            # 再执行重算；否则首次命中时重算可能读不到未 flush 的行，导致计数被写成 0。
-            session.flush()
-            
-            # 以事实表重算当前 endpoint/module 统计，保证一手写入即一致
-            endpoint = reconcile_endpoint_stats_from_source(
-                session=session,
-                endpoint_id=endpoint.id,
+            upsert_row = conn.execute(upsert_stmt).fetchone()
+            is_new = bool(upsert_row[1]) if upsert_row else False
+            u_inc = 1 if is_new else 0
+
+            # ── 3. 统计更新 (SQL 表达式，避免丢失更新) ─────────────────────
+            conn.execute(
+                update(ApiEndpoint)
+                .where(ApiEndpoint.id == ep_id)
+                .values(
+                    total_traffic_count=ApiEndpoint.total_traffic_count + 1,
+                    unique_traffic_count=ApiEndpoint.unique_traffic_count + u_inc,
+                    last_active_at=capt,
+                )
             )
-            reconcile_module_stats_from_source(session=session, module_id=endpoint.module_id)
-            
-            session.commit()
-            return f"Success: New unique flow archived with key {dedup_key}"
-            
-    except Exception as e:
-        logger.error(f"Error in traffic processing: {e}")
-        return f"Error: {str(e)}"
+            conn.execute(
+                update(SystemModule)
+                .where(SystemModule.id == mod_id)
+                .values(
+                    total_traffic_count=SystemModule.total_traffic_count + 1,
+                    unique_traffic_count=SystemModule.unique_traffic_count + u_inc,
+                )
+            )
 
-@celery_app.task(name="run_security_scan_task")
-def run_security_scan_task(task_id: str) -> str:
-    from app.models import SecurityTestTask, SecurityTestReport
-    import uuid
-    
+            # ── 4. 标记完成 ────────────────────────────────────────────────
+            conn.execute(
+                update(RawFlow)
+                .where(RawFlow.id == raw_uuid)
+                .values(deduped=True, parsed=True)
+            )
+
+        return f"ok: key={dedup_key} is_new={is_new}"
+
+    except OperationalError as exc:
+        if "deadlock detected" in str(exc).lower():
+            if getattr(self, "request", None) and self.request.id:
+                # 仅在 Celery 容器内重试
+                wait = random.uniform(0.1, 0.5) * (2**self.request.retries)
+                logger.warning(
+                    "检测到物理死锁，正在退避重试 (%s s): %s",
+                    round(wait, 2),
+                    raw_flow_id,
+                )
+                raise self.retry(exc=exc, countdown=wait)
+            else:
+                # 测试环境直接抛出，由测试脚本处理延迟或失败
+                raise exc
+        # 非死锁的 OperationalError（如连接池满）
+        if getattr(self, "request", None) and self.request.id:
+            raise self.retry(exc=exc)
+        raise exc
+    except Exception as exc:
+        if not getattr(self, "request", None) or not self.request.id:
+            raise exc
+        logger.exception("process_raw_flow_task 严重失败: %s", raw_flow_id)
+        raise self.retry(exc=exc)
+
+
+@celery_app.task(
+    name="run_security_scan_task",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=10,
+    acks_late=True,
+)
+def run_security_scan_task(self, task_id: str) -> str:
+    """执行安全扫描任务，记录扫描结果到 SecurityTestReport。"""
+    import asyncio
+
+    from sqlmodel import Session
+
+    from app.models import ApiAsset, SecurityTestReport, SecurityTestTask
+    from app.services.scanner import run_scan_for_asset
+
     try:
-        task_uuid = uuid.UUID(task_id)
         with Session(engine) as session:
-            task = session.get(SecurityTestTask, task_uuid)
+            task = session.get(SecurityTestTask, uuid.UUID(task_id))
             if not task:
-                return "Task not found"
-                
+                return f"Skipped: SecurityTestTask {task_id} not found"
+
             task.status = "running"
             session.add(task)
             session.commit()
-            
+
             asset = session.get(ApiAsset, task.target_asset_id)
             if not asset:
-                task.status = "failed"
-                session.add(task)
-                session.commit()
-                return "Asset not found"
-                
-            scan_result = asyncio.run(run_scan_for_asset(asset, task.payload_type))
-            
-            report = SecurityTestReport(
-                task_id=task.id,
-                asset_id=asset.id,
-                vulnerability_found=scan_result["vulnerability_found"],
-                details=scan_result["details"]
-            )
-            session.add(report)
-            
-            task.status = "completed"
-            task.finished_at = datetime.now(timezone.utc)
-            session.add(task)
-            session.commit()
-            return f"Scan completed for Task {task_id}. Vuln Found: {report.vulnerability_found}"
-            
-    except Exception as e:
-        logger.error(f"Error in run_security_scan_task: {e}")
-        with Session(engine) as session:
-            task = session.get(SecurityTestTask, task_uuid)
-            if task:
                 task.status = "failed"
                 task.finished_at = datetime.now(timezone.utc)
                 session.add(task)
                 session.commit()
-        return f"Error: {str(e)}"
+                return f"Error: ApiAsset {task.target_asset_id} not found"
 
-@celery_app.task(name="replay_variant_task")
-def replay_variant_task(variant_id: str) -> str:
+            # [Why asyncio.run]：scanner 是 async 函数，Celery prefork worker
+            # 没有运行中的 event loop，asyncio.run() 可安全创建并销毁一次性 loop。
+            # 若改用 gevent/eventlet worker，需改为 loop.run_until_complete()。
+            scan_result = asyncio.run(run_scan_for_asset(asset, task.payload_type))
+
+            report = SecurityTestReport(
+                task_id=task.id,
+                asset_id=asset.id,
+                vulnerability_found=scan_result["vulnerability_found"],
+                details=scan_result["details"],
+            )
+            session.add(report)
+
+            task.status = "completed"
+            task.finished_at = datetime.now(timezone.utc)
+            session.add(task)
+            session.commit()
+            return f"ok: vuln={report.vulnerability_found}"
+
+    except Exception as exc:
+        logger.exception("run_security_scan_task 失败: task_id=%s", task_id)
+        raise self.retry(exc=exc)
+
+
+@celery_app.task(
+    name="replay_variant_task",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=3,
+    acks_late=True,
+    queue="replay",  # [Why]：队列解耦，确保重放攻击的高并发 I/O 不会阻塞默认队列的 CPU 密集型任务
+)
+def replay_variant_task(self, variant_id: str) -> str:
     """
-    [任务职责]：根据变体定义执行请求重放，并记录响应结果。
+    [重构]：复用 ReplayEngine 执行变体重放。
+    [Why]：统一同步与异步执行路径，确保审计留痕（ReplayResult）逻辑完全一致。
     """
-    import uuid
-    from datetime import datetime, timezone
-    
-    variant_uuid = uuid.UUID(variant_id)
+    from sqlmodel import Session
+
+    from app.services.replay import ReplayEngine
+
     try:
         with Session(engine) as session:
-            # 锁定变体记录
-            statement = select(Variant).where(Variant.id == variant_uuid).with_for_update()
-            variant = session.exec(statement).one()
-            
-            # 准备请求参数
-            # 注意：这里默认使用变体中定义的 URL，如果是非绝对路径可能需要拼接基准地址
-            method = variant.method.upper()
-            url = variant.url
-            headers = variant.headers or {}
-            body = variant.body_str
-            
-            start_time = datetime.now(timezone.utc)
-            
-            # 执行请求
-            try:
-                with httpx.Client(timeout=10.0, verify=False) as client:
-                    resp = client.request(
-                        method=method,
-                        url=url,
-                        headers=headers,
-                        content=body
-                    )
-                    end_time = datetime.now(timezone.utc)
-                    latency = int((end_time - start_time).total_seconds() * 1000)
-            except Exception as req_err:
-                logger.error(f"Request error in replay: {req_err}")
-            
-            # 更新变体状态
-            variant.last_response_code = resp.status_code if 'resp' in locals() else 0
-            variant.last_latency_ms = latency if 'latency' in locals() else 0
-            variant.last_replay_at = end_time if 'end_time' in locals() else datetime.now(timezone.utc)
-            
-            # 保存到历史记录表 (ReplayResult)
-            from app.models import ReplayResult
-            history = ReplayResult(
-                root_flow_id=variant.root_flow_id,
-                source_type="variant",
-                source_id=variant.id,
-                status="success" if 'resp' in locals() else "failed",
-                request_method=method,
-                request_url=url,
-                request_headers=headers,
-                request_body=body.encode('utf-8') if body else None,
-                response_status=variant.last_response_code,
-                response_body=resp.text[:10000].encode('utf-8') if 'resp' in locals() else None,
-                latency_ms=variant.last_latency_ms,
-                executed_at=variant.last_replay_at,
-                error_message=str(req_err) if 'req_err' in locals() else None
-            )
-            session.add(history)
-            session.add(variant)
-            session.commit()
-            return f"Replay finished for Variant {variant_id}, Status: {variant.last_response_code}"
-            
-    except Exception as e:
-        logger.error(f"Critical error in replay_variant_task: {e}")
-        return f"Error: {str(e)}"
+            # [Why]：在 Gevent 模式下直接调用同步方法。
+            # 给定 _execute_http_call 已被 patch，此过程将是完全非阻塞的。
+            variant = ReplayEngine.execute_variant(variant_id, session)
+            return f"ok: status={variant.last_response_code} latency={variant.last_latency_ms}ms"
+
+    except Exception as exc:
+        logger.exception("replay_variant_task 失败: variant_id=%s", variant_id)
+        raise self.retry(exc=exc)

@@ -1,19 +1,20 @@
+import json
 import uuid  # UUID：用于主键/外键类型，以及生成默认的 UUID v4
 from datetime import (  # datetime：时间字段；timezone：显式使用 UTC 时区
     datetime,
     timezone,
 )
+from enum import Enum
 from typing import (  # Any：放宽类型以兼容第三方库；cast：显式类型断言（给类型检查器用）
     Any,
     cast,
 )
 
-from pydantic import (
-    EmailStr,  # EmailStr：带 email 格式校验的字符串类型（请求体/模型字段）
-)
 import sqlalchemy
+from pydantic import EmailStr, ValidationInfo, field_validator
 from sqlalchemy import (
     DateTime,  # DateTime：SQLAlchemy 的时间列类型（这里用于带时区的时间）
+    UniqueConstraint,  # UniqueConstraint：声明联合唯一约束，与 alembic autogenerate 同步，避免代码-DB 漂移
 )
 from sqlmodel import (  # SQLModel：模型基类；Field：字段声明；Relationship：关系声明
     Field,
@@ -279,8 +280,6 @@ class ApiKeysPublic(SQLModel):
     count: int
 
 
-from enum import Enum
-
 # -----------------------------------------------------------------------------
 # Common Enums
 # -----------------------------------------------------------------------------
@@ -388,13 +387,22 @@ class ApiEndpointBase(SQLModel):
 
     # 统计字段 (由 Worker 原子更新)
     total_traffic_count: int = Field(default=0)
-    variants_count: int = Field(default=0)
+    unique_traffic_count: int = Field(default=0)
     last_active_at: datetime | None = Field(
         default=None,
         sa_type=cast(Any, DateTime(timezone=True)),
     )
 
 class ApiEndpoint(ApiEndpointBase, table=True):
+    # [Why]：声明 (method, path, service_name) 联合唯一约束，与迁移 e3f7a2d9c401 保持同步。
+    # alembic autogenerate 依赖此声明检测 DB 漂移；worker.py 中的
+    # ON CONFLICT (method, path, service_name) DO NOTHING 也依赖此约束存在。
+    __table_args__ = (
+        UniqueConstraint(
+            "method", "path", "service_name",
+            name="uq_apiendpoint_method_path_service",
+        ),
+    )
     # API 接口定义的主键 UUID
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     # 接口定义创建的时间戳，默认为当前 UTC 时间
@@ -418,7 +426,7 @@ class ApiEndpointPublic(ApiEndpointBase):
 
     # 统计项
     total_traffic_count: int = 0
-    variants_count: int = 0
+    unique_traffic_count: int = 0
     last_active_at: datetime | None = None
 
 class ApiEndpointsPublic(SQLModel):
@@ -438,12 +446,18 @@ class FilteredFlowPublic(SQLModel):
     body: str | None = None # 将 bytes 转换为 str 返回给前端
     client_ip: str | None = None
     created_at: datetime | None
-    variant_count: int = 0
+    occurrence_count: int = 0
     replay_count: int = 0
 
 class FilteredFlowsPublic(SQLModel):
     data: list[FilteredFlowPublic]
     count: int
+
+class BaselineResult(SQLModel):
+    status_code: int
+    body: str
+    headers: dict[str, Any]
+    latency_ms: int
 
 # 4. Global Config (全局配置，如流量采集开关)
 class GlobalConfigBase(SQLModel):
@@ -630,14 +644,15 @@ class FilteredFlow(SQLModel, table=True):
     # 捕获来源 IP
     client_ip: str | None = Field(default=None, max_length=50)
     # 对应的去重指纹，确保持久库中对同一接口的同一形态报文绝不重复
-    dedup_key: str | None = Field(default=None, max_length=32)
+    # [Hardening]：增加 unique=True 强制数据库在物理层拦截并发重复写入，解决“12/预期1”的漂移问题
+    dedup_key: str | None = Field(default=None, max_length=32, unique=True, index=True)
     # 反向关联到逻辑接口定义，实现资产管理界面的级联展示
     endpoint: "ApiEndpoint" = Relationship(back_populates="filtered_flows")
     # 记录入库时间
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=cast(Any, DateTime(timezone=True)))
 
-    # 统计字段冗余，用于在列表页展示变体丰富度，避免 JOIN 高开销
-    variant_count: int = Field(default=0)
+    # 统计字段冗余，用于在列表页展示变体丰富度 (该特定采样的匹配次数)
+    occurrence_count: int = Field(default=0)
     # 统计被引用重放执行的历史次数
     replay_count: int = Field(default=0)
 
@@ -690,6 +705,28 @@ class VariantCreate(VariantBase):
     # 创建时必须指定所属的原始流量 ID
     root_flow_id: uuid.UUID
 
+    @field_validator("body_str")
+    @classmethod
+    def validate_json_body(cls, v: str | None, info: ValidationInfo) -> str | None:
+        """物理校验：如果声明了 JSON，则 Body 必须是合法 JSON"""
+        if not v:
+            return v
+
+        # 尝试检查 Content-Type (从数据字典中获取 headers)
+        headers = info.data.get("headers") or {}
+        content_type = ""
+        for k, val in headers.items():
+           if k.lower() == "content-type":
+              content_type = val.lower()
+
+        if "application/json" in content_type:
+           try:
+              json.loads(v)
+           except Exception as e:
+              raise ValueError(f"Payload 格式错误：并非合法的 JSON。详细信息：{str(e)}")
+
+        return v
+
 class VariantUpdate(SQLModel):
     name: str | None = Field(default=None, max_length=256)
     description: str | None = None
@@ -697,6 +734,28 @@ class VariantUpdate(SQLModel):
     url: str | None = None
     headers: dict[str, Any] | None = None
     body_str: str | None = None
+
+    @field_validator("body_str")
+    @classmethod
+    def validate_json_body(cls, v: str | None, info: ValidationInfo) -> str | None:
+        """物理校验：如果声明了 JSON，则 Body 必须是合法 JSON"""
+        if not v:
+            return v
+
+        # 尝试检查 Content-Type
+        headers = info.data.get("headers") or {}
+        content_type = ""
+        for k, val in headers.items():
+           if k.lower() == "content-type":
+              content_type = val.lower()
+
+        if "application/json" in content_type:
+           try:
+              json.loads(v)
+           except Exception as e:
+              raise ValueError(f"Payload 格式错误：并非合法的 JSON。详细信息：{str(e)}")
+
+        return v
 
 class Variant(VariantBase, table=True):
     __tablename__ = "variants"
@@ -712,6 +771,8 @@ class Variant(VariantBase, table=True):
     last_response_code: int | None = Field(default=None)
     last_response_body: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
     last_latency_ms: int | None = Field(default=None)
+    last_response_headers: dict[str, Any] | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.JSON))
+    last_request_curl: str | None = Field(default=None, sa_column=sqlalchemy.Column(sqlalchemy.Text))
     last_replay_at: datetime | None = Field(
         default=None,
         sa_type=cast(Any, DateTime(timezone=True)),
@@ -729,6 +790,8 @@ class VariantPublic(VariantBase):
     last_response_code: int | None
     last_response_body: str | None
     last_latency_ms: int | None
+    last_response_headers: dict[str, Any] | None
+    last_request_curl: str | None
     last_replay_at: datetime | None
     created_at: datetime | None
 

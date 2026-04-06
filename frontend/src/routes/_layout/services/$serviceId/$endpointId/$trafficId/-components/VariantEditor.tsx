@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { GitBranch, Save, Sparkles, Plus, X, Copy, Maximize2, Check } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
@@ -19,7 +19,7 @@ interface VariantEditorProps {
 
 export function VariantEditor({ trafficId, initialData, onSuccess }: VariantEditorProps) {
   const queryClient = useQueryClient()
-  const [name, setName] = useState(`变体 - ${new Date().toLocaleTimeString()}`)
+  const [name, setName] = useState(`变体 - ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}`)
   const [method, setMethod] = useState(initialData.method)
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [bodyCopied, setBodyCopied] = useState(false)
@@ -122,8 +122,20 @@ export function VariantEditor({ trafficId, initialData, onSuccess }: VariantEdit
       
       queryClient.invalidateQueries({ queryKey: ["variants", trafficId] })
       onSuccess?.()
-    } catch (e) {
-      alert("创建变体失败")
+    } catch (e: any) {
+      // 物理透传：提取后端 Pydantic 详细报错
+      const detail = e.body?.detail
+      let errorMsg = "保存变体失败"
+      
+      if (Array.isArray(detail)) {
+        errorMsg += "\n细节: " + detail.map((d: any) => d.msg).join(", ")
+      } else if (typeof detail === "string") {
+        errorMsg += "\n细节: " + detail
+      } else {
+        errorMsg += "\n请检查网络连接或 JSON 格式是否正确。"
+      }
+      
+      alert(errorMsg)
     } finally {
       setIsSubmitting(false)
     }
