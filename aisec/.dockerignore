@@ -1,0 +1,18 @@
+# build context 中不应进入镜像的文件
+# 注意：pyproject.toml 和 uv.lock 不排除——Dockerfile 需要 COPY 它们到 /app/ 安装依赖
+# 它们在源码 COPY 后会被 RUN rm -f 从 /app/aisec/ 中清理掉
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.env
+.env.example
+README.md
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+tests

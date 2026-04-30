@@ -1,0 +1,77 @@
+# aisec — AI 驱动安全渗透测试扫描平台
+#
+# 独立服务：监听 GitLab Webhook → Joern CPG → Neo4j 持久化 →
+#         Claude 语义审计（10 Agent + 397 规则） → 汇总归并 →
+#         结果回传 omniapi 流量采集平台。
+#
+# 与 omniapi 关系：通过 HTTP 内部接口推送扫描结论；不直接访问主库。
+#
+# 部署形态：仅在 Docker 镜像里运行；不构建 / 发布 wheel，
+# 因此本文件主要用于声明依赖 + 配置 lint/test 工具，hatchling
+# 的 wheel 配置已省略。
+[project]
+name = "aisec"
+version = "0.1.0"
+description = "AI 驱动安全渗透测试 — GitLab CI 集成扫描平台（v3.0）"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    # Web
+    "fastapi[standard]>=0.114.0,<1.0.0",
+    "uvicorn[standard]>=0.27.0,<1.0.0",
+    "httpx>=0.27.0,<1.0.0",
+    # 配置
+    "pydantic>=2.6.0,<3.0.0",
+    "pydantic-settings>=2.2.0,<3.0.0",
+    # AI
+    # pydantic-ai 0.8.1 与 anthropic >=0.61.0,<0.78.0 兼容；
+    # 0.78.0 起 anthropic 移除了 UserLocation，导致 pydantic-ai 0.x 启动报错。
+    # pydantic-ai 1.x 引入 beartype 0.22.9，与 temporalio 的工作流校验冲突。
+    "anthropic>=0.61.0,<0.78.0",
+    "pydantic-ai>=0.8.1,<1.0.0",
+    # CPG / Graph
+    "neo4j>=5.20.0,<6.0.0",
+    "lxml>=5.0.0",
+    # 持久化
+    "asyncpg>=0.29.0,<1.0.0",
+    # 编排
+    "temporalio>=1.7.0,<2.0.0",
+    # 资源
+    "pyyaml>=6.0,<7.0.0",
+    # 通知
+    "aiosmtplib>=3.0.0,<4.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.4.0,<1.0.0",
+    "mypy>=1.8.0,<2.0.0",
+    "coverage>=7.4.0,<8.0.0",
+]
+
+# build-system 仅为兼容现代 Python 工具链的元数据要求；
+# 实际部署不构建 wheel，由 Dockerfile 直接 COPY 源码。
+# packages = ["."] 告诉 hatchling 把当前目录作为包根（扁平布局）。
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "C4"]
+ignore = ["E501", "B008"]
+
+[tool.mypy]
+strict = true
+exclude = ["tests"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

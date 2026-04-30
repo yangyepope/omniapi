@@ -238,8 +238,235 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
 
       # Enable redirection for HTTP and HTTPS
       - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect  # HTTP -> HTTPS 重定向中间件
+
+  # ══════════════════════════════════════════════════════════════════════
+  # aisec —— 独立的 AI 驱动安全渗透测试扫描平台（v3.0）
+  # 子项目位于仓库根目录 aisec/ 与 joern-runner/，与 backend / frontend 平级
+  # ══════════════════════════════════════════════════════════════════════
+
+  temporal:  # Temporal Server（auto-setup 镜像，自带 PG 持久化层）
+    image: temporalio/auto-setup:1.24
+    restart: always
+    networks:
+      - default
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_SEEDS=db
+      # DYNAMIC_CONFIG_FILE_PATH 留空，使用 auto-setup 内置默认配置
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "tctl --address temporal:7233 cluster health | grep -q SERVING"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  temporal-ui:  # Temporal Web UI（看 Workflow 执行历史 / 重试 / 失败原因）
+    image: temporalio/ui:2.27.2
+    restart: always
+    networks:
+      - traefik-public
+      - default
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+      - traefik.http.services.${STACK_NAME?Variable not set}-temporal-ui.loadbalancer.server.port=8080
+      - traefik.http.routers.${STACK_NAME?Variable not set}-temporal-ui-http.rule=Host(`temporal.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-temporal-ui-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME?Variable not set}-temporal-ui-https.rule=Host(`temporal.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-temporal-ui-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME?Variable not set}-temporal-ui-https.tls=true
+      - traefik.http.routers.${STACK_NAME?Variable not set}-temporal-ui-https.tls.certresolver=le
+      - traefik.http.routers.${STACK_NAME?Variable not set}-temporal-ui-http.middlewares=https-redirect
+
+  neo4j:  # CPG 持久化（v3.0 §2.4）
+    image: neo4j:5.20-community
+    restart: always
+    networks:
+      - default
+    environment:
+      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/aisecaudit}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_max__size=2G
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - http://localhost:7474 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  joern-runner:  # joern CLI 的 HTTP 包装（v3.0 §2.2 Activity 2）
+    image: '${DOCKER_IMAGE_JOERN_RUNNER:-omniapi/joern-runner}:${TAG-latest}'
+    build:
+      context: ./joern-runner
+      dockerfile: Dockerfile
+    restart: always
+    networks:
+      - default
+    environment:
+      - JOERN_HEAP_SIZE=${JOERN_HEAP_SIZE:-4g}
+      - JOERN_RUNNER_PORT=8090
+    volumes:
+      - aisec-cache:/var/cache/aisec
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O - http://localhost:8090/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  aisec-api:  # FastAPI：webhook + 手动触发 + 查询接口
+    image: '${DOCKER_IMAGE_AISEC:-omniapi/aisec}:${TAG-latest}'
+    build:
+      context: ./aisec
+      dockerfile: Dockerfile
+    restart: always
+    networks:
+      - traefik-public
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - NEO4J_URI=bolt://neo4j:7687
+      - JOERN_RUNNER_URL=http://joern-runner:8090
+      - AI_AUDIT_POSTGRES_DSN=${AI_AUDIT_POSTGRES_DSN:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/aisec_audit}
+      - AI_AUDIT_SOURCE_CACHE_DIR=/var/cache/aisec
+      - GITLAB_URL=${GITLAB_URL:-}
+      - GITLAB_ACCESS_TOKEN=${GITLAB_ACCESS_TOKEN:-}
+      - GITLAB_WEBHOOK_SECRET=${GITLAB_WEBHOOK_SECRET:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-opus-4-7}
+      - TRAFFIC_PLATFORM_URL=${TRAFFIC_PLATFORM_URL:-http://backend:8000}
+      - TRAFFIC_PLATFORM_TOKEN=${TRAFFIC_PLATFORM_TOKEN:-}
+      - SCHEDULED_SCAN_CRON=${SCHEDULED_SCAN_CRON:-0 2 * * *}
+      - SCHEDULED_SCAN_PROJECTS=${SCHEDULED_SCAN_PROJECTS:-}
+      - NOTIFY_FEISHU_WEBHOOK=${NOTIFY_FEISHU_WEBHOOK:-}
+      - NOTIFY_DINGTALK_WEBHOOK=${NOTIFY_DINGTALK_WEBHOOK:-}
+      - NOTIFY_EMAIL_TO=${NOTIFY_EMAIL_TO:-}
+      - NOTIFY_MIN_SEVERITY=${NOTIFY_MIN_SEVERITY:-HIGH}
+    volumes:
+      - aisec-cache:/var/cache/aisec
+    command: uvicorn aisec.main:app --host 0.0.0.0 --port 8000
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+      - traefik.http.services.${STACK_NAME?Variable not set}-aisec.loadbalancer.server.port=8000
+      - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-http.rule=Host(`aisec.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-https.rule=Host(`aisec.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-https.tls=true
+      - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-https.tls.certresolver=le
+      - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-http.middlewares=https-redirect
+
+  aisec-prestart:  # 一次性：在主 PG 上创建 aisec_audit 库 + 表结构（v3.0 §3）
+    image: '${DOCKER_IMAGE_AISEC:-omniapi/aisec}:${TAG-latest}'
+    build:
+      context: ./aisec
+      dockerfile: Dockerfile
+    networks:
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - AI_AUDIT_POSTGRES_DSN=${AI_AUDIT_POSTGRES_DSN:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/aisec_audit}
+    command: python -m aisec.init_db
+
+  aisec-worker:  # Temporal Worker：跑 8 Activity Workflow
+    image: '${DOCKER_IMAGE_AISEC:-omniapi/aisec}:${TAG-latest}'
+    build:
+      context: ./aisec
+      dockerfile: Dockerfile
+    restart: always
+    networks:
+      - default
+    depends_on:
+      db:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      joern-runner:
+        condition: service_healthy
+      aisec-prestart:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - NEO4J_URI=bolt://neo4j:7687
+      - JOERN_RUNNER_URL=http://joern-runner:8090
+      - AI_AUDIT_POSTGRES_DSN=${AI_AUDIT_POSTGRES_DSN:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/aisec_audit}
+      - AI_AUDIT_SOURCE_CACHE_DIR=/var/cache/aisec
+      - GITLAB_URL=${GITLAB_URL:-}
+      - GITLAB_ACCESS_TOKEN=${GITLAB_ACCESS_TOKEN:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-opus-4-7}
+      - TRAFFIC_PLATFORM_URL=${TRAFFIC_PLATFORM_URL:-http://backend:8000}
+      - TRAFFIC_PLATFORM_TOKEN=${TRAFFIC_PLATFORM_TOKEN:-}
+      - SCHEDULED_SCAN_CRON=${SCHEDULED_SCAN_CRON:-0 2 * * *}
+      - SCHEDULED_SCAN_PROJECTS=${SCHEDULED_SCAN_PROJECTS:-}
+      - NOTIFY_FEISHU_WEBHOOK=${NOTIFY_FEISHU_WEBHOOK:-}
+      - NOTIFY_DINGTALK_WEBHOOK=${NOTIFY_DINGTALK_WEBHOOK:-}
+      - NOTIFY_EMAIL_TO=${NOTIFY_EMAIL_TO:-}
+      - NOTIFY_MIN_SEVERITY=${NOTIFY_MIN_SEVERITY:-HIGH}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_TLS=${SMTP_TLS:-true}
+    volumes:
+      - aisec-cache:/var/cache/aisec
+    command: python -m aisec.temporal.worker
+
 volumes:  # 命名卷定义区：集中声明可被 services.volumes 引用的卷
   app-db-data:  # PostgreSQL 数据卷（见 db.volumes）
+  aisec-cache:    # aisec 与 joern-runner 共享的源码 / CPG 缓存
+  neo4j-data:     # Neo4j 数据卷
+  neo4j-logs:     # Neo4j 日志卷
 
 networks:  # 网络定义区：声明/引用 compose 网络
   traefik-public:  # 外部网络：通常由独立 Traefik Stack 创建并复用

@@ -1,0 +1,12 @@
+# rules/ssrf.yaml — v3.0 §5.2
+# 占位文件：原始 24 个 yaml 共 397 条规则因开发期文件清理意外丢失，
+# 后续按 v3.0 §4.1 / §5.2 表格补齐。
+#
+# 模板：
+#   - id: RULE-XXX-001
+#     name: 规则名称
+#     type: static
+#     severity: HIGH         # CRITICAL / HIGH / MEDIUM / LOW
+#     detection_hint: >
+#       检测说明：检查什么、怎么判断、关键代码特征
+rules: []

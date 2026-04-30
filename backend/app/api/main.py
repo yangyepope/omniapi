@@ -4,6 +4,7 @@ from fastapi import APIRouter  # 导入 APIRouter，用于定义和组织路由
 from app.api.routes import (
     api_keys,
     douyin,
+    internal,
     items,
     login,
     private,
@@ -42,6 +43,8 @@ api_router.include_router(system_modules.router)
 api_router.include_router(variants.router)
 # 注册攻击重放相关路由
 api_router.include_router(replays.router, prefix="/replays", tags=["replays"])
+# 注册内部 service-to-service 接口（仅供 aisec 等同栈服务调用）
+api_router.include_router(internal.router)
 
 # 如果当前环境为本地开发环境，则暴露一些仅供内部测试的私有接口
 if settings.ENVIRONMENT == "local":
