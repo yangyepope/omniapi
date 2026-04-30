@@ -106,9 +106,9 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
   const filteredHistory = useMemo(() => {
     return (history || []).filter(item => {
       // a. 关键字检索 (URL 或 变体名)
-      const matchesKeyword = item.request_url.toLowerCase().includes(filterKeyword.toLowerCase()) || 
+      const matchesKeyword = item.request_url.toLowerCase().includes(filterKeyword.toLowerCase()) ||
                              (variantNames[item.source_id]?.toLowerCase().includes(filterKeyword.toLowerCase()))
-      
+
       // b. 状态码过滤
       let matchesStatus = true
       if (filterStatus === "success") matchesStatus = !!item.response_status && item.response_status < 400
