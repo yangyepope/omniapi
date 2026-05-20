@@ -1,5 +1,5 @@
 # 1. 使用官方 Python 3.11.2 镜像作为基础镜像
-FROM python:3.11.2
+FROM python:3.14.5
 
 # 2. 设置环境变量：强制 Python 不使用缓存输出，直接把日志打印到终端（方便你通过 docker logs 查看
 ENV PYTHONUNBUFFERED=1
