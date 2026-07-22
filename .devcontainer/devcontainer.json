@@ -1,5 +1,5 @@
 {
-    "name": "OmniAPI-Backend",
+    "name": "SecurityPlatform-Backend",
     "dockerComposeFile": [
         "../compose.yml",
         "../compose.override.yml"

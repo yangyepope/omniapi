@@ -1,4 +1,4 @@
--- aisec_audit 库表结构（独立库，不与 omniapi 主库共享 schema）
+-- aisec_audit 库表结构（独立库，不与 security-platform 主库共享 schema）
 --
 -- 表关系（v3.0 §2.2 / §2.4）：
 --   scan_run (1) ──< vulnerability        按 scan_run_id 级联删除

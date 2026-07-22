@@ -1,19 +1,24 @@
-import * as React from "react"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
-  FileUp, 
-  ListChecks, 
-  Search, 
-  User, 
-  ArrowLeft,
+import {
   Activity,
+  ArrowLeft,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  FileUp,
   Layers,
-  Shield
+  ListChecks,
+  Search,
+  Shield,
+  User,
 } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
+import * as React from "react"
+import { useMemo } from "react"
+import { z } from "zod"
+import { SystemModulesService } from "@/client"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -21,13 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useMemo } from "react"
-import { z } from "zod"
-import { motion, AnimatePresence } from "motion/react"
-
-import { SystemModulesService } from "@/client"
+import { fmtDate, fmtTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 const searchSchema = z.object({
   query: z.string().optional().default(""),
@@ -53,7 +53,10 @@ function EndpointListPage() {
   })
 
   const modules = statsQuery.data?.data ?? []
-  const currentModule = useMemo(() => modules.find((item) => item.id === serviceId), [modules, serviceId])
+  const currentModule = useMemo(
+    () => modules.find((item) => item.id === serviceId),
+    [modules, serviceId],
+  )
 
   const endpointsQuery = useQuery({
     queryKey: [
@@ -84,37 +87,43 @@ function EndpointListPage() {
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   }
 
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { type: "spring" as const, stiffness: 300, damping: 24 },
+    },
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       {/* Breadcrumbs & Header */}
       <div className="flex flex-col gap-6 mb-10">
-
-        
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-             <Link
+            <Link
               to="/services"
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-low border border-outline-variant/10 text-on-surface-variant hover:text-primary-fixed transition-all"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h2 className="text-3xl font-black tracking-tight text-on-surface">接口管理</h2>
-              <p className="text-sm text-on-surface-variant mt-1 font-medium">管理并监控 {serviceName} 的所有 API 资产</p>
+              <h2 className="text-3xl font-black tracking-tight text-on-surface">
+                接口管理
+              </h2>
+              <p className="text-sm text-on-surface-variant mt-1 font-medium">
+                管理并监控 {serviceName} 的所有 API 资产
+              </p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -130,35 +139,43 @@ function EndpointListPage() {
         </div>
       </div>
       {/* 📊 Bento Stats Grid */}
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
         className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-6 mb-10"
       >
         {/* Service Name & Principal */}
-        <motion.div 
-          variants={itemVariants} 
+        <motion.div
+          variants={itemVariants}
           className="col-span-1 md:col-span-1 bg-surface-container-lowest p-8 rounded-[2rem] border border-outline-variant/10 flex flex-col justify-between shadow-sm"
         >
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant/40">Service Name</span>
-            <h3 className="text-3xl font-black text-primary-fixed mt-2 letter-tight">{serviceName}</h3>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant/40">
+              Service Name
+            </span>
+            <h3 className="text-3xl font-black text-primary-fixed mt-2 letter-tight">
+              {serviceName}
+            </h3>
           </div>
           <div className="flex items-center gap-3 mt-6">
             <div className="h-8 w-8 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant/10">
               <User className="w-4 h-4 text-on-surface-variant" />
             </div>
-            <span className="text-xs font-bold text-on-surface-variant">责任人: 张小明 (Architecture Team)</span>
+            <span className="text-xs font-bold text-on-surface-variant">
+              责任人: 张小明 (Architecture Team)
+            </span>
           </div>
         </motion.div>
-        
+
         {/* Total Traffic (Raw) */}
-        <motion.div 
-          variants={itemVariants} 
+        <motion.div
+          variants={itemVariants}
           className="bg-surface-container-low/40 p-8 rounded-[2rem] border border-outline-variant/5 flex flex-col justify-between group hover:bg-surface-container-lowest transition-all duration-500"
         >
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">原始流量 (总)</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
+            原始流量 (总)
+          </span>
           <div className="mt-4 flex items-end justify-between">
             <div className="text-4xl font-black text-on-surface tracking-tighter">
               {currentModule?.total_traffic_count?.toLocaleString() || 0}
@@ -168,16 +185,18 @@ function EndpointListPage() {
             </div>
           </div>
           <div className="mt-4 h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
-             <div className="h-full bg-primary-fixed/30 w-2/3 rounded-full" />
+            <div className="h-full bg-primary-fixed/30 w-2/3 rounded-full" />
           </div>
         </motion.div>
-        
+
         {/* Deduplicated Flows */}
-        <motion.div 
-          variants={itemVariants} 
+        <motion.div
+          variants={itemVariants}
           className="bg-surface-container-low/40 p-8 rounded-[2rem] border border-outline-variant/5 flex flex-col justify-between group hover:bg-surface-container-lowest transition-all duration-500"
         >
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">剔重后流量</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
+            剔重后流量
+          </span>
           <div className="mt-4 flex items-end justify-between">
             <div className="text-4xl font-black text-on-surface tracking-tighter">
               {currentModule?.unique_traffic_count?.toLocaleString() || 0}
@@ -185,16 +204,18 @@ function EndpointListPage() {
             <Activity className="w-5 h-5 text-on-surface-variant/20 group-hover:text-amber-500 transition-colors" />
           </div>
           <div className="mt-4 h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
-             <div className="h-full bg-amber-500/30 w-1/2 rounded-full" />
+            <div className="h-full bg-amber-500/30 w-1/2 rounded-full" />
           </div>
         </motion.div>
-        
+
         {/* Total Endpoints */}
-        <motion.div 
-          variants={itemVariants} 
+        <motion.div
+          variants={itemVariants}
           className="bg-surface-container-low/40 p-8 rounded-[2rem] border border-outline-variant/5 flex flex-col justify-between group hover:bg-surface-container-lowest transition-all duration-500"
         >
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">接口总数 (Endpoints)</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
+            接口总数 (Endpoints)
+          </span>
           <div className="mt-4 flex items-end justify-between">
             <div className="text-4xl font-black text-on-surface tracking-tighter">
               {currentModule?.interfaces || 0}
@@ -202,7 +223,7 @@ function EndpointListPage() {
             <Layers className="w-5 h-5 text-on-surface-variant/20 group-hover:text-primary-fixed transition-colors" />
           </div>
           <div className="mt-4 h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
-             <div className="h-full bg-primary-fixed w-3/4 rounded-full" />
+            <div className="h-full bg-primary-fixed w-3/4 rounded-full" />
           </div>
         </motion.div>
       </motion.div>
@@ -210,50 +231,64 @@ function EndpointListPage() {
       <div className="bg-surface-container-low/30 border border-outline-variant/10 p-5 rounded-[2rem] flex flex-wrap items-center gap-5 mb-10">
         <div className="flex-1 min-w-[300px] relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-primary-fixed transition-colors" />
-          <input 
-            type="text" 
-            placeholder="输入路径搜索 (支持通配符)" 
+          <input
+            type="text"
+            placeholder="输入路径搜索 (支持通配符)"
             value={rawQuery}
-            onChange={(e) => navigate({ search: (prev) => ({ ...prev, query: e.target.value, page: 1 }) })}
+            onChange={(e) =>
+              navigate({
+                search: (prev) => ({ ...prev, query: e.target.value, page: 1 }),
+              })
+            }
             className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-2xl pl-12 pr-4 py-3 text-sm focus:ring-4 focus:ring-primary-fixed/10 focus:border-primary-fixed/30 transition-all outline-none shadow-sm text-on-surface placeholder:text-on-surface-variant/40 font-bold"
           />
         </div>
-        
+
         <div className="flex items-center gap-3">
-             <Select defaultValue="all">
-                <SelectTrigger size="sm" className="min-w-[160px] bg-surface-container-lowest border border-outline-variant/20 font-black text-on-surface shadow-sm outline-none ring-0">
-                  <Shield className="w-3.5 h-3.5 opacity-40 mr-1" />
-                  <SelectValue placeholder="所有方法" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">所有方法</SelectItem>
-                  {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            <Select defaultValue="all">
-             <SelectTrigger size="sm" className="min-w-[160px] bg-surface-container-lowest border border-outline-variant/20 font-black text-on-surface shadow-sm outline-none ring-0">
-               <SelectValue placeholder="所有状态" />
-             </SelectTrigger>
-             <SelectContent>
-               <SelectItem value="all">所有状态</SelectItem>
-               <SelectItem value="auto">Auto-Complete</SelectItem>
-               <SelectItem value="doc">Documented</SelectItem>
-               <SelectItem value="null">Undefined</SelectItem>
-             </SelectContent>
-            </Select>
+          <Select defaultValue="all">
+            <SelectTrigger
+              size="sm"
+              className="min-w-[160px] bg-surface-container-lowest border border-outline-variant/20 font-black text-on-surface shadow-sm outline-none ring-0"
+            >
+              <Shield className="w-3.5 h-3.5 opacity-40 mr-1" />
+              <SelectValue placeholder="所有方法" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">所有方法</SelectItem>
+              {["GET", "POST", "PUT", "DELETE", "PATCH"].map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select defaultValue="all">
+            <SelectTrigger
+              size="sm"
+              className="min-w-[160px] bg-surface-container-lowest border border-outline-variant/20 font-black text-on-surface shadow-sm outline-none ring-0"
+            >
+              <SelectValue placeholder="所有状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">所有状态</SelectItem>
+              <SelectItem value="auto">Auto-Complete</SelectItem>
+              <SelectItem value="doc">Documented</SelectItem>
+              <SelectItem value="null">Undefined</SelectItem>
+            </SelectContent>
+          </Select>
 
           <div className="h-10 w-px bg-outline-variant/20 mx-2" />
 
-           <div className="flex items-center bg-surface-container-lowest border border-outline-variant/20 rounded-2xl px-4 py-3 text-sm text-on-surface shadow-sm font-black cursor-pointer hover:bg-surface-container-high transition-all group whitespace-nowrap flex-shrink-0">
+          <div className="flex items-center bg-surface-container-lowest border border-outline-variant/20 rounded-2xl px-4 py-3 text-sm text-on-surface shadow-sm font-black cursor-pointer hover:bg-surface-container-high transition-all group whitespace-nowrap flex-shrink-0">
             <Calendar className="w-4 h-4 mr-2.5 text-primary-fixed/60 group-hover:scale-110 transition-transform" />
             <span>最后 7 天</span>
           </div>
 
-          <Button 
+          <Button
             variant="ghost"
-            onClick={() => navigate({ search: (prev) => ({ ...prev, query: "", page: 1 }) })}
+            onClick={() =>
+              navigate({ search: (prev) => ({ ...prev, query: "", page: 1 }) })
+            }
             className="text-on-surface-variant hover:text-primary-fixed font-black rounded-xl px-4"
           >
             重置
@@ -266,32 +301,64 @@ function EndpointListPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-low/10 border-b border-outline-variant/5">
-                <th className="px-8 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">归一化路径</th>
-                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">方法</th>
-                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">状态</th>
-                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">原始流量</th>
-                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">剔重后流量</th>
-                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">最后活跃</th>
-                <th className="px-8 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em] text-right">操作</th>
+                <th className="px-8 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">
+                  归一化路径
+                </th>
+                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">
+                  方法
+                </th>
+                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">
+                  状态
+                </th>
+                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">
+                  原始流量
+                </th>
+                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">
+                  剔重后流量
+                </th>
+                <th className="px-6 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em]">
+                  最后活跃
+                </th>
+                <th className="px-8 py-6 text-[10px] font-black text-on-surface-variant/50 uppercase tracking-[0.2em] text-right">
+                  操作
+                </th>
               </tr>
             </thead>
-            <tbody className={cn("divide-y divide-outline-variant/5", endpointsQuery.isFetching && "opacity-60 transition-opacity")}>
+            <tbody
+              className={cn(
+                "divide-y divide-outline-variant/5",
+                endpointsQuery.isFetching && "opacity-60 transition-opacity",
+              )}
+            >
               <AnimatePresence>
                 {endpoints.map((api: any) => (
-                  <motion.tr 
-                    key={api.id} 
+                  <motion.tr
+                    key={api.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    whileHover={{ backgroundColor: 'rgba(var(--primary-fixed), 0.02)' }}
+                    whileHover={{
+                      backgroundColor: "rgba(var(--primary-fixed), 0.02)",
+                    }}
                     className="group transition-colors cursor-pointer"
                   >
                     <td className="px-8 py-6">
                       <div className="flex flex-col max-w-[400px]">
                         <span className="text-sm font-black text-on-surface tracking-tight truncate font-mono">
-                          {(api.path || "").split(/({.*?})/).map((part: string, i: number) => (
-                            part.startsWith('{') ? <span key={i} className="text-primary-fixed bg-primary-fixed/5 px-1.5 py-0.5 rounded-md mx-0.5 border border-primary-fixed/10">{part}</span> : part
-                          ))}
+                          {(api.path || "")
+                            .split(/({.*?})/)
+                            .map((part: string, i: number) =>
+                              part.startsWith("{") ? (
+                                <span
+                                  key={i}
+                                  className="text-primary-fixed bg-primary-fixed/5 px-1.5 py-0.5 rounded-md mx-0.5 border border-primary-fixed/10"
+                                >
+                                  {part}
+                                </span>
+                              ) : (
+                                part
+                              ),
+                            )}
                         </span>
                         <span className="text-[10px] font-bold text-on-surface-variant/40 mt-1 uppercase tracking-wider">
                           Base Asset
@@ -300,26 +367,38 @@ function EndpointListPage() {
                     </td>
 
                     <td className="px-6 py-6 font-mono">
-                       <div className={cn(
-                        "inline-flex px-3 py-1 rounded-lg text-[10px] font-black border uppercase shadow-sm",
-                        api.method === 'GET' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-500" : 
-                        api.method === 'POST' ? "bg-primary-fixed/5 border-primary-fixed/20 text-primary-fixed" :
-                        "bg-surface-container-high border-outline-variant/30 text-on-surface-variant"
-                      )}>
-                        {api.method || 'UNKNOWN'}
+                      <div
+                        className={cn(
+                          "inline-flex px-3 py-1 rounded-lg text-[10px] font-black border uppercase shadow-sm",
+                          api.method === "GET"
+                            ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-500"
+                            : api.method === "POST"
+                              ? "bg-primary-fixed/5 border-primary-fixed/20 text-primary-fixed"
+                              : "bg-surface-container-high border-outline-variant/30 text-on-surface-variant",
+                        )}
+                      >
+                        {api.method || "UNKNOWN"}
                       </div>
                     </td>
 
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-2.5">
-                        <div className={cn(
-                          "h-2 w-2 rounded-full",
-                          api.source_type === 'auto_discovered' ? "bg-emerald-500 animate-pulse" : 
-                          api.source_type === 'documented' ? "bg-on-surface-variant/30" : "bg-rose-500"
-                        )} />
+                        <div
+                          className={cn(
+                            "h-2 w-2 rounded-full",
+                            api.source_type === "auto_discovered"
+                              ? "bg-emerald-500 animate-pulse"
+                              : api.source_type === "documented"
+                                ? "bg-on-surface-variant/30"
+                                : "bg-rose-500",
+                          )}
+                        />
                         <span className="text-xs font-bold text-on-surface-variant">
-                          {api.source_type === 'auto_discovered' ? 'Auto-Complete' : 
-                           api.source_type === 'documented' ? 'Documented' : 'Undefined'}
+                          {api.source_type === "auto_discovered"
+                            ? "Auto-Complete"
+                            : api.source_type === "documented"
+                              ? "Documented"
+                              : "Undefined"}
                         </span>
                       </div>
                     </td>
@@ -340,8 +419,10 @@ function EndpointListPage() {
                       <div className="flex flex-col text-[10px] tabular-nums font-bold text-on-surface-variant/70">
                         {api.last_active_at ? (
                           <>
-                            <span>{new Date(api.last_active_at).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\//g, "-")}</span>
-                            <span className="text-[9px] opacity-40">{new Date(api.last_active_at).toLocaleTimeString("zh-CN", { hour12: false })}</span>
+                            <span>{fmtDate(api.last_active_at)}</span>
+                            <span className="text-[9px] opacity-40">
+                              {fmtTime(api.last_active_at)}
+                            </span>
                           </>
                         ) : (
                           <span>Never</span>
@@ -351,11 +432,11 @@ function EndpointListPage() {
 
                     <td className="px-8 py-6 text-right">
                       <div className="flex items-center justify-end gap-5">
-                        <Link 
-                           to="/services/$serviceId/$endpointId"
-                           params={{ serviceId, endpointId: api.id }}
-                           search={(prev) => ({ ...prev })}
-                           className="text-xs font-black text-primary-fixed hover:underline underline-offset-4 transition-all"
+                        <Link
+                          to="/services/$serviceId/$endpointId"
+                          params={{ serviceId, endpointId: api.id }}
+                          search={(prev) => ({ ...prev })}
+                          className="text-xs font-black text-primary-fixed hover:underline underline-offset-4 transition-all"
                         >
                           详情
                         </Link>
@@ -378,43 +459,62 @@ function EndpointListPage() {
             </tbody>
           </table>
         </div>
-        
+
         {/* 📑 Global Standard Pagination Component */}
         <div className="px-8 py-10 bg-transparent flex items-center justify-between border-t border-gray-100">
           <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">
             显示第 1 到 {Math.min(search.pageSize, totalCount)} 条结果
           </span>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               disabled={search.page <= 1}
-              onClick={() => navigate({ search: (prev) => ({ ...prev, page: search.page - 1 }) })}
+              onClick={() =>
+                navigate({
+                  search: (prev) => ({ ...prev, page: search.page - 1 }),
+                })
+              }
               className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 transition-colors disabled:opacity-30"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-1">
-               {Array.from({ length: totalPages }, (_, i) => i + 1)
-               .filter(p => p === 1 || p === totalPages || Math.abs(p - search.page) <= 1)
-               .map((p, i, arr) => (
-                 <React.Fragment key={p}>
-                   {i > 0 && arr[i-1] !== p - 1 && <span className="px-2 text-gray-400/30 text-xs text-center">...</span>}
-                   <button 
-                    onClick={() => navigate({ search: (prev) => ({ ...prev, page: p }) })}
-                    className={cn(
-                      "w-10 h-10 flex items-center justify-center rounded-xl text-xs font-black transition-all",
-                      p === search.page 
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                        : "border border-gray-100 text-gray-400 hover:bg-gray-50"
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(
+                  (p) =>
+                    p === 1 ||
+                    p === totalPages ||
+                    Math.abs(p - search.page) <= 1,
+                )
+                .map((p, i, arr) => (
+                  <React.Fragment key={p}>
+                    {i > 0 && arr[i - 1] !== p - 1 && (
+                      <span className="px-2 text-gray-400/30 text-xs text-center">
+                        ...
+                      </span>
                     )}
-                   >
-                     {p}
-                   </button>
-                 </React.Fragment>
-               ))}
+                    <button
+                      onClick={() =>
+                        navigate({ search: (prev) => ({ ...prev, page: p }) })
+                      }
+                      className={cn(
+                        "w-10 h-10 flex items-center justify-center rounded-xl text-xs font-black transition-all",
+                        p === search.page
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                          : "border border-gray-100 text-gray-400 hover:bg-gray-50",
+                      )}
+                    >
+                      {p}
+                    </button>
+                  </React.Fragment>
+                ))}
             </div>
-            <button 
+            <button
               disabled={search.page >= totalPages}
-              onClick={() => navigate({ search: (prev) => ({ ...prev, page: search.page + 1 }) })}
+              onClick={() =>
+                navigate({
+                  search: (prev) => ({ ...prev, page: search.page + 1 }),
+                })
+              }
               className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 transition-colors disabled:opacity-30"
             >
               <ChevronRight className="w-5 h-5" />

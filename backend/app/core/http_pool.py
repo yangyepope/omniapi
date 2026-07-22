@@ -4,7 +4,7 @@ from typing import Optional
 
 class HTTPPool:
     """
-    [职责]：OmniAPI 全局 HTTP 连接池单例。
+    [职责]：SecurityPlatform 全局 HTTP 连接池单例。
     [设计意图]：
     1. 10 万级并发下，必须通过 Keep-Alive 复用 TCP 连接，避免端口耗尽。
     2. 支持异步 (Asyncio) 与 同步 (Gevent/Monkey-patched) 两种访问模式。
@@ -23,7 +23,7 @@ class HTTPPool:
                 timeout=httpx.Timeout(20.0, connect=5.0),
                 limits=limits,
                 follow_redirects=True,
-                headers={"User-Agent": "OmniAPI-HighScale-Replayer/2.0 (async)"}
+                headers={"User-Agent": "SecurityPlatform-HighScale-Replayer/2.0 (async)"}
             )
         return cls._async_instance
 
@@ -42,7 +42,7 @@ class HTTPPool:
                 timeout=httpx.Timeout(20.0, connect=5.0),
                 limits=limits,
                 follow_redirects=True,
-                headers={"User-Agent": "OmniAPI-HighScale-Replayer/2.0 (gevent-sync)"}
+                headers={"User-Agent": "SecurityPlatform-HighScale-Replayer/2.0 (gevent-sync)"}
             )
         return cls._sync_instance
 

@@ -78,6 +78,30 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = ""  # 数据库密码（生产必须配置）
     POSTGRES_DB: str = ""  # 数据库名（可为空，由环境决定）
 
+    # ── gitlab-scanner 集成（任务 #181）────────────────
+    # security-platform 通过 HTTP REST 调 scanner 的 /api/admin/* endpoints,
+    # SCANNER_ADMIN_TOKEN 必须和 scanner 自己 .env 里的 SCANNER_ADMIN_TOKEN
+    # 完全一致。未配置 → /security/* 路由全部 503。
+    SCANNER_BASE_URL: str | None = None  # 如 "http://gitlab-scanner:8000"
+    SCANNER_ADMIN_TOKEN: str | None = None
+    # scanner 项目目录,供运维面板「重建+部署 scanner」作 docker compose 的
+    # -f / --project-directory。⚠必须是**宿主机真实路径**(不是容器内自定义
+    # 挂载点):compose 的相对 bind 挂载(如 ./examples/manifest.yml)由宿主机
+    # docker daemon 按 --project-directory 解析成宿主机绝对路径,若给容器内路径
+    # (如 /opt/xxx)daemon 在宿主机上找不到 → 自动建空目录 → 挂载错乱。
+    # 因此 backend 容器把该宿主机目录挂到**同名路径**(见 compose.yml),使
+    # -f 可读、--project-directory 又能在宿主机正确解析。
+    SCANNER_PROJECT_DIR: str = "/home/dreamer/gitlab-scanner"
+    # compose 项目名,必须与 scanner 原始部署一致(否则 up -d 会与固定
+    # container_name=gitlab-scanner 冲突)。默认取 scanner 仓库目录名。
+    SCANNER_COMPOSE_PROJECT: str = "gitlab-scanner"
+
+    # ── MCP server 鉴权（任务 #182）─────────────────────
+    # security-platform 内嵌的 MCP server 挂在 /mcp/sse,Claude Desktop 等客户端通过
+    # Authorization Bearer <token> 调用。token 自己生成(openssl rand -hex 32),
+    # Claude Desktop 配置侧持同一份。未配置 → MCP mount 跳过,/mcp/* 全部 503。
+    SECURITY_PLATFORM_MCP_TOKEN: str | None = None
+
     SUPPORT_CONTACT: str = (
         "寻求技术支持请关注 13076908699"  # 对外展示的技术支持联系方式
     )
@@ -119,7 +143,7 @@ class Settings(BaseSettings):
         )
 
     EMAIL_TEST_USER: EmailStr = "test@example.com"  # 测试邮箱用户（用于开发/测试场景）
-    FIRST_SUPERUSER: EmailStr  # 首个超级管理员邮箱（init_db 会用它初始化用户）
+    FIRST_SUPERUSER: str  # 首个超级管理员登录标识（用户名或邮箱，init_db 会用它初始化用户；放宽自 EmailStr 以支持 admin 这类纯用户名）
     FIRST_SUPERUSER_PASSWORD: str  # 首个超级管理员密码（init_db/initial_data 使用）
 
     def _check_default_secret(self, var_name: str, value: str | None) -> None:

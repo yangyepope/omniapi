@@ -10,12 +10,17 @@ const DeleteAccount = () => {
             <FiAlertTriangle className="text-3xl" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-2xl font-black text-red-600 tracking-tight">危险区域：注销账户</h3>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400 opacity-60">账户注销与数据清理</p>
+            <h3 className="text-2xl font-black text-red-600 tracking-tight">
+              危险区域：注销账户
+            </h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400 opacity-60">
+              账户注销与数据清理
+            </p>
           </div>
         </div>
         <p className="text-sm text-red-700/60 font-bold leading-relaxed max-w-lg">
-          一旦执行，您的所有业务数据（包含 API 密钥、个人配置、归一化规则等）将被**永久性清除**且不可恢复。请务必确认您已备份所有必要数据。
+          一旦执行，您的所有业务数据（包含 API
+          密钥、个人配置、归一化规则等）将被**永久性清除**且不可恢复。请务必确认您已备份所有必要数据。
         </p>
       </div>
       <div className="flex">

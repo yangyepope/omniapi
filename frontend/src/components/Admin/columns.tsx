@@ -44,7 +44,9 @@ export const columns = (t: TFunction): ColumnDef<UserTableData>[] => [
     header: t("admin.table.role"),
     cell: ({ row }) => (
       <Badge variant={row.original.is_superuser ? "default" : "secondary"}>
-        {row.original.is_superuser ? t("admin.table.superuser") : t("admin.table.user")}
+        {row.original.is_superuser
+          ? t("admin.table.superuser")
+          : t("admin.table.user")}
       </Badge>
     ),
   },
@@ -60,7 +62,9 @@ export const columns = (t: TFunction): ColumnDef<UserTableData>[] => [
           )}
         />
         <span className={row.original.is_active ? "" : "text-muted-foreground"}>
-          {row.original.is_active ? t("admin.table.active") : t("admin.table.inactive")}
+          {row.original.is_active
+            ? t("admin.table.active")
+            : t("admin.table.inactive")}
         </span>
       </div>
     ),

@@ -21,7 +21,10 @@ export const LevelStars = ({ level, className }: LevelStarsProps) => {
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
-          className={cn("h-3 w-3", star <= active ? "fill-current" : "opacity-20")}
+          className={cn(
+            "h-3 w-3",
+            star <= active ? "fill-current" : "opacity-20",
+          )}
         />
       ))}
     </div>

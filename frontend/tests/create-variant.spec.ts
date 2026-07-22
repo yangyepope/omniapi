@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 
 test.describe("变体管理库全链路验收", () => {
   test("应当能基于流量记录成功创建一个新变体", async ({ page }) => {
@@ -49,7 +49,9 @@ test.describe("变体管理库全链路验收", () => {
     await expect(saveBtn).toBeEnabled({ timeout: 10000 })
     await saveBtn.click()
 
-    await expect(page.getByText(variantName).first()).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(variantName).first()).toBeVisible({
+      timeout: 15000,
+    })
     await page.screenshot({
       path: `tests/screenshots/variant-creation-${Date.now()}.png`,
       fullPage: true,

@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlmodel import create_engine
 
 # Reuse project settings
-sys.path.append("/root/omniapi/backend")
+sys.path.append("/root/security-platform/backend")
 from app.core.config import settings  # noqa: E402
 
 

@@ -34,8 +34,8 @@
 - **逻辑更新**：在 `EndpointFilter` 的 `filter` 方法中，新增对 `GET /v1/collect`、`POST /v1/collect` 和 `GET /api/v1/utils/health-check/` 的拦截过滤。
 
 ### 验证结果
-- [x] 重启 `omniapi-backend-1` 容器并应用修改。
-- [x] 观察 `docker logs --tail 20 omniapi-backend-1`，确认刷屏日志已被成功过滤，应用正常启动且不影响正常的业务逻辑。
+- [x] 重启 `security-platform-backend-1` 容器并应用修改。
+- [x] 观察 `docker logs --tail 20 security-platform-backend-1`，确认刷屏日志已被成功过滤，应用正常启动且不影响正常的业务逻辑。
 
 ## [2026-03-25 09:10:00] 探讨与实现流量过滤方案
 ### 操作描述
@@ -63,7 +63,7 @@
 ### 验证结果
 - [x] 数据库表结构已成功更新。
 - [x] 运行脚本成功插入了 22 条去重并清洗过的微服务 API 数据，涵盖了 `sts`, `authz`, `config`, `mdm111` 等模块。
-- [x] 重启了 `omniapi-backend-1` 和 `omniapi-celery-worker-1`，后续进来的真实流量会自动按微服务前缀挂载。
+- [x] 重启了 `security-platform-backend-1` 和 `security-platform-celery-worker-1`，后续进来的真实流量会自动按微服务前缀挂载。
 
 ## [2026-03-25 11:20:00] 探讨标准 API 文档（OpenAPI/Swagger）导入方案
 ### 操作描述

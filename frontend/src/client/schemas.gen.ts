@@ -103,6 +103,10 @@ export const ApiEndpointDetailResponseSchema = {
             type: 'integer',
             title: 'Traffic Count'
         },
+        total_traffic_count: {
+            type: 'integer',
+            title: 'Total Traffic Count'
+        },
         dedup_traffic_count: {
             type: 'integer',
             title: 'Dedup Traffic Count'
@@ -128,7 +132,7 @@ export const ApiEndpointDetailResponseSchema = {
         }
     },
     type: 'object',
-    required: ['endpoint', 'module_name', 'traffic_count', 'dedup_traffic_count', 'last_seen_at', 'recent_traffic'],
+    required: ['endpoint', 'module_name', 'traffic_count', 'total_traffic_count', 'dedup_traffic_count', 'last_seen_at', 'recent_traffic'],
     title: 'ApiEndpointDetailResponse'
 } as const;
 
@@ -205,9 +209,9 @@ export const ApiEndpointPublicSchema = {
             title: 'Total Traffic Count',
             default: 0
         },
-        variants_count: {
+        unique_traffic_count: {
             type: 'integer',
-            title: 'Variants Count',
+            title: 'Unique Traffic Count',
             default: 0
         },
         last_active_at: {
@@ -408,6 +412,31 @@ export const ApiKeysPublicSchema = {
     title: 'ApiKeysPublic'
 } as const;
 
+export const BaselineResultSchema = {
+    properties: {
+        status_code: {
+            type: 'integer',
+            title: 'Status Code'
+        },
+        body: {
+            type: 'string',
+            title: 'Body'
+        },
+        headers: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Headers'
+        },
+        latency_ms: {
+            type: 'integer',
+            title: 'Latency Ms'
+        }
+    },
+    type: 'object',
+    required: ['status_code', 'body', 'headers', 'latency_ms'],
+    title: 'BaselineResult'
+} as const;
+
 export const Body_login_login_access_tokenSchema = {
     properties: {
         grant_type: {
@@ -463,6 +492,20 @@ export const Body_login_login_access_tokenSchema = {
     type: 'object',
     required: ['username', 'password'],
     title: 'Body_login-login_access_token'
+} as const;
+
+export const ConfigUpdateBodySchema = {
+    properties: {
+        updates: {
+            additionalProperties: true,
+            type: 'object',
+            title: 'Updates',
+            description: "Settings field name → new value. Validated by scanner against each field's type/constraints (all-or-nothing)."
+        }
+    },
+    type: 'object',
+    required: ['updates'],
+    title: 'ConfigUpdateBody'
 } as const;
 
 export const EndpointLevelSchema = {
@@ -537,9 +580,9 @@ export const FilteredFlowPublicSchema = {
             ],
             title: 'Created At'
         },
-        variant_count: {
+        occurrence_count: {
             type: 'integer',
-            title: 'Variant Count',
+            title: 'Occurrence Count',
             default: 0
         },
         replay_count: {
@@ -732,13 +775,32 @@ export const NewPasswordSchema = {
         new_password: {
             type: 'string',
             maxLength: 128,
-            minLength: 8,
+            minLength: 6,
             title: 'New Password'
         }
     },
     type: 'object',
     required: ['token', 'new_password'],
     title: 'NewPassword'
+} as const;
+
+export const SecurityFindingsRequestSchema = {
+    properties: {
+        scan_id: {
+            type: 'string',
+            title: 'Scan Id'
+        },
+        project_id: {
+            type: 'integer',
+            title: 'Project Id'
+        },
+        summary: {
+            '$ref': '#/components/schemas/_Summary'
+        }
+    },
+    type: 'object',
+    required: ['scan_id', 'project_id', 'summary'],
+    title: 'SecurityFindingsRequest'
 } as const;
 
 export const SecurityTestReportPublicSchema = {
@@ -1336,18 +1398,43 @@ export const TokenSchema = {
     title: 'Token'
 } as const;
 
+export const TriageBodySchema = {
+    properties: {
+        action: {
+            type: 'string',
+            enum: ['fp', 'fixed', 'wontfix', 'suppressed', 'duplicate', 'reopen'],
+            title: 'Action'
+        },
+        reason: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Reason',
+            description: "Free-text note. For 'fp', this is what AI sees next scan."
+        }
+    },
+    type: 'object',
+    required: ['action'],
+    title: 'TriageBody'
+} as const;
+
 export const UpdatePasswordSchema = {
     properties: {
         current_password: {
             type: 'string',
             maxLength: 128,
-            minLength: 8,
+            minLength: 6,
             title: 'Current Password'
         },
         new_password: {
             type: 'string',
             maxLength: 128,
-            minLength: 8,
+            minLength: 6,
             title: 'New Password'
         }
     },
@@ -1361,7 +1448,6 @@ export const UserCreateSchema = {
         email: {
             type: 'string',
             maxLength: 255,
-            format: 'email',
             title: 'Email'
         },
         is_active: {
@@ -1389,7 +1475,7 @@ export const UserCreateSchema = {
         password: {
             type: 'string',
             maxLength: 128,
-            minLength: 8,
+            minLength: 6,
             title: 'Password'
         }
     },
@@ -1403,7 +1489,6 @@ export const UserPublicSchema = {
         email: {
             type: 'string',
             maxLength: 255,
-            format: 'email',
             title: 'Email'
         },
         is_active: {
@@ -1456,13 +1541,12 @@ export const UserRegisterSchema = {
         email: {
             type: 'string',
             maxLength: 255,
-            format: 'email',
             title: 'Email'
         },
         password: {
             type: 'string',
             maxLength: 128,
-            minLength: 8,
+            minLength: 6,
             title: 'Password'
         },
         full_name: {
@@ -1489,8 +1573,7 @@ export const UserUpdateSchema = {
             anyOf: [
                 {
                     type: 'string',
-                    maxLength: 255,
-                    format: 'email'
+                    maxLength: 255
                 },
                 {
                     type: 'null'
@@ -1525,7 +1608,7 @@ export const UserUpdateSchema = {
                 {
                     type: 'string',
                     maxLength: 128,
-                    minLength: 8
+                    minLength: 6
                 },
                 {
                     type: 'null'
@@ -1556,8 +1639,7 @@ export const UserUpdateMeSchema = {
             anyOf: [
                 {
                     type: 'string',
-                    maxLength: 255,
-                    format: 'email'
+                    maxLength: 255
                 },
                 {
                     type: 'null'
@@ -1850,6 +1932,29 @@ export const VariantPublicSchema = {
             ],
             title: 'Last Latency Ms'
         },
+        last_response_headers: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Response Headers'
+        },
+        last_request_curl: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Request Curl'
+        },
         last_replay_at: {
             anyOf: [
                 {
@@ -1876,7 +1981,7 @@ export const VariantPublicSchema = {
         }
     },
     type: 'object',
-    required: ['name', 'method', 'url', 'id', 'root_flow_id', 'replay_count', 'last_response_code', 'last_response_body', 'last_latency_ms', 'last_replay_at', 'created_at'],
+    required: ['name', 'method', 'url', 'id', 'root_flow_id', 'replay_count', 'last_response_code', 'last_response_body', 'last_latency_ms', 'last_response_headers', 'last_request_curl', 'last_replay_at', 'created_at'],
     title: 'VariantPublic'
 } as const;
 
@@ -2164,4 +2269,146 @@ export const VideoResponseSchema = {
             message: '解析成功'
         }
     ]
+} as const;
+
+export const _AttackChainSchema = {
+    properties: {
+        endpoints: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Endpoints'
+        },
+        vulnerabilities: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Vulnerabilities'
+        },
+        combined_severity: {
+            type: 'string',
+            title: 'Combined Severity'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        }
+    },
+    type: 'object',
+    required: ['endpoints', 'vulnerabilities', 'combined_severity', 'description'],
+    title: '_AttackChain'
+} as const;
+
+export const _FindingSchema = {
+    properties: {
+        rule_id: {
+            type: 'string',
+            title: 'Rule Id'
+        },
+        vulnerability_type: {
+            type: 'string',
+            title: 'Vulnerability Type'
+        },
+        severity: {
+            type: 'string',
+            title: 'Severity'
+        },
+        endpoint: {
+            type: 'string',
+            title: 'Endpoint'
+        },
+        location: {
+            type: 'string',
+            title: 'Location'
+        },
+        description: {
+            type: 'string',
+            title: 'Description'
+        },
+        evidence: {
+            type: 'string',
+            title: 'Evidence'
+        },
+        payload_hint: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Payload Hint'
+        },
+        service: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Service'
+        }
+    },
+    type: 'object',
+    required: ['rule_id', 'vulnerability_type', 'severity', 'endpoint', 'location', 'description', 'evidence'],
+    title: '_Finding'
+} as const;
+
+export const _SummarySchema = {
+    properties: {
+        scan_id: {
+            type: 'string',
+            title: 'Scan Id'
+        },
+        project_id: {
+            type: 'integer',
+            title: 'Project Id'
+        },
+        mode: {
+            type: 'string',
+            title: 'Mode'
+        },
+        total_findings: {
+            type: 'integer',
+            title: 'Total Findings'
+        },
+        critical_count: {
+            type: 'integer',
+            title: 'Critical Count'
+        },
+        high_count: {
+            type: 'integer',
+            title: 'High Count'
+        },
+        medium_count: {
+            type: 'integer',
+            title: 'Medium Count'
+        },
+        low_count: {
+            type: 'integer',
+            title: 'Low Count'
+        },
+        findings: {
+            items: {
+                '$ref': '#/components/schemas/_Finding'
+            },
+            type: 'array',
+            title: 'Findings'
+        },
+        attack_chains: {
+            items: {
+                '$ref': '#/components/schemas/_AttackChain'
+            },
+            type: 'array',
+            title: 'Attack Chains'
+        }
+    },
+    type: 'object',
+    required: ['scan_id', 'project_id', 'mode', 'total_findings', 'critical_count', 'high_count', 'medium_count', 'low_count'],
+    title: '_Summary'
 } as const;

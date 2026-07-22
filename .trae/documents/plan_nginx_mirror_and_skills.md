@@ -2,8 +2,8 @@
 
 ## 1. 现状分析 (Current State Analysis)
 - **业务需求 1 (网络架构)**: 用户询问如果是局域网的其他服务器（不是内网直连的 192.168.10.27 宿主机），如何实现 Nginx 流量转发，以及底层逻辑是什么。
-- **业务需求 2 (Trae 技能扩展)**: 用户要求每次使用 `/plan` 时，自动将计划方案存入 `\root\omniapi\.trae\documents`。
-- **业务需求 3 (Trae 技能扩展)**: 用户要求每次问答结束后，在 `\root\omniapi\.trae\documents\QA` 下记录对话。用户选择了“单文件拆分”的记录方式。
+- **业务需求 2 (Trae 技能扩展)**: 用户要求每次使用 `/plan` 时，自动将计划方案存入 `\root\security-platform\.trae\documents`。
+- **业务需求 3 (Trae 技能扩展)**: 用户要求每次问答结束后，在 `\root\security-platform\.trae\documents\QA` 下记录对话。用户选择了“单文件拆分”的记录方式。
 - **当前状态**: 经检索，项目中尚不存在自动记录 `/plan` 和 `Q&A` 的 Skill，需要手动创建。
 
 ## 2. 技术实现方案 (Proposed Architecture & Implementation)
@@ -24,7 +24,7 @@
 2. **QA 记录**: 当检测到一轮问答结束时，将问答的核心内容保存至 `.trae/documents/QA/`，采用单文件拆分模式 (如 `2026-03-23_1200_topic.md`)。
 
 **创建步骤**:
-1. 创建目录: `mkdir -p /root/omniapi/.trae/skills/document-logger` 和 `/root/omniapi/.trae/documents/QA`
+1. 创建目录: `mkdir -p /root/security-platform/.trae/skills/document-logger` 和 `/root/security-platform/.trae/documents/QA`
 2. 编写 `SKILL.md`: 定义该技能的触发条件、执行逻辑和输出路径规范。
 3. 将该技能注册到 `.trae/rules/AGENTS.md` (或类似的全局规则入口)，确保其在默认行为中生效。
 
@@ -36,5 +36,5 @@
 5. **[执行]** 将本次的问答（关于 Nginx 跨服和 Skill 创建）作为第一次测试，存入 QA 目录。
 
 ## 4. 验证步骤 (Verification)
-- 检查 `/root/omniapi/.trae/skills/document-logger/SKILL.md` 是否存在且内容正确。
-- 检查 `/root/omniapi/.trae/documents/QA` 目录下是否成功生成了第一份问答记录文档。
+- 检查 `/root/security-platform/.trae/skills/document-logger/SKILL.md` 是否存在且内容正确。
+- 检查 `/root/security-platform/.trae/documents/QA` 目录下是否成功生成了第一份问答记录文档。

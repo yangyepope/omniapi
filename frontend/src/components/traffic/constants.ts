@@ -7,9 +7,9 @@
 
 /** HTTP Method 徽章颜色映射（Tailwind CSS 类名） */
 export const METHOD_STYLES: Record<string, string> = {
-  GET:    "bg-blue-50 text-blue-600 border-blue-200",
-  POST:   "bg-red-50 text-red-500 border-red-200",
-  PUT:    "bg-green-50 text-green-600 border-green-200",
+  GET: "bg-blue-50 text-blue-600 border-blue-200",
+  POST: "bg-red-50 text-red-500 border-red-200",
+  PUT: "bg-green-50 text-green-600 border-green-200",
   DELETE: "bg-orange-50 text-orange-600 border-orange-200",
-  PATCH:  "bg-purple-50 text-purple-600 border-purple-200",
+  PATCH: "bg-purple-50 text-purple-600 border-purple-200",
 }

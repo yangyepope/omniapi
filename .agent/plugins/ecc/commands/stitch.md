@@ -6,7 +6,7 @@ command: true
 
 # Stitch 命令
 
-统一封装 OmniAPI 的 Stitch MCP 工作流，让你只需输入 `/stitch` 或自然语言描述即可触发设计素材获取与同步。
+统一封装 SecurityPlatform 的 Stitch MCP 工作流，让你只需输入 `/stitch` 或自然语言描述即可触发设计素材获取与同步。
 
 ## 用法
 
@@ -28,13 +28,13 @@ command: true
 ## 实际执行命令
 
 ```bash
-cd /root/omniapi/frontend && npm run stitch -- /stitch
+cd /root/security-platform/frontend && npm run stitch -- /stitch
 ```
 
 如果用户在 `/stitch` 后带参数，则把参数原样透传：
 
 ```bash
-cd /root/omniapi/frontend && npm run stitch -- /stitch <args...>
+cd /root/security-platform/frontend && npm run stitch -- /stitch <args...>
 ```
 
 ## 常见场景

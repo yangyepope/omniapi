@@ -1,7 +1,7 @@
 ---
 ---
 name: db-concurrency-guard
-description: OmniAPI 数据库并发安全开发标准 — 原子 Upsert、锁层级协议、高性能统计累加、死锁自愈框架。
+description: SecurityPlatform 数据库并发安全开发标准 — 原子 Upsert、锁层级协议、高性能统计累加、死锁自愈框架。
 ---
 
 > **使用要求**：

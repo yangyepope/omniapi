@@ -7,7 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from app.main import app
 
-with open("/root/omniapi/frontend/openapi.json", "w") as f:
+with open("/root/security-platform/frontend/openapi.json", "w") as f:
     json.dump(app.openapi(), f)
 
 print("OpenAPI schema dumped successfully.")

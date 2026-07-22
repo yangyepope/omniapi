@@ -27,7 +27,7 @@
 ## [2026-04-30 14:30:00] 第 1 阶段：方向调整
 
 ### 操作描述
-- 用户原始指令："详细按照这个设计方案文档，将这个项目合并到 omniapi 项目中，严格按照方案执行"
+- 用户原始指令："详细按照这个设计方案文档，将这个项目合并到 security-platform 项目中，严格按照方案执行"
 - 初版理解：把 ai_audit 作为 `backend/app/services/ai_audit/` 子模块嵌入 backend 进程
 - 用户反馈："你不要这样合并，会显得目录非常凌乱"
 - 调整方向：拆为顶层 `aisec/`、`joern-runner/`，与 `frontend/`、`backend/` 平级
@@ -217,7 +217,7 @@ joern-runner/scripts
 ## [2026-04-30 17:30:00] 第 7 阶段：ai-audit → aisec 扁平化重构
 
 ### 操作描述
-用户反馈 `omniapi/ai-audit/aisec/...` 双层嵌套冗余："ai-audit 直接删除吧，直接使用 aisec"。
+用户反馈 `security-platform/ai-audit/aisec/...` 双层嵌套冗余："ai-audit 直接删除吧，直接使用 aisec"。
 执行：把项目根目录从 `ai-audit/` 改名为 `aisec/`，并把内层 `aisec/aisec/` 提升一级，让 Python 包根 = 项目根。
 
 ### 改动详情
@@ -230,7 +230,7 @@ rmdir ai-audit/aisec
 # 顶层目录改名
 mv ai-audit aisec
 ```
-最终结构：`omniapi/aisec/` 顶层既含项目元数据（Dockerfile / pyproject.toml / README）也含 Python 包内容（`__init__.py` / `main.py` / 各子目录），再无嵌套。
+最终结构：`security-platform/aisec/` 顶层既含项目元数据（Dockerfile / pyproject.toml / README）也含 Python 包内容（`__init__.py` / `main.py` / 各子目录），再无嵌套。
 
 **2. Dockerfile 重写**：
 - 旧：`COPY aisec /app/aisec`（依赖内层 aisec/ 子目录）
@@ -248,7 +248,7 @@ mv ai-audit aisec
 | `context: ./ai-audit` | `context: ./aisec` |
 | `ai-audit-api` / `ai-audit-worker` / `ai-audit-prestart` | `aisec-api` / `aisec-worker` / `aisec-prestart` |
 | `ai-audit-cache` | `aisec-cache` |
-| `${DOCKER_IMAGE_AI_AUDIT:-omniapi/ai-audit}` | `${DOCKER_IMAGE_AISEC:-omniapi/aisec}` |
+| `${DOCKER_IMAGE_AI_AUDIT:-security-platform/ai-audit}` | `${DOCKER_IMAGE_AISEC:-security-platform/aisec}` |
 | `Host(\`ai-audit.${DOMAIN}\`)` | `Host(\`aisec.${DOMAIN}\`)` |
 | traefik 标签 `${STACK_NAME}-ai-audit-*` | `${STACK_NAME}-aisec-*` |
 
@@ -304,7 +304,7 @@ mv ai-audit aisec
 - ✅ Workflow ID 去重 + Cancel Signal
 - ✅ Temporal Schedule 定时全量扫描
 - ✅ 飞书 / 钉钉 / 邮件通知
-- ✅ HTTP 回传到 omniapi `/api/v1/internal/security-findings`
+- ✅ HTTP 回传到 security-platform `/api/v1/internal/security-findings`
 - ✅ 独立 aisec_audit 库（6 张表 + 兼容 ALTER）
 
 ## 已知遗留

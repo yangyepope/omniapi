@@ -1,4 +1,4 @@
-# [OmniAPI Royal Standard] Elegant Worker Reference Implementation (V8.2)
+# [SecurityPlatform Royal Standard] Elegant Worker Reference Implementation (V8.2)
 from datetime import datetime, timezone
 import uuid
 import random

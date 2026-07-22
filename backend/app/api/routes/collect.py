@@ -34,7 +34,7 @@ async def collect_traffic(
     """
     # 🌟 核心增强：防止重放攻击流量被二次采集 (Self-Loop Prevention)
     # 使用 request.headers 避免破坏 Pydantic 注入逻辑
-    if request.headers.get("X-OmniAPI-Replay") == "true" or "OmniAPI-Replayer" in request.headers.get("User-Agent", ""):
+    if request.headers.get("X-SecurityPlatform-Replay") == "true" or "SecurityPlatform-Replayer" in request.headers.get("User-Agent", ""):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     try:

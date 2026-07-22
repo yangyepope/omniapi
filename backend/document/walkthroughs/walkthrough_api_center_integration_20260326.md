@@ -5,7 +5,7 @@
 
 ## 改动详情
 1. **OpenAPI 规范生成**
-   - 编写了 `/root/omniapi/backend/scripts/dump_openapi.py` 脚本，从 FastAPI 应用中导出 OpenAPI 规范并保存为 `/root/omniapi/frontend/openapi.json`。
+   - 编写了 `/root/security-platform/backend/scripts/dump_openapi.py` 脚本，从 FastAPI 应用中导出 OpenAPI 规范并保存为 `/root/security-platform/frontend/openapi.json`。
 2. **前端 Client 代码生成**
    - 使用 `@hey-api/openapi-ts` 根据导出的 `openapi.json` 在前端重新生成了客户端代码 (`src/client/`)，确保前端代码可以强类型调用 `SystemModulesService.getSystemModulesStats` 接口。
 3. **接口中心页面改造 (`api-center.tsx`)**

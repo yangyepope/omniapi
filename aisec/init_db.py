@@ -1,5 +1,5 @@
 """
-init_db: 在 omniapi 主 PG 实例上创建 aisec_audit 库 + 表结构。
+init_db: 在 security-platform 主 PG 实例上创建 aisec_audit 库 + 表结构。
 
 用法：
     python -m aisec.init_db

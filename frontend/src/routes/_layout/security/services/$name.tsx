@@ -2,9 +2,16 @@
 // (扫描历史 + Findings 列表). 亮色主题.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link, useParams } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Link,
+  useCanGoBack,
+  useParams,
+  useRouter,
+} from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 import {
   ScanStatusBadge,
   SeverityBadge,
@@ -19,47 +26,67 @@ import {
   LoadingBlock,
   SectionCard,
 } from "@/components/security/ui"
-import { type ScanRun, SecurityApi } from "@/security/api"
+import { fmtDate, fmtDateTime, fmtRelative } from "@/lib/format"
 import {
+  type DastRun,
+  type Finding,
+  type ScanRun,
+  SecurityApi,
+  scannerErrorDetail,
+} from "@/security/api"
+import {
+  useDastRuns,
   useScanRuns,
+  useServiceEngineCounts,
+  useServiceFindingRuns,
   useServiceFindings,
   useServiceList,
   useSourceCache,
 } from "@/security/hooks"
+import { KnowledgePanel } from "@/security/KnowledgePage"
+import { ProjectUnderstandingPanel } from "@/security/ProjectUnderstandingPanel"
 import { ScanRunDetailPanel } from "@/security/ScanRunDetailPanel"
+import { ServiceInterfacesPanel } from "@/security/ServiceInterfacesPanel"
+import { SystemProfilePanel } from "@/security/SystemProfilePanel"
 
 export const Route = createFileRoute("/_layout/security/services/$name")({
   component: ServiceDetail,
   head: () => ({ meta: [{ title: "Service · Security Platform" }] }),
 })
 
-function formatRel(iso?: string | null): string {
-  if (!iso) return "—"
-  const t = new Date(iso).getTime()
-  if (Number.isNaN(t)) return "—"
-  const diff = Date.now() - t
-  if (diff < 60_000) return "刚刚"
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`
-  return `${Math.floor(diff / 86_400_000)}d`
-}
-
 function ServiceDetail() {
   const { name } = useParams({ from: "/_layout/security/services/$name" })
   const services = useServiceList()
   const svc = services.data?.find((s) => s.name === name)
-  const [tab, setTab] = useState<"history" | "findings" | "cache">("history")
+  const [tab, setTab] = useState<
+    | "history"
+    | "findings"
+    | "interfaces"
+    | "systemprofile"
+    | "knowledge"
+    | "understanding"
+    | "dast"
+    | "cache"
+  >("history")
   const [historyLimit, setHistoryLimit] = useState<3 | 10>(3)
+  // 返回上一步:优先走历史(从哪进来回哪去),无历史(直接粘贴 URL)兜底回大屏
+  const router = useRouter()
+  const canGoBack = useCanGoBack()
+  const goBack = () =>
+    canGoBack
+      ? router.history.back()
+      : router.navigate({ to: "/security-dashboard" })
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <Link
-          to="/security-dashboard"
+        <button
+          type="button"
+          onClick={goBack}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600"
         >
-          <ArrowLeft className="w-4 h-4" /> 返回大屏
-        </Link>
+          <ArrowLeft className="w-4 h-4" /> 返回
+        </button>
         <TriggerScanButton service={name} />
       </div>
 
@@ -97,7 +124,7 @@ function ServiceDetail() {
               最近扫描
             </div>
             <div className="text-sm text-gray-900">
-              {formatRel(svc?.last_scan_at)}
+              {fmtRelative(svc?.last_scan_at)}
             </div>
             <div className="mt-1.5">
               {svc?.last_scan_status ? (
@@ -121,6 +148,31 @@ function ServiceDetail() {
               active={tab === "findings"}
               onClick={() => setTab("findings")}
               label="Findings"
+            />
+            <TabButton
+              active={tab === "interfaces"}
+              onClick={() => setTab("interfaces")}
+              label="接口"
+            />
+            <TabButton
+              active={tab === "systemprofile"}
+              onClick={() => setTab("systemprofile")}
+              label="系统画像"
+            />
+            <TabButton
+              active={tab === "knowledge"}
+              onClick={() => setTab("knowledge")}
+              label="业务知识"
+            />
+            <TabButton
+              active={tab === "understanding"}
+              onClick={() => setTab("understanding")}
+              label="项目理解"
+            />
+            <TabButton
+              active={tab === "dast"}
+              onClick={() => setTab("dast")}
+              label="DAST"
             />
             <TabButton
               active={tab === "cache"}
@@ -149,6 +201,16 @@ function ServiceDetail() {
             <ScanHistoryTab name={name} limit={historyLimit} />
           ) : tab === "findings" ? (
             <FindingsTab name={name} />
+          ) : tab === "interfaces" ? (
+            <ServiceInterfacesPanel name={name} />
+          ) : tab === "systemprofile" ? (
+            <SystemProfilePanel service={name} />
+          ) : tab === "knowledge" ? (
+            <KnowledgePanel service={name} />
+          ) : tab === "understanding" ? (
+            <ProjectUnderstandingPanel name={name} />
+          ) : tab === "dast" ? (
+            <DastTab name={name} project={svc?.project} />
           ) : (
             <CacheTab name={name} />
           )}
@@ -271,7 +333,7 @@ const ScanHistoryTab = ({ name, limit }: { name: string; limit: number }) => {
                   )}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {new Date(r.started_at).toLocaleString("zh-CN")}
+                  {fmtDateTime(r.started_at)}
                   {took !== null && ` · ${took}s`}
                 </div>
               </button>
@@ -299,88 +361,200 @@ const ScanHistoryTab = ({ name, limit }: { name: string; limit: number }) => {
   )
 }
 
+// Findings 标签:全引擎口径(总数与左侧 KPI「开放」、扫描历史一致)。顶部引擎筛选
+// chip:「全部」+ 各引擎,数字为 open 命中数(各引擎 open 之和 = KPI 开放数,对得上)。
+// 默认选中 AI 引擎(平台以 AI 分析为主),可点其他引擎切换。只展示 open findings。
 const FindingsTab = ({ name }: { name: string }) => {
-  const findings = useServiceFindings(name, 200)
+  const counts = useServiceEngineCounts(name)
+  const engines = counts.data?.items ?? []
+  // 默认选 AI(引擎 key 以 ai 开头);无 AI 则退回「全部」
+  const aiKey = engines.find((e) => e.key.startsWith("ai"))?.key
+  // sel=null 表示用户未手动选,采用默认;选过之后固定用户选择
+  const [sel, setSel] = useState<string | null>(null)
+  const active = sel ?? aiKey ?? "all"
+  // 扫描批次筛选:null=全部(不按 run 过滤);数字=只看该次扫描产出的 finding。
+  const [selRun, setSelRun] = useState<number | null>(null)
+  // 扫描批次 pill:最近 3 次真实产出 finding 的扫描,计数随当前引擎筛选联动。
+  const runs = useServiceFindingRuns(name, {
+    engine: active === "all" ? undefined : active,
+  })
+  const runItems = runs.data ?? []
+  const findings = useServiceFindings(name, {
+    engine: active === "all" ? undefined : active,
+    scan_run_id: selRun ?? undefined,
+  })
   const list = findings.data?.items ?? []
-  if (list.length === 0)
-    return (
-      <SectionCard>
-        <EmptyBlock text="无 findings。" />
-      </SectionCard>
-    )
+  const totalOpen = engines.reduce((s, e) => s + e.open, 0)
+
   return (
-    <SectionCard bodyClassName="p-0">
-      <div className="overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="text-gray-500 text-xs uppercase border-b border-gray-100">
-            <tr>
-              <th className="text-left py-2.5 px-3 font-semibold">严重度</th>
-              <th className="text-left py-2.5 px-2 font-semibold">引擎</th>
-              <th className="text-left py-2.5 px-2 font-semibold">规则</th>
-              <th className="text-left py-2.5 px-2 font-semibold">文件</th>
-              <th className="text-left py-2.5 px-2 font-semibold">状态</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((f) => (
-              <tr
-                key={f.id}
-                className="border-b border-gray-100 hover:bg-gray-50"
-              >
-                <td className="py-2 px-3">
-                  <Link
-                    to="/security/findings/$id"
-                    params={{ id: String(f.id) }}
-                  >
-                    <SeverityBadge severity={f.severity} />
-                  </Link>
-                </td>
-                <td className="py-2 px-2 text-gray-500 text-xs">
-                  <Link
-                    to="/security/findings/$id"
-                    params={{ id: String(f.id) }}
-                    className="hover:text-blue-600"
-                  >
-                    {f.engine}
-                  </Link>
-                </td>
-                <td className="py-2 px-2 text-gray-900 text-xs">
-                  <Link
-                    to="/security/findings/$id"
-                    params={{ id: String(f.id) }}
-                    className="hover:text-blue-600 hover:underline underline-offset-2 font-mono"
-                  >
-                    {f.rule_id}
-                  </Link>
-                </td>
-                <td className="py-2 px-2 text-gray-500 text-xs font-mono">
-                  <span title={f.file_path}>
-                    {f.file_path.split("/").slice(-2).join("/")}:{f.line_number}
-                  </span>
-                </td>
-                <td className="py-2 px-2 text-xs">
-                  <span
-                    className={
-                      f.status === "open" ? "text-blue-600" : "text-gray-500"
-                    }
-                  >
-                    {f.status}
-                    {f.closed_reason ? ` (${f.closed_reason})` : ""}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {findings.data && findings.data.total > list.length && (
-          <div className="text-center text-xs text-gray-500 py-3">
-            展示 {list.length} / {findings.data.total} 条
-          </div>
-        )}
+    <div className="space-y-3">
+      {/* 引擎筛选 chip:全部 + 各引擎(数字=open,之和=左侧 KPI 开放数) */}
+      <div className="flex flex-wrap gap-2">
+        <EnginePill on={active === "all"} onClick={() => setSel("all")}>
+          <span className="text-sm font-semibold">全部</span>
+          <span className="text-xs text-gray-500 tabular-nums">
+            {totalOpen} 开放
+          </span>
+        </EnginePill>
+        {engines.map((e) => (
+          <EnginePill
+            key={e.key}
+            on={active === e.key}
+            onClick={() => setSel(e.key)}
+          >
+            <span className="text-sm font-semibold">{e.label || e.key}</span>
+            <span className="text-xs text-gray-500 tabular-nums">
+              {e.open} 开放
+            </span>
+          </EnginePill>
+        ))}
       </div>
-    </SectionCard>
+
+      {/* 扫描批次筛选 chip:全部 + 最近若干次扫描(有产出的 + 已完成的)。数字=该次
+          去重产出,零产出显示 0(置灰)。与引擎 chip 组合过滤:选引擎 + 选批次 = 该
+          引擎在该次扫描的产出。编号与「扫描历史」对齐(含刚扫完零产出的最新批次)。 */}
+      {runItems.length > 0 && (
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-400 mr-0.5">按扫描批次</span>
+            <EnginePill on={selRun === null} onClick={() => setSelRun(null)}>
+              <span className="text-sm font-semibold">全部</span>
+            </EnginePill>
+            {runItems.map((r) => (
+              <EnginePill
+                key={r.scan_run_id}
+                on={selRun === r.scan_run_id}
+                onClick={() => setSelRun(r.scan_run_id)}
+              >
+                <span className="flex items-center gap-1.5 text-sm font-semibold">
+                  <ScanStatusBadge status={r.status} />#{r.scan_run_id}
+                </span>
+                <span
+                  className={`text-xs tabular-nums ${
+                    r.count === 0 ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
+                  {r.count} 条 · {fmtDate(r.started_at)}
+                </span>
+              </EnginePill>
+            ))}
+          </div>
+          {/* 数字是「单次去重产出」,不是累计;开放总数以上方引擎 chip 为准 */}
+          <p className="text-[11px] text-gray-400 pl-0.5">
+            数字为该次扫描去重产出,非累计;开放总数见上方引擎筛选
+          </p>
+        </div>
+      )}
+
+      {/* 四态:loading / empty / success */}
+      {findings.isLoading ? (
+        <LoadingBlock />
+      ) : list.length === 0 ? (
+        <SectionCard>
+          <EmptyBlock text="无开放 findings。" />
+        </SectionCard>
+      ) : (
+        <>
+          <FindingsTable items={list} />
+          {findings.data && findings.data.total > list.length && (
+            <div className="text-xs text-gray-500 px-1">
+              共 {findings.data.total} 条开放,本页展示 {list.length} 条
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
+
+// 引擎筛选的一枚 chip
+const EnginePill = ({
+  on,
+  onClick,
+  children,
+}: {
+  on: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`flex flex-col items-start px-3 py-1.5 rounded-lg border text-left transition ${
+      on
+        ? "bg-blue-50 border-blue-300 text-blue-700"
+        : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+    }`}
+  >
+    {children}
+  </button>
+)
+
+// 单个分组的 findings 表格(按扫描分组后复用)
+const FindingsTable = ({ items }: { items: Finding[] }) => (
+  <SectionCard bodyClassName="p-0">
+    <div className="overflow-auto">
+      <table className="w-full text-sm">
+        <thead className="text-gray-500 text-xs uppercase border-b border-gray-100">
+          <tr>
+            <th className="text-left py-2.5 px-3 font-semibold">严重度</th>
+            <th className="text-left py-2.5 px-2 font-semibold">引擎</th>
+            <th className="text-left py-2.5 px-2 font-semibold">规则</th>
+            <th className="text-left py-2.5 px-2 font-semibold">文件</th>
+            <th className="text-left py-2.5 px-2 font-semibold">状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((f) => (
+            <tr
+              key={f.id}
+              className="border-b border-gray-100 hover:bg-gray-50"
+            >
+              <td className="py-2 px-3">
+                <Link to="/security/findings/$id" params={{ id: String(f.id) }}>
+                  <SeverityBadge severity={f.severity} />
+                </Link>
+              </td>
+              <td className="py-2 px-2 text-gray-500 text-xs">
+                <Link
+                  to="/security/findings/$id"
+                  params={{ id: String(f.id) }}
+                  className="hover:text-blue-600"
+                >
+                  {f.engine}
+                </Link>
+              </td>
+              <td className="py-2 px-2 text-gray-900 text-xs">
+                <Link
+                  to="/security/findings/$id"
+                  params={{ id: String(f.id) }}
+                  className="hover:text-blue-600 hover:underline underline-offset-2 font-mono"
+                >
+                  {f.rule_id}
+                </Link>
+              </td>
+              <td className="py-2 px-2 text-gray-500 text-xs font-mono">
+                <span title={f.file_path}>
+                  {f.file_path.split("/").slice(-2).join("/")}:{f.line_number}
+                </span>
+              </td>
+              <td className="py-2 px-2 text-xs">
+                <span
+                  className={
+                    f.status === "open" ? "text-blue-600" : "text-gray-500"
+                  }
+                >
+                  {f.status}
+                  {f.closed_reason ? ` (${f.closed_reason})` : ""}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </SectionCard>
+)
 
 function fmtSize(bytes: number): string {
   if (!bytes) return "—"
@@ -454,7 +628,7 @@ const CacheTab = ({ name }: { name: string }) => {
               </div>
               <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span>{fmtSize(c.size_bytes)}</span>
-                <span>{formatRel(c.pulled_at)}</span>
+                <span>{fmtRelative(c.pulled_at)}</span>
                 <button
                   type="button"
                   disabled={busy === c.sha}
@@ -494,6 +668,152 @@ const CacheTab = ({ name }: { name: string }) => {
         tone={pending?.rescan ? "brand" : "danger"}
         busy={busy !== null}
         onConfirm={handleConfirm}
+      />
+    </div>
+  )
+}
+
+// DAST 标签(scanner FEAT-033~036):某服务的动态扫描历史 + 触发按钮。
+// DAST 会真的去打运行中的目标,故触发走二次确认;未授权目标由 scanner 落
+// 一条 skipped run(带原因),前端如实展示,不当成失败也不藏。
+const DAST_STATUS_HEX: Record<DastRun["status"], string> = {
+  running: "#3b82f6", // 蓝:进行中
+  completed: "#10b981", // 绿:完成
+  failed: "#ef4444", // 红:失败
+  skipped: "#f59e0b", // 琥珀:被授权门跳过(非错误)
+}
+
+const DastTab = ({ name, project }: { name: string; project?: string }) => {
+  const { data, isLoading } = useDastRuns(name, project)
+  const qc = useQueryClient()
+  // 二次确认弹窗开合:DAST 主动打目标,不做静默触发
+  const [confirming, setConfirming] = useState(false)
+
+  const trigger = useMutation({
+    mutationFn: () => SecurityApi.triggerDast(name, project),
+    onSuccess: (res) => {
+      // accepted=true 只代表已受理并落 run;是否真扫由 scanner scope 门决定
+      toast.success(`已受理 DAST:${res.service}(状态见下方列表)`)
+      qc.invalidateQueries({ queryKey: ["security", "dast-runs", name] })
+      setConfirming(false)
+    },
+    onError: (err) => toast.error(`触发 DAST 失败:${scannerErrorDetail(err)}`),
+  })
+
+  if (isLoading) return <LoadingBlock />
+  const runs = data?.items ?? []
+  const running = runs.some((r) => r.status === "running")
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-gray-500">
+          带外动态扫描(nuclei / ZAP 等)。仅对授权范围内(scanner
+          DAST_SCOPE_ALLOWLIST)的运行目标发起;越界目标会落一条 skipped 记录。
+        </div>
+        <button
+          type="button"
+          disabled={trigger.isPending || running}
+          onClick={() => setConfirming(true)}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+        >
+          {running ? "DAST 进行中…" : "触发 DAST"}
+        </button>
+      </div>
+
+      {runs.length === 0 ? (
+        <SectionCard>
+          <EmptyBlock text="无 DAST 记录。需 scanner 侧 DAST_ENABLED=true 且目标在 DAST_SCOPE_ALLOWLIST 内;点右上角「触发 DAST」开始。" />
+        </SectionCard>
+      ) : (
+        <div className="space-y-2">
+          {runs.map((r) => {
+            const took =
+              r.finished_at && r.started_at
+                ? Math.round(
+                    (new Date(r.finished_at).getTime() -
+                      new Date(r.started_at).getTime()) /
+                      1000,
+                  )
+                : null
+            return (
+              <Card
+                key={r.id}
+                className="p-3 gap-0"
+                style={{ borderLeft: `3px solid ${DAST_STATUS_HEX[r.status]}` }}
+              >
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="text-xs font-semibold"
+                      style={{ color: DAST_STATUS_HEX[r.status] }}
+                    >
+                      {r.status}
+                    </span>
+                    <span className="text-gray-900 font-mono text-sm">
+                      #{r.id}
+                    </span>
+                    {r.target_url && (
+                      <span
+                        className="text-gray-500 font-mono text-xs truncate max-w-[22rem]"
+                        title={r.target_url}
+                      >
+                        {r.target_url}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500">
+                      {r.findings_total} 命中
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {fmtDateTime(r.started_at)}
+                    {took !== null && ` · ${took}s`}
+                    {r.triggered_by && ` · ${r.triggered_by}`}
+                  </div>
+                </div>
+                {/* skipped:把授权门给的原因显式摆出来,别让人以为白跑了 */}
+                {r.status === "skipped" && r.skip_reason && (
+                  <div className="mt-2 text-[11px] text-amber-600">
+                    跳过原因:{r.skip_reason}
+                  </div>
+                )}
+                {r.engines?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {r.engines.map((e) => (
+                      <Tag key={e.engine}>
+                        {e.engine} · {e.status}
+                        {typeof e.findings === "number"
+                          ? ` (${e.findings})`
+                          : ""}
+                      </Tag>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {/* 二次确认:DAST 会主动向目标发包,确认后才下发 */}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="确认触发 DAST 扫描"
+        description={
+          <>
+            将对服务{" "}
+            <span className="font-mono font-semibold text-gray-900">
+              {name}
+            </span>{" "}
+            的运行目标发起带外动态扫描(主动发包)。目标不在 scanner
+            授权范围内时会落一条 skipped 记录而非真正扫描。
+          </>
+        }
+        confirmText="触发 DAST"
+        tone="brand"
+        busy={trigger.isPending}
+        onConfirm={() => trigger.mutate()}
       />
     </div>
   )

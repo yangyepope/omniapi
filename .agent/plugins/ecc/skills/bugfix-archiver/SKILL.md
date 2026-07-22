@@ -1,6 +1,6 @@
 ---
 name: bugfix-archiver
-description: Use when a bug, error, or unexpected behavior is resolved, to archive the discovery and fix process into the /root/omniapi/bugfix/ directory.
+description: Use when a bug, error, or unexpected behavior is resolved, to archive the discovery and fix process into the document/changelog/ directory (FIX- entries).
 ---
 
 # bugfix-archiver: 自动化 Bug 修复回档
@@ -15,8 +15,9 @@ description: Use when a bug, error, or unexpected behavior is resolved, to archi
 
 ## 存储规据
 
-- **路径**: `/root/omniapi/bugfix/YYYYMMDD_描述.md`
-- **格式**: Markdown
+- **路径**: `document/changelog/FIX-{编号}-{描述}.md`（编号在 FIX 前缀下递增，查 `document/changelog/README.md`；新增后同步更新该索引）
+- **格式**: Markdown，复制 `document/changelog/_TEMPLATE.md` 改写
+- **配套**: 若该 bug 属于一类新根因，还须在 `document/bugs/` 建 `BUG-*` 防复发档案（含至少一条可执行 tripwire），规则见 `document/README.md`
 
 ## 核心回档模式
 

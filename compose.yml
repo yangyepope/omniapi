@@ -1,5 +1,7 @@
 # Docker Compose 主配置文件：定义服务、网络与数据卷（只加注释，不改变任何配置行为）
-# 约定：变量多数从同目录的 .env 注入；带 “?Variable not set” 的变量必须提供，否则 compose 会直接报错
+# 约定：变量多数从同目录的 .env 注入；带 "?Variable not set" 的变量必须提供，否则 compose 会直接报错
+# 项目改名:omniapi → security-platform(任务 #183)。数据卷已一并改名为 security-platform_*(external: true 引用);首次 up 前须完成一次性卷迁移,见 volumes 区注释。
+name: security-platform
 services:  # 所有服务定义入口（db/backend/frontend 等都在此声明）
 
   redis:  # Redis 服务：作为 Celery 的消息代理 (Broker)
@@ -178,6 +180,13 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - SENTRY_DSN=${SENTRY_DSN}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # 运维面板「重建+部署 scanner」:构建目录用宿主机真实路径 + compose 项目名
+      - SCANNER_PROJECT_DIR=${SCANNER_PROJECT_DIR_HOST:-/home/dreamer/gitlab-scanner}
+      - SCANNER_COMPOSE_PROJECT=${SCANNER_COMPOSE_PROJECT:-gitlab-scanner}
+    volumes:  # 运维面板:挂 docker.sock + scanner 仓库(挂到**同名路径**,保证
+      # compose 相对 bind 挂载在宿主机 daemon 侧解析正确)
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${SCANNER_PROJECT_DIR_HOST:-/home/dreamer/gitlab-scanner}:${SCANNER_PROJECT_DIR_HOST:-/home/dreamer/gitlab-scanner}
     command: /usr/local/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --backlog 2048 --timeout-keep-alive 30
 
     healthcheck:  # 健康检查：用于判断后端是否对外可用（Traefik/depends_on 可用）
@@ -219,7 +228,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       context: .  # 构建上下文为仓库根目录
       dockerfile: frontend/Dockerfile  # 前端 Dockerfile 路径
       args:  # 构建时注入参数：前端会把 API 地址打包进产物（注意：改这里通常需要 rebuild）
-        - VITE_API_URL=https://api.${DOMAIN?Variable not set}  # 前端调用后端 API 的基地址
+        - VITE_API_URL=${VITE_API_URL-}  # 留空时前端走相对路径，由 frontend nginx 反代 /api → backend
         - NODE_ENV=production  # 构建环境标识
     labels:  # Traefik 路由/服务配置：把前端暴露到 dashboard.${DOMAIN}
       - traefik.enable=true  # 启用 Traefik
@@ -241,7 +250,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
 
   # ══════════════════════════════════════════════════════════════════════
   # aisec —— 独立的 AI 驱动安全渗透测试扫描平台（v3.0）
-  # 子项目位于仓库根目录 aisec/ 与 joern-runner/，与 backend / frontend 平级
+  # 子项目位于仓库根目录 aisec/，与 backend / frontend 平级
   # ══════════════════════════════════════════════════════════════════════
 
   temporal:  # Temporal Server（auto-setup 镜像，自带 PG 持久化层）
@@ -310,28 +319,8 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       retries: 10
       start_period: 60s
 
-  joern-runner:  # joern CLI 的 HTTP 包装（v3.0 §2.2 Activity 2）
-    image: '${DOCKER_IMAGE_JOERN_RUNNER:-omniapi/joern-runner}:${TAG-latest}'
-    build:
-      context: ./joern-runner
-      dockerfile: Dockerfile
-    restart: always
-    networks:
-      - default
-    environment:
-      - JOERN_HEAP_SIZE=${JOERN_HEAP_SIZE:-4g}
-      - JOERN_RUNNER_PORT=8090
-    volumes:
-      - aisec-cache:/var/cache/aisec
-    healthcheck:
-      test: ["CMD-SHELL", "wget -O - http://localhost:8090/health >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
   aisec-api:  # FastAPI：webhook + 手动触发 + 查询接口
-    image: '${DOCKER_IMAGE_AISEC:-omniapi/aisec}:${TAG-latest}'
+    image: '${DOCKER_IMAGE_AISEC:-security-platform/aisec}:${TAG-latest}'
     build:
       context: ./aisec
       dockerfile: Dockerfile
@@ -356,7 +345,6 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - TEMPORAL_HOST=temporal:7233
       - TEMPORAL_NAMESPACE=default
       - NEO4J_URI=bolt://neo4j:7687
-      - JOERN_RUNNER_URL=http://joern-runner:8090
       - AI_AUDIT_POSTGRES_DSN=${AI_AUDIT_POSTGRES_DSN:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/aisec_audit}
       - AI_AUDIT_SOURCE_CACHE_DIR=/var/cache/aisec
       - GITLAB_URL=${GITLAB_URL:-}
@@ -389,7 +377,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - traefik.http.routers.${STACK_NAME?Variable not set}-aisec-http.middlewares=https-redirect
 
   aisec-prestart:  # 一次性：在主 PG 上创建 aisec_audit 库 + 表结构（v3.0 §3）
-    image: '${DOCKER_IMAGE_AISEC:-omniapi/aisec}:${TAG-latest}'
+    image: '${DOCKER_IMAGE_AISEC:-security-platform/aisec}:${TAG-latest}'
     build:
       context: ./aisec
       dockerfile: Dockerfile
@@ -409,7 +397,7 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
     command: python -m aisec.init_db
 
   aisec-worker:  # Temporal Worker：跑 8 Activity Workflow
-    image: '${DOCKER_IMAGE_AISEC:-omniapi/aisec}:${TAG-latest}'
+    image: '${DOCKER_IMAGE_AISEC:-security-platform/aisec}:${TAG-latest}'
     build:
       context: ./aisec
       dockerfile: Dockerfile
@@ -423,8 +411,6 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
         condition: service_healthy
       neo4j:
         condition: service_healthy
-      joern-runner:
-        condition: service_healthy
       aisec-prestart:
         condition: service_completed_successfully
     env_file:
@@ -437,7 +423,6 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
       - TEMPORAL_HOST=temporal:7233
       - TEMPORAL_NAMESPACE=default
       - NEO4J_URI=bolt://neo4j:7687
-      - JOERN_RUNNER_URL=http://joern-runner:8090
       - AI_AUDIT_POSTGRES_DSN=${AI_AUDIT_POSTGRES_DSN:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/aisec_audit}
       - AI_AUDIT_SOURCE_CACHE_DIR=/var/cache/aisec
       - GITLAB_URL=${GITLAB_URL:-}
@@ -463,10 +448,21 @@ services:  # 所有服务定义入口（db/backend/frontend 等都在此声明�
     command: python -m aisec.temporal.worker
 
 volumes:  # 命名卷定义区：集中声明可被 services.volumes 引用的卷
+  # 卷已改名为 security-platform_*(原 omniapi_*),external: true 让 compose 只引用不创建。
+  # 改名(#183)后须先把旧卷 omniapi_* 的历史数据迁移到新卷,否则首次 up 会因外部卷不存在而失败。
+  # 迁移命令见根目录 document/ 的改名 walkthrough。
   app-db-data:  # PostgreSQL 数据卷（见 db.volumes）
-  aisec-cache:    # aisec 与 joern-runner 共享的源码 / CPG 缓存
+    name: security-platform_app-db-data
+    external: true
+  aisec-cache:    # aisec 的源码 / CPG 缓存
+    name: security-platform_aisec-cache
+    external: true
   neo4j-data:     # Neo4j 数据卷
+    name: security-platform_neo4j-data
+    external: true
   neo4j-logs:     # Neo4j 日志卷
+    name: security-platform_neo4j-logs
+    external: true
 
 networks:  # 网络定义区：声明/引用 compose 网络
   traefik-public:  # 外部网络：通常由独立 Traefik Stack 创建并复用

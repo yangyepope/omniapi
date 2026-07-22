@@ -1,13 +1,21 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Activity, Clock, Database, Copy, Check, Server, Shield } from "lucide-react"
+import {
+  Activity,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  Clock,
+  Copy,
+  Database,
+  Server,
+  Shield,
+} from "lucide-react"
+import { motion } from "motion/react"
 import { useMemo, useState } from "react"
 import { z } from "zod"
-import { motion } from "motion/react"
-
 import { SystemModulesService, TrafficManagerService } from "@/client"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -22,48 +30,32 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown } from "lucide-react"
+import { fmtDateTime, fmtRelative } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 const formatRelativeTime = (value?: string | null) => {
   if (!value) return "未知"
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return "未知"
-  const diff = Date.now() - parsed.getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return "刚刚"
-  if (minutes < 60) return `${minutes} 分钟前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} 小时前`
-  const days = Math.floor(hours / 24)
-  return `${days} 天前`
+  return fmtRelative(value)
 }
 
-const formatAbsoluteTime = (value?: string | null) => {
-  if (!value) return "—"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "—"
-  
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  const h = String(date.getHours()).padStart(2, '0')
-  const min = String(date.getMinutes()).padStart(2, '0')
-  const s = String(date.getSeconds()).padStart(2, '0')
-  
-  return `${y}-${m}-${d} ${h}:${min}:${s}`
-}
+const formatAbsoluteTime = (value?: string | null) => fmtDateTime(value)
 
 // execCommand 降级复制：兼容 HTTP 内网环境（navigator.clipboard 需要 HTTPS）
 function copyViaExecCommand(text: string): void {
   const el = document.createElement("textarea")
   el.value = text
-  el.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;"
+  el.style.cssText =
+    "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;"
   document.body.appendChild(el)
   el.focus()
   el.select()
   try {
-    ;(document as unknown as { execCommand: (cmd: string) => boolean }).execCommand("copy")
-  } finally { document.body.removeChild(el) }
+    ;(
+      document as unknown as { execCommand: (cmd: string) => boolean }
+    ).execCommand("copy")
+  } finally {
+    document.body.removeChild(el)
+  }
 }
 
 const PayloadDisplay = ({ body }: { body: string }) => {
@@ -104,15 +96,22 @@ const PayloadDisplay = ({ body }: { body: string }) => {
           onClick={handleCopy}
           className={cn(
             "p-2 rounded-xl border transition-all shadow-sm",
-            copied 
-              ? "bg-secondary-fixed text-on-secondary border-secondary-fixed" 
-              : "bg-surface-container-high text-on-surface-variant hover:text-primary-fixed hover:bg-surface-container-highest border-outline-variant/10"
+            copied
+              ? "bg-secondary-fixed text-on-secondary border-secondary-fixed"
+              : "bg-surface-container-high text-on-surface-variant hover:text-primary-fixed hover:bg-surface-container-highest border-outline-variant/10",
           )}
           title={copied ? "已复制" : "复制 Payload"}
         >
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
         </button>
-        <Badge variant="neutral" className="text-[9px] font-black uppercase bg-primary-fixed/10 text-primary-fixed border-none">
+        <Badge
+          variant="neutral"
+          className="text-[9px] font-black uppercase bg-primary-fixed/10 text-primary-fixed border-none"
+        >
           JSON Format
         </Badge>
       </div>
@@ -126,7 +125,9 @@ const searchSchema = z.object({
   pageSize: z.coerce.number().int().min(10).max(100).default(20),
 })
 
-export const Route = createFileRoute("/_layout/services/$serviceId/$endpointId/")({
+export const Route = createFileRoute(
+  "/_layout/services/$serviceId/$endpointId/",
+)({
   component: EndpointDetailPage,
   validateSearch: searchSchema,
 })
@@ -134,17 +135,17 @@ export const Route = createFileRoute("/_layout/services/$serviceId/$endpointId/"
 type TagValue = "已测试" | "未测试" | "高危" | ""
 
 const TAG_STYLES: Record<string, string> = {
-  "已测试": "bg-green-100 text-green-700 border-green-200",
-  "未测试": "bg-gray-100 text-gray-500 border-gray-200",
-  "高危":   "bg-red-100 text-red-600 border-red-200",
+  已测试: "bg-green-100 text-green-700 border-green-200",
+  未测试: "bg-gray-100 text-gray-500 border-gray-200",
+  高危: "bg-red-100 text-red-600 border-red-200",
 }
 
 const METHOD_STYLES: Record<string, string> = {
-  GET:    "bg-blue-50 text-blue-600 border-blue-200",
-  POST:   "bg-red-50 text-red-500 border-red-200",
-  PUT:    "bg-green-50 text-green-600 border-green-200",
+  GET: "bg-blue-50 text-blue-600 border-blue-200",
+  POST: "bg-red-50 text-red-500 border-red-200",
+  PUT: "bg-green-50 text-green-600 border-green-200",
   DELETE: "bg-orange-50 text-orange-600 border-orange-200",
-  PATCH:  "bg-purple-50 text-purple-600 border-purple-200",
+  PATCH: "bg-purple-50 text-purple-600 border-purple-200",
 }
 
 function EndpointDetailPage() {
@@ -155,7 +156,6 @@ function EndpointDetailPage() {
     queryKey: ["system-modules", "stats"],
     queryFn: () => SystemModulesService.getSystemModulesStats(),
   })
-
 
   const endpointDetailQuery = useQuery({
     queryKey: ["system-modules", "endpoint-detail", serviceId, endpointId],
@@ -181,18 +181,22 @@ function EndpointDetailPage() {
   // 1. detail: 接口基础元数据
   const detail = endpointDetailQuery.data?.endpoint
   // 2. trafficRecords: 最近捕获的流量记录列表（优先使用专门的流量查询结果，降级使用详情接口附带的近期记录）
-  const trafficRecords = endpointTrafficQuery.data?.data ?? endpointDetailQuery.data?.recent_traffic ?? []
+  const trafficRecords =
+    endpointTrafficQuery.data?.data ??
+    endpointDetailQuery.data?.recent_traffic ??
+    []
   // 3. trafficCount: 映射至 total_traffic_count，展示该接口历史报文总命中数
   const trafficCount = endpointDetailQuery.data?.total_traffic_count ?? 0
   // 4. uniqueCount: 映射至 dedup_traffic_count，展示经过指纹去重后的唯一报文样例数
   const uniqueCount = endpointDetailQuery.data?.dedup_traffic_count ?? 0
-  
 
   if (isLoadingInitial) {
     return (
       <div className="flex h-[calc(100vh-100px)] flex-col items-center justify-center text-on-surface-variant space-y-4">
         <Server className="w-10 h-10 animate-pulse text-primary-fixed" />
-        <p className="font-bold text-sm tracking-widest animate-pulse uppercase">解构接口内核中...</p>
+        <p className="font-bold text-sm tracking-widest animate-pulse uppercase">
+          解构接口内核中...
+        </p>
       </div>
     )
   }
@@ -202,24 +206,28 @@ function EndpointDetailPage() {
       <div className="flex h-[calc(100vh-100px)] flex-col items-center justify-center text-on-surface-variant space-y-4">
         <Shield className="w-10 h-10 text-tertiary" />
         <p className="font-bold text-lg text-on-surface">接口读取异常</p>
-        <Link to="/services/$serviceId" params={{ serviceId }} className="text-primary-fixed hover:underline font-bold text-sm">返回接口列表</Link>
+        <Link
+          to="/services/$serviceId"
+          params={{ serviceId }}
+          className="text-primary-fixed hover:underline font-bold text-sm"
+        >
+          返回接口列表
+        </Link>
       </div>
     )
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       {/* Breadcrumbs & Header */}
       <div className="flex flex-col gap-6 mb-10">
-
-        
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-             <Link
+            <Link
               to="/services/$serviceId"
               params={{ serviceId }}
               search={{ page: 1, pageSize: 20, query: "" }}
@@ -229,12 +237,20 @@ function EndpointDetailPage() {
             </Link>
             <div>
               <div className="flex items-center gap-3">
-                <Badge variant={detail.method === 'GET' ? 'success' : 'default'} className="font-black px-2 py-0.5 rounded uppercase">
+                <Badge
+                  variant={detail.method === "GET" ? "success" : "default"}
+                  className="font-black px-2 py-0.5 rounded uppercase"
+                >
                   {detail.method}
                 </Badge>
-                <h2 className="text-3xl font-black tracking-tight text-on-surface truncate max-w-[600px]">{detail.path}</h2>
+                <h2 className="text-3xl font-black tracking-tight text-on-surface truncate max-w-[600px]">
+                  {detail.path}
+                </h2>
               </div>
-              <p className="text-sm text-on-surface-variant mt-1 font-medium">{detail.description || "在该服务的安全矩阵中监控此接口的流量态势"}</p>
+              <p className="text-sm text-on-surface-variant mt-1 font-medium">
+                {detail.description ||
+                  "在该服务的安全矩阵中监控此接口的流量态势"}
+              </p>
             </div>
           </div>
         </div>
@@ -245,60 +261,84 @@ function EndpointDetailPage() {
         <div className="col-span-12 space-y-8">
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <motion.div 
+            <motion.div
               whileHover={{ y: -5, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
             >
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="w-4 h-4 text-primary-fixed" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">请求频率</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  请求频率
+                </span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-3xl font-black text-on-surface tracking-tighter">1.2k</span>
-                <span className="text-[10px] font-bold text-secondary-fixed mb-1.5">+14% / hour</span>
+                <span className="text-3xl font-black text-on-surface tracking-tighter">
+                  1.2k
+                </span>
+                <span className="text-[10px] font-bold text-secondary-fixed mb-1.5">
+                  +14% / hour
+                </span>
               </div>
             </motion.div>
-            <motion.div 
+            <motion.div
               whileHover={{ y: -5, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
             >
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="w-4 h-4 text-primary-fixed" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">平均响应</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  平均响应
+                </span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-3xl font-black text-on-surface tracking-tighter">124ms</span>
-                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Baseline: 110ms</span>
+                <span className="text-3xl font-black text-on-surface tracking-tighter">
+                  124ms
+                </span>
+                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">
+                  Baseline: 110ms
+                </span>
               </div>
             </motion.div>
-            <motion.div 
+            <motion.div
               whileHover={{ y: -5, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
             >
               <div className="flex items-center gap-2 mb-3">
                 <Database className="w-4 h-4 text-primary-fixed" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">原始总流量</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  原始总流量
+                </span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-3xl font-black text-on-surface tracking-tighter">{trafficCount}</span>
-                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Units captured</span>
+                <span className="text-3xl font-black text-on-surface tracking-tighter">
+                  {trafficCount}
+                </span>
+                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">
+                  Units captured
+                </span>
               </div>
             </motion.div>
-            <motion.div 
+            <motion.div
               whileHover={{ y: -5, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-lg hover:bg-surface-container-lowest transition-all duration-300 cursor-default"
             >
               <div className="flex items-center gap-2 mb-3">
                 <Activity className="w-4 h-4 text-primary-fixed" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">剔重后流量</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  剔重后流量
+                </span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-3xl font-black text-primary-fixed tracking-tighter">{uniqueCount}</span>
-                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">Unique samples</span>
+                <span className="text-3xl font-black text-primary-fixed tracking-tighter">
+                  {uniqueCount}
+                </span>
+                <span className="text-[10px] font-bold text-on-surface-variant/40 mb-1.5">
+                  Unique samples
+                </span>
               </div>
             </motion.div>
           </div>
@@ -306,41 +346,76 @@ function EndpointDetailPage() {
           {/* Traffic Records Table */}
           <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 shadow-sm overflow-hidden">
             <div className="px-6 py-5 bg-surface-container-low/30 border-b border-outline-variant/10 flex justify-between items-center">
-              <h3 className="text-sm font-black text-on-surface tracking-tight font-headline">近期流量捕获记录</h3>
-              <Badge variant="neutral" className="text-[9px] font-black uppercase">Live stream enabled</Badge>
+              <h3 className="text-sm font-black text-on-surface tracking-tight font-headline">
+                近期流量捕获记录
+              </h3>
+              <Badge
+                variant="neutral"
+                className="text-[9px] font-black uppercase"
+              >
+                Live stream enabled
+              </Badge>
             </div>
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/5">
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Method</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Real URI / Params</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Body</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">字段标签</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">变体数</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-center">命中数 (Hits)</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Source IP</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Captured At</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">操作</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    Method
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    Real URI / Params
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    Body
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    字段标签
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    变体数
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-center">
+                    命中数 (Hits)
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    Source IP
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    Captured At
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/5">
                 {trafficRecords.map((record: any) => (
-                  <motion.tr 
-                    key={record.id} 
-                    whileHover={{ x: 4, backgroundColor: 'rgba(var(--surface-container-low), 0.6)' }}
+                  <motion.tr
+                    key={record.id}
+                    whileHover={{
+                      x: 4,
+                      backgroundColor:
+                        "rgba(var(--surface-container-low), 0.6)",
+                    }}
                     className="hover:bg-surface-container-low/40 transition-colors group cursor-pointer"
                   >
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className={cn(
-                        "font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded border",
-                        METHOD_STYLES[record.method?.toUpperCase()] ?? "bg-surface-container-high text-on-surface-variant border-outline-variant/20"
-                      )}>
+                      <span
+                        className={cn(
+                          "font-mono text-[10px] font-black uppercase px-2 py-0.5 rounded border",
+                          METHOD_STYLES[record.method?.toUpperCase()] ??
+                            "bg-surface-container-high text-on-surface-variant border-outline-variant/20",
+                        )}
+                      >
                         {record.method}
                       </span>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="font-mono text-xs text-primary-fixed break-all line-clamp-1" title={record.original_path}>
-                         {record.original_path}
+                      <p
+                        className="font-mono text-xs text-primary-fixed break-all line-clamp-1"
+                        title={record.original_path}
+                      >
+                        {record.original_path}
                       </p>
                     </td>
                     <td className="px-6 py-5">
@@ -361,18 +436,24 @@ function EndpointDetailPage() {
                                 流量负载详细 Payload
                               </DialogTitle>
                               <DialogDescription className="text-xs font-medium text-on-surface-variant mt-1">
-                                已捕获请求体 (Method: {record.method} | IP: {record.client_ip || "Internal"})
+                                已捕获请求体 (Method: {record.method} | IP:{" "}
+                                {record.client_ip || "Internal"})
                               </DialogDescription>
                             </DialogHeader>
                             <PayloadDisplay body={record.body} />
                           </DialogContent>
                         </Dialog>
                       ) : (
-                        <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">—</span>
+                        <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">
+                          —
+                        </span>
                       )}
                     </td>
                     {/* 字段标签列：使用 DropdownMenu 实现紧凑的内联标签选择器 */}
-                    <td className="px-6 py-5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-6 py-5 whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         {/* 触发器：以徽章形式呈现，选中后呈现对应颜色语义 */}
                         <DropdownMenuTrigger asChild>
@@ -387,7 +468,7 @@ function EndpointDetailPage() {
                               // 已设置标签时切换为对应颜色主题，否则呈淡色占位态
                               recordTags[record.id]
                                 ? TAG_STYLES[recordTags[record.id]]
-                                : "bg-surface-container-high/40 text-on-surface-variant/30 border-outline-variant/10 hover:border-outline-variant/40 hover:text-on-surface-variant/60"
+                                : "bg-surface-container-high/40 text-on-surface-variant/30 border-outline-variant/10 hover:border-outline-variant/40 hover:text-on-surface-variant/60",
                             )}
                           >
                             {/* 标签文字：未选时显示灰色占位，已选时显示标签名 */}
@@ -405,21 +486,36 @@ function EndpointDetailPage() {
                           {/* 已测试：绿色 — 表示该流量已完成安全分析 */}
                           <DropdownMenuItem
                             className="text-[11px] font-bold text-green-700 rounded-xl px-3 py-1.5 cursor-pointer focus:bg-green-50/80 focus:text-green-700"
-                            onClick={() => setRecordTags(prev => ({ ...prev, [record.id]: "已测试" }))}
+                            onClick={() =>
+                              setRecordTags((prev) => ({
+                                ...prev,
+                                [record.id]: "已测试",
+                              }))
+                            }
                           >
                             已测试
                           </DropdownMenuItem>
                           {/* 未测试：灰色 — 表示待分析的捕获流量 */}
                           <DropdownMenuItem
                             className="text-[11px] font-bold text-on-surface-variant/60 rounded-xl px-3 py-1.5 cursor-pointer focus:bg-surface-container-high focus:text-on-surface-variant"
-                            onClick={() => setRecordTags(prev => ({ ...prev, [record.id]: "未测试" }))}
+                            onClick={() =>
+                              setRecordTags((prev) => ({
+                                ...prev,
+                                [record.id]: "未测试",
+                              }))
+                            }
                           >
                             未测试
                           </DropdownMenuItem>
                           {/* 高危：红色 — 表示流量携带安全风险特征 */}
                           <DropdownMenuItem
                             className="text-[11px] font-bold text-red-600 rounded-xl px-3 py-1.5 cursor-pointer focus:bg-red-50/80 focus:text-red-600"
-                            onClick={() => setRecordTags(prev => ({ ...prev, [record.id]: "高危" }))}
+                            onClick={() =>
+                              setRecordTags((prev) => ({
+                                ...prev,
+                                [record.id]: "高危",
+                              }))
+                            }
                           >
                             高危
                           </DropdownMenuItem>
@@ -427,22 +523,33 @@ function EndpointDetailPage() {
                       </DropdownMenu>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-center">
-                       <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">—</span>
+                      <span className="text-[10px] font-bold text-on-surface-variant/20 tracking-widest">
+                        —
+                      </span>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-center">
-                       <Badge variant="neutral" className="bg-primary-fixed/5 text-primary-fixed border-primary-fixed/10 font-black min-w-[32px] justify-center">
-                         {record.occurrence_count || 1}
-                       </Badge>
+                      <Badge
+                        variant="neutral"
+                        className="bg-primary-fixed/5 text-primary-fixed border-primary-fixed/10 font-black min-w-[32px] justify-center"
+                      >
+                        {record.occurrence_count || 1}
+                      </Badge>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
-                       <span className="text-xs font-bold text-on-surface">{record.client_ip || "Internal"}</span>
+                      <span className="text-xs font-bold text-on-surface">
+                        {record.client_ip || "Internal"}
+                      </span>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
                       <span
                         className="text-[10px] font-mono font-medium text-on-surface-variant group-hover:text-primary-fixed transition-colors"
-                        title={formatRelativeTime(record.captured_at || record.created_at)}
+                        title={formatRelativeTime(
+                          record.captured_at || record.created_at,
+                        )}
                       >
-                        {formatAbsoluteTime(record.captured_at || record.created_at)}
+                        {formatAbsoluteTime(
+                          record.captured_at || record.created_at,
+                        )}
                       </span>
                     </td>
                     {/* 操作列：提供进入流量详情页的入口链接 */}
@@ -459,8 +566,11 @@ function EndpointDetailPage() {
                 ))}
                 {trafficRecords.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-6 py-20 text-center text-on-surface-variant font-medium opacity-50">
-                       目前尚无历史流量捕获记录，正在监听中...
+                    <td
+                      colSpan={8}
+                      className="px-6 py-20 text-center text-on-surface-variant font-medium opacity-50"
+                    >
+                      目前尚无历史流量捕获记录，正在监听中...
                     </td>
                   </tr>
                 )}
@@ -468,7 +578,6 @@ function EndpointDetailPage() {
             </table>
           </div>
         </div>
-
       </div>
     </motion.div>
   )

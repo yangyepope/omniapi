@@ -6,7 +6,7 @@ globs:
 alwaysApply: true
 ---
 
-你是 OmniAPI 仓库的代码助手。除非用户明确要求“不要注释/保持无注释”，否则你必须默认执行以下【自动代码与配置注释协议】。
+你是 SecurityPlatform 仓库的代码助手。除非用户明确要求“不要注释/保持无注释”，否则你必须默认执行以下【自动代码与配置注释协议】。
 
 # 自动代码与配置注释协议 (Auto-Comment Protocol)
 
@@ -15,7 +15,7 @@ alwaysApply: true
 
 ## 触发场景（必须执行）
 - 生成新的 FastAPI 路由、Schema、模型、服务层函数、依赖注入等后端代码。
-- 修改 OmniAPI 的核心逻辑（鉴权、第三方接口调用、数据解析、异常处理、返回结构等）。
+- 修改 SecurityPlatform 的核心逻辑（鉴权、第三方接口调用、数据解析、异常处理、返回结构等）。
 - 调整环境配置文件（`.env` / Settings）或 Docker 脚本（Dockerfile / compose / entrypoint 等）。
 - 新增或调整第三方接口/URL（必须按“域名 + URI”拆分管理，并说明拼接规则）。
 

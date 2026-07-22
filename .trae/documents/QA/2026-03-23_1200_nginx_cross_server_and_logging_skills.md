@@ -7,8 +7,8 @@
 
 ## 问 (User)
 1. 如果是局域网的其他服务器该怎么实现 Nginx 镜像流量的转发？当前转发的底层逻辑是什么？
-2. 每次使用 `/plan` 命令时，希望将整个计划的方案和内容以文档的形式存入到 `\root\omniapi\.trae\documents` 目录下，如果没有这个 skill 就创建一个。
-3. 每次问答结束后，在 `\root\omniapi\.trae\documents\QA` 下创建一个文件专门记录问答，要求单文件拆分保存。
+2. 每次使用 `/plan` 命令时，希望将整个计划的方案和内容以文档的形式存入到 `\root\security-platform\.trae\documents` 目录下，如果没有这个 skill 就创建一个。
+3. 每次问答结束后，在 `\root\security-platform\.trae\documents\QA` 下创建一个文件专门记录问答，要求单文件拆分保存。
 
 ---
 

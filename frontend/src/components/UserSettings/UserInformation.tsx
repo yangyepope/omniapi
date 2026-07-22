@@ -2,11 +2,19 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import {
+  FiCheckCircle,
+  FiEdit2,
+  FiInfo,
+  FiMail,
+  FiShield,
+  FiUser,
+} from "react-icons/fi"
 import { z } from "zod"
-import { FiUser, FiMail, FiEdit2, FiCheckCircle, FiInfo, FiShield } from "react-icons/fi"
 
 import { UsersService, type UserUpdateMe } from "@/client"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Form,
   FormControl,
@@ -20,11 +28,10 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
-import { Card, CardContent } from "@/components/ui/card"
 
 const formSchema = z.object({
   full_name: z.string().max(30).optional(),
-  email: z.string().email({ message: "请输入有效的电子邮箱地址" }),
+  email: z.string().min(1, { message: "请输入用户名或邮箱" }), // 登录标识(用户名或邮箱):与后端放宽后的 str 校验对齐
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -160,10 +167,9 @@ const UserInformation = () => {
                 <FiInfo className="h-4 w-4 text-blue-600" />
               </div>
               <p className="text-xs leading-relaxed max-w-sm font-medium">
-                {editMode 
-                  ? "编辑模式下，您可以修改展示名称和电子邮箱。邮箱是您的重要登录凭据，请确保其准确性。" 
-                  : "个人资料信息已锁定。如需修改，请点击下方的编辑按钮开启编辑模式。"
-                }
+                {editMode
+                  ? "编辑模式下，您可以修改展示名称和电子邮箱。邮箱是您的重要登录凭据，请确保其准确性。"
+                  : "个人资料信息已锁定。如需修改，请点击下方的编辑按钮开启编辑模式。"}
               </p>
             </div>
 
@@ -189,8 +195,8 @@ const UserInformation = () => {
                   </LoadingButton>
                 </>
               ) : (
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={toggleEditMode}
                   className="w-full sm:w-auto bg-gray-50 text-gray-900 hover:bg-gray-100 rounded-full px-8 gap-2 border border-gray-200 font-black transition-all shadow-sm"
                 >
@@ -206,17 +212,42 @@ const UserInformation = () => {
       {/* Account Status Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
         {[
-          { label: "账号状态", value: "活跃中", icon: FiCheckCircle, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "安全等级", value: "正常", icon: FiShield, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "所属角色", value: currentUser?.is_superuser ? "超级管理员" : "标准用户", icon: FiUser, color: "text-gray-500", bg: "bg-gray-50" },
+          {
+            label: "账号状态",
+            value: "活跃中",
+            icon: FiCheckCircle,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+          },
+          {
+            label: "安全等级",
+            value: "正常",
+            icon: FiShield,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+          },
+          {
+            label: "所属角色",
+            value: currentUser?.is_superuser ? "超级管理员" : "标准用户",
+            icon: FiUser,
+            color: "text-gray-500",
+            bg: "bg-gray-50",
+          },
         ].map((item, idx) => (
-          <Card key={idx} className={`${item.bg} border-gray-100 shadow-none rounded-[1.5rem] transition-transform hover:scale-[1.02]`}>
+          <Card
+            key={idx}
+            className={`${item.bg} border-gray-100 shadow-none rounded-[1.5rem] transition-transform hover:scale-[1.02]`}
+          >
             <CardContent className="p-6 flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-black tracking-widest text-gray-400 opacity-60">{item.label}</span>
+                <span className="text-[10px] uppercase font-black tracking-widest text-gray-400 opacity-60">
+                  {item.label}
+                </span>
                 <item.icon className={`h-4 w-4 ${item.color} opacity-40`} />
               </div>
-              <span className={`text-xl font-black ${item.color}`}>{item.value}</span>
+              <span className={`text-xl font-black ${item.color}`}>
+                {item.value}
+              </span>
             </CardContent>
           </Card>
         ))}

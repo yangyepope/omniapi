@@ -55,6 +55,7 @@
     "react-hook-form": "^7.68.0",
     "react-i18next": "^16.6.6",
     "react-icons": "^5.5.0",
+    "recharts": "^3.9.0",
     "sonner": "^2.0.7",
     "stitch-mcp-server": "^1.0.2",
     "tailwind-merge": "^3.4.0",

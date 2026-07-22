@@ -58,7 +58,9 @@ async def _call_scanner(coro):
     except httpx.HTTPStatusError as e:
         # Forward scanner's status code where useful (404 → 404, 401 → 502
         # because that means OUR config is wrong, not the user's fault).
-        if e.response.status_code in (400, 404, 422):
+        # 409:重名冲突(新增自定义规则 / 手工知识文档),必须原样透传给前端做
+        # 「重名」提示,否则会被下面的兜底吞成 502。
+        if e.response.status_code in (400, 404, 409, 422):
             raise HTTPException(
                 status_code=e.response.status_code,
                 detail=e.response.text[:500],
@@ -93,20 +95,25 @@ async def _call_scanner(coro):
 
 
 @router.get("/stats")
-async def get_stats(current_user: CurrentUser) -> dict[str, Any]:
+async def get_stats(
+    current_user: CurrentUser,
+    project: str | None = Query(default=None,
+        description="多项目隔离(scanner FEAT-025);不传=全部项目"),
+) -> dict[str, Any]:
     """Dashboard totals (totals + by_severity + by_engine + by_status)."""
     async with ScannerClient() as client:
-        return await _call_scanner(client.stats())
+        return await _call_scanner(client.stats(project=project))
 
 
 @router.get("/stats/trend")
 async def get_stats_trend(
     current_user: CurrentUser,
     days: int = Query(default=7, ge=1, le=90),
+    project: str | None = Query(default=None),
 ) -> dict[str, Any]:
     """Per-day new/closed/open series for the trend chart."""
     async with ScannerClient() as client:
-        return await _call_scanner(client.stats_trend(days=days))
+        return await _call_scanner(client.stats_trend(days=days, project=project))
 
 
 @router.get("/categories")
@@ -117,11 +124,12 @@ async def get_categories(
     ),
     service: str | None = Query(default=None),
     top: int = Query(default=20, ge=1, le=100),
+    project: str | None = Query(default=None),
 ) -> dict[str, Any]:
     """Aggregate findings by OWASP / CWE / engine / rule_namespace."""
     async with ScannerClient() as client:
         return await _call_scanner(client.categories(
-            dimension=dimension, service=service, top=top,
+            dimension=dimension, service=service, top=top, project=project,
         ))
 
 
@@ -129,20 +137,26 @@ async def get_categories(
 async def get_verifier_stats(
     current_user: CurrentUser,
     service: str | None = Query(default=None),
+    project: str | None = Query(default=None),
 ) -> dict[str, Any]:
     """AI verifier effectiveness — refute counts + FP-suppression rate."""
     async with ScannerClient() as client:
-        return await _call_scanner(client.verifier_stats(service=service))
+        return await _call_scanner(client.verifier_stats(
+            service=service, project=project,
+        ))
 
 
 @router.get("/finding-review-stats")
 async def get_finding_review_stats(
     current_user: CurrentUser,
     service: str | None = Query(default=None),
+    project: str | None = Query(default=None),
 ) -> dict[str, Any]:
     """AI post-process review effectiveness — FP rate / auto-closed / by-engine."""
     async with ScannerClient() as client:
-        return await _call_scanner(client.finding_review_stats(service=service))
+        return await _call_scanner(client.finding_review_stats(
+            service=service, project=project,
+        ))
 
 
 @router.get("/cost-stats")
@@ -150,10 +164,13 @@ async def get_cost_stats(
     current_user: CurrentUser,
     service: str | None = Query(default=None),
     days: int | None = Query(default=None, ge=1, le=365),
+    project: str | None = Query(default=None),
 ) -> dict[str, Any]:
     """Per-engine AI token usage + wall-clock timing (scanner FEAT-009)."""
     async with ScannerClient() as client:
-        return await _call_scanner(client.cost_stats(service=service, days=days))
+        return await _call_scanner(client.cost_stats(
+            service=service, days=days, project=project,
+        ))
 
 
 @router.get("/cost-runs")
@@ -162,6 +179,7 @@ async def get_cost_runs(
     service: str | None = Query(default=None),
     days: int | None = Query(default=None, ge=1, le=365),
     limit: int = Query(default=50, ge=1, le=200),
+    project: str | None = Query(default=None),
 ) -> list[dict[str, Any]]:
     """单次扫描成本明细(scanner FEAT-009 三级下钻·第三级)。
 
@@ -170,7 +188,9 @@ async def get_cost_runs(
     """
     async with ScannerClient() as client:
         return await _call_scanner(
-            client.cost_runs(service=service, days=days, limit=limit),
+            client.cost_runs(
+                service=service, days=days, limit=limit, project=project,
+            ),
         )
 
 
@@ -182,6 +202,112 @@ class ConfigUpdateBody(BaseModel):
         description="Settings field name → new value. Validated by scanner "
         "against each field's type/constraints (all-or-nothing).",
     )
+
+
+# ── AI hunt category / knowledge 请求体(镜像 scanner pydantic，去掉
+# category 的 updated_by——由服务端从认证用户注入)────────────────────
+
+
+class HuntCategoryCreateBody(BaseModel):
+    """新增自定义 AI 扫描规则。name / system_prompt / user_prompt_template
+    必填,其余可选(默认见字段)。updated_by 不在此——服务端注入。"""
+    name: str = Field(min_length=1, max_length=128)
+    system_prompt: str = Field(min_length=1)
+    user_prompt_template: str = Field(min_length=1)
+    prompt_version: str = "v1"
+    enabled: bool = True
+    is_llm_category: bool = False
+    skill_subdomains: list[str] = []
+    mitre_attack_techniques: list[str] = []
+    nist_csf_subcategories: list[str] = []
+    d3fend_techniques: list[str] = []
+    skill_keywords: list[str] = []
+    owasp_refs: list[str] = []
+    cwes: list[str] = []
+    asvs_chapters: list[str] = []
+
+
+class HuntCategoryUpdateBody(BaseModel):
+    """部分更新——只传要改的字段。name / source 不可改;builtin 可编辑/启停
+    但不可改名删除。updated_by 服务端注入。"""
+    enabled: bool | None = None
+    system_prompt: str | None = Field(default=None, min_length=1)
+    user_prompt_template: str | None = Field(default=None, min_length=1)
+    prompt_version: str | None = None
+    is_llm_category: bool | None = None
+    skill_subdomains: list[str] | None = None
+    mitre_attack_techniques: list[str] | None = None
+    nist_csf_subcategories: list[str] | None = None
+    d3fend_techniques: list[str] | None = None
+    skill_keywords: list[str] | None = None
+    owasp_refs: list[str] | None = None
+    cwes: list[str] | None = None
+    asvs_chapters: list[str] | None = None
+    sort_order: int | None = None
+
+
+class KnowledgeCreateBody(BaseModel):
+    """手工新增知识文档。classification 默认 ai_context(即纳入 AI 扫描)。"""
+    sha: str = Field(min_length=1)
+    doc_path: str = Field(min_length=1)
+    content: str
+    classification: str = "ai_context"
+
+
+class KnowledgeUpdateBody(BaseModel):
+    """改 content / classification——只传要改的。"""
+    content: str | None = None
+    classification: str | None = None
+
+
+class CustomRuleCreateBody(BaseModel):
+    """新增自定义参考规则。rule_id / title / description 必填。updated_by
+    不在此——服务端注入。填 cwes/owasp_refs/asvs_refs 才会被相应 category 采用。"""
+    rule_id: str = Field(min_length=1, max_length=128)
+    title: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    license: str = ""
+    enabled: bool = True
+    cwes: list[str] = []
+    owasp_refs: list[str] = []
+    asvs_refs: list[str] = []
+    languages: list[str] = []
+    severity: str | None = None
+    level: str | None = None
+    source_url: str | None = None
+
+
+class CustomRuleUpdateBody(BaseModel):
+    """部分更新——只传要改的。rule_id 不可改(path)。updated_by 服务端注入。"""
+    title: str | None = Field(default=None, min_length=1)
+    description: str | None = Field(default=None, min_length=1)
+    license: str | None = None
+    enabled: bool | None = None
+    cwes: list[str] | None = None
+    owasp_refs: list[str] | None = None
+    asvs_refs: list[str] | None = None
+    languages: list[str] | None = None
+    severity: str | None = None
+    level: str | None = None
+    source_url: str | None = None
+
+
+class InterfaceProfileBody(BaseModel):
+    """改接口业务画像——部分更新。编辑任一画像字段 scanner 会自动置
+    human_locked=True;想交还 AI 显式传 human_locked=False。"""
+    business_summary: str | None = None
+    sensitivity: str | None = None
+    op_type: str | None = None
+    risk_level: str | None = None
+    description: str | None = None
+    human_locked: bool | None = None
+
+
+class ServiceProfileBody(BaseModel):
+    """服务级业务画像 upsert。scanner 端全量覆盖(非 partial),两字段一起提交。
+    updated_by 服务端注入。"""
+    business_summary: str | None = None
+    description: str | None = None
 
 
 @router.get("/config")
@@ -224,6 +350,73 @@ async def delete_scanner_config(
     """
     async with ScannerClient() as client:
         await _call_scanner(client.delete_config(key))
+
+
+@router.get("/engines")
+async def list_engines(current_user: CurrentUser) -> dict[str, Any]:
+    """Read-only catalog of scan engines (scanner DISC-004). Global — engines
+    are not per-project. Each item carries name/display/kind/enabled/
+    binary_present/optional/config_keys; the console renders the roster from
+    this (never hard-codes it) so engines added in scanner code appear here."""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_engines())
+
+
+# ── system profile (系统画像 / FEAT) ──────────────────────────────────
+
+
+@router.get("/services/{name}/system-profile")
+async def get_system_profile(
+    name: str,
+    current_user: CurrentUser,
+    sha: str | None = Query(default=None),
+    project: str | None = Query(default=None),
+) -> dict[str, Any]:
+    """The service's system-level profile — framework/tech-flow/attack-surface
+    aggregate (references interfaces) / risk aggregate (references findings) +
+    an AI narrative. Latest when `sha` omitted; 404 when never profiled."""
+    async with ScannerClient() as client:
+        return await _call_scanner(
+            client.get_system_profile(name, sha=sha, project=project),
+        )
+
+
+@router.get("/services/{name}/system-profile/history")
+async def system_profile_history(
+    name: str,
+    current_user: CurrentUser,
+    project: str | None = Query(default=None),
+) -> dict[str, Any]:
+    """All profiled shas for a service, newest first."""
+    async with ScannerClient() as client:
+        return await _call_scanner(
+            client.system_profile_history(name, project=project),
+        )
+
+
+@router.post("/services/{name}/system-profile/regenerate")
+async def regenerate_system_profile(
+    name: str,
+    current_user: CurrentUser,
+    project: str | None = Query(default=None),
+) -> dict[str, Any]:
+    """Refresh the latest profile's aggregates + AI narrative in place
+    (source-free). 404 when the service has never been profiled."""
+    async with ScannerClient() as client:
+        return await _call_scanner(
+            client.regenerate_system_profile(name, project=project),
+        )
+
+
+@router.get("/projects/{key}/system-profile")
+async def project_system_profile(
+    key: str,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """项目级系统画像 rollup —— 整个项目(所有服务)的技术栈/流程/暴露面/
+    风险/渗透视角聚合。实时聚合,不落表。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.project_system_profile(key))
 
 
 # ── interfaces (#193) ────────────────────────────────────────────────
@@ -300,10 +493,14 @@ async def mcp_status(current_user: CurrentUser) -> dict[str, Any]:
 
 
 @router.get("/services")
-async def list_services(current_user: CurrentUser) -> list[dict[str, Any]]:
+async def list_services(
+    current_user: CurrentUser,
+    project: str | None = Query(default=None,
+        description="多项目隔离(scanner FEAT-025);不传=全部项目"),
+) -> list[dict[str, Any]]:
     """List services from scanner's manifest with open/closed counts."""
     async with ScannerClient() as client:
-        return await _call_scanner(client.list_services())
+        return await _call_scanner(client.list_services(project=project))
 
 
 @router.get("/services/{name}/scan-runs")
@@ -357,6 +554,67 @@ async def evict_source_cache(
         return await _call_scanner(client.evict_source_cache(name, sha))
 
 
+# ── DAST(动态扫描,scanner FEAT-033~036)──────────────────────────────
+# scanner 侧带外主动扫描:列表只读;触发是变更动作(会真的去打目标),
+# 故触发需 active 用户,授权范围由 scanner 的 scope 门二次把关。
+
+
+@router.get("/services/{name}/dast-runs")
+async def list_dast_runs(
+    name: str,
+    current_user: CurrentUser,
+    project: str | None = Query(default=None,
+        description="多项目隔离(scanner ADR-0019):同名跨项目时用它消歧"),
+    limit: int = Query(default=20, ge=1, le=200),
+) -> dict[str, Any]:
+    """某服务的 DAST 扫描历史(新→旧)。返回 {total, items:[...]}。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(
+            client.list_dast_runs(name, project=project, limit=limit)
+        )
+
+
+@router.post("/services/{name}/dast-scan")
+async def trigger_dast_scan(
+    name: str,
+    current_user: CurrentUser,
+    project: str | None = Query(default=None,
+        description="服务所属项目;同名跨项目时必填以消歧"),
+) -> dict[str, Any]:
+    """触发某服务的带外 DAST 扫描。立即返回 {service, project, accepted};
+    未授权目标由 scanner 落一条 skipped run(带原因),不是静默 no-op。
+    变更动作 → inactive 用户拒绝。"""
+    if not current_user.is_active:
+        raise HTTPException(403, "inactive user")
+    async with ScannerClient() as client:
+        return await _call_scanner(
+            client.trigger_dast_scan(name, project=project)
+        )
+
+
+# ── Ops: rebuild + redeploy scanner (internal tool) ──────────────────
+# INTERNAL ONLY. Rebuilds + restarts the scanner container via docker.sock.
+# No extra RBAC (product decision); do not expose backend to untrusted nets.
+
+
+@router.post("/ops/scanner/redeploy")
+async def ops_redeploy_scanner(current_user: CurrentUser) -> dict[str, Any]:
+    """Kick a background `docker compose build scanner && up -d scanner`.
+    Idempotent while running (returns already_running). Poll
+    GET /ops/scanner/status for progress + logs."""
+    if not current_user.is_active:
+        raise HTTPException(403, "inactive user")
+    from app.services import ops_runner
+    return await ops_runner.redeploy_scanner()
+
+
+@router.get("/ops/scanner/status")
+async def ops_scanner_status(current_user: CurrentUser) -> dict[str, Any]:
+    """Current/last scanner redeploy status + tail of build logs."""
+    from app.services import ops_runner
+    return ops_runner.get_status()
+
+
 @router.get("/scan-runs")
 async def list_all_scan_runs(
     current_user: CurrentUser,
@@ -366,17 +624,19 @@ async def list_all_scan_runs(
         alias="status",
         description="按状态过滤:running | completed | failed | aborted",
     ),
+    project: str | None = Query(default=None,
+        description="多项目隔离(scanner FEAT-025):只看该项目下服务的扫描"),
 ) -> list[dict[str, Any]]:
     """全局扫描任务总览:并发拉取所有服务的 scan-runs 后合并。
 
     外部 gitlab-scanner 只暴露 per-service 的 `/api/admin/services/{name}/scan-runs`,
     没有跨服务的任务列表接口。这里在服务端 fan-out(asyncio.gather),既避免前端
     N+1 请求,又不依赖 scanner 未验证的全局端点。单个服务拉取失败只跳过该服务,
-    不拖垮整体(return_exceptions=True)。
+    不拖垮整体(return_exceptions=True)。project 非空则只 fan-out 该项目的服务。
     """
-    # 先拿服务清单;这一跳失败(scanner 不可达/鉴权错)直接透传错误给前端
+    # 先拿服务清单(按项目过滤);这一跳失败(scanner 不可达/鉴权错)直接透传错误给前端
     async with ScannerClient() as client:
-        services = await _call_scanner(client.list_services())
+        services = await _call_scanner(client.list_services(project=project))
         # 只保留有 name 的服务,避免脏数据触发 KeyError
         names = [s["name"] for s in services if s.get("name")]
         # 并发拉取每个服务的扫描历史,个别失败不影响其余
@@ -413,11 +673,13 @@ async def list_all_scan_runs(
 async def trigger_scan(
     name: str,
     current_user: CurrentUser,
-    ref: str = Query(default="main"),
+    ref: str | None = Query(default=None),
     sha: str | None = Query(default=None),
 ) -> dict[str, Any]:
     """Trigger an on-demand scan for the given service.
 
+    `ref=None` → scanner uses the service's manifest-configured branch
+    (e.g. sts=dev). Pass a ref only to override for a one-off scan.
     TODO: gate with a `security:scan` permission once RBAC matures.
     """
     if not current_user.is_active:
@@ -442,6 +704,11 @@ async def list_findings(
     rule_prefix: str | None = Query(default=None),
     recent_runs: int | None = Query(default=None,
         description="仅看最近 N 次扫描的 findings,需与 service 同时给出"),
+    scan_run_id: int | None = Query(default=None,
+        description="仅看该次扫描真实产出(观测到)的 findings(方案 C)"),
+    project: str | None = Query(default=None,
+        description="多项目隔离:仅看该项目 findings(scanner FEAT-025);"
+                    "不传则返回全部(向后兼容)"),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     sort: str = Query(default="-id"),
@@ -451,7 +718,28 @@ async def list_findings(
         return await _call_scanner(client.list_findings(
             service=service, severity=severity, status=status,
             engine=engine, rule_prefix=rule_prefix, recent_runs=recent_runs,
+            scan_run_id=scan_run_id,
+            project=project,
             limit=limit, offset=offset, sort=sort,
+        ))
+
+
+@router.get("/services/{name}/finding-runs")
+async def list_finding_runs(
+    name: str,
+    current_user: CurrentUser,
+    rule_prefix: str | None = Query(default=None),
+    severity: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    engine: str | None = Query(default=None),
+    limit: int = Query(default=3, ge=1, le=20),
+) -> list[dict[str, Any]]:
+    """某服务最近 N 次「真实产出过(匹配筛选的)finding」的扫描 + 每次产出条数。
+    服务详情页 Findings 标签的扫描切换 pill 用它(方案 C)。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_finding_runs(
+            name, rule_prefix=rule_prefix, severity=severity,
+            status=status, engine=engine, limit=limit,
         ))
 
 
@@ -496,3 +784,587 @@ async def triage_finding(
             reason=payload.reason,
             by=by,
         ))
+
+
+# ── AI hunt categories(AI 扫描规则,scanner FEAT-018)─────────────────
+#
+# 改动下次扫描热加载生效(scanner 写库后自动重建扫描器)。updated_by 由认证
+# 用户注入(同 triage / config 审计规则),不信任前端传入的归属字段。
+
+
+@router.get("/ai/categories")
+async def list_ai_categories(
+    current_user: CurrentUser,
+    enabled: bool | None = Query(default=None),
+    source: str | None = Query(default=None, description="builtin | custom"),
+) -> dict[str, Any]:
+    """列出可编辑的 AI 扫描规则(返回 {total, items})。空列表 = scanner 尚未
+    seed(正常启动会自动 seed 22 条)。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_hunt_categories(
+            enabled=enabled, source=source,
+        ))
+
+
+@router.get("/ai/categories/{name}")
+async def get_ai_category(
+    name: str, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """单条规则详情(含完整 system/user prompt)。404 透传。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_hunt_category(name))
+
+
+@router.post("/ai/categories", status_code=status.HTTP_201_CREATED)
+async def create_ai_category(
+    body: HuntCategoryCreateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """新增自定义规则(source=custom)。重名 409 透传。"""
+    by = getattr(current_user, "email", None) or str(current_user.id)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.create_hunt_category(
+            body.model_dump(), updated_by=by,
+        ))
+
+
+@router.put("/ai/categories/{name}")
+async def update_ai_category(
+    name: str,
+    body: HuntCategoryUpdateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """部分更新一条规则(builtin 可编辑/启停,不可改名删除)。只传要改的字段。"""
+    by = getattr(current_user, "email", None) or str(current_user.id)
+    # exclude_unset:只把前端真正传了的字段发给 scanner(部分更新语义)。
+    changes = body.model_dump(exclude_unset=True)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_hunt_category(
+            name, changes, updated_by=by,
+        ))
+
+
+@router.delete("/ai/categories/{name}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ai_category(
+    name: str, current_user: CurrentUser,
+) -> None:
+    """删除自定义规则。builtin 不可删(scanner 返回 400,改用 PUT enabled=false)。"""
+    async with ScannerClient() as client:
+        await _call_scanner(client.delete_hunt_category(name))
+
+
+# ── service knowledge docs(项目理解知识,scanner FEAT-018 phase C)────
+#
+# 只有 classification==ai_context 的文档真正喂给 AI(fed_to_ai)。手工新增/
+# 编辑后 human_edited=True,重扫不覆盖。改动下次扫描自然读取。
+
+
+@router.get("/services/{name}/knowledge")
+async def list_service_knowledge(
+    name: str,
+    current_user: CurrentUser,
+    sha: str | None = Query(default=None),
+    classification: str | None = Query(default=None),
+) -> dict[str, Any]:
+    """列出某服务的知识文档(返回 {total, items}),可按 sha / classification 过滤。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_knowledge_docs(
+            name, sha=sha, classification=classification,
+        ))
+
+
+@router.get("/knowledge/{doc_id}")
+async def get_knowledge_doc(
+    doc_id: int, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """单条知识文档详情(含 markdown content)。404 透传。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_knowledge_doc(doc_id))
+
+
+@router.post(
+    "/services/{name}/knowledge", status_code=status.HTTP_201_CREATED,
+)
+async def create_knowledge_doc(
+    name: str,
+    body: KnowledgeCreateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """手工新增知识文档(source=manual)。(service, sha, doc_path) 重复 409 透传。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.create_knowledge_doc(
+            name, body.model_dump(),
+        ))
+
+
+@router.put("/knowledge/{doc_id}")
+async def update_knowledge_doc(
+    doc_id: int,
+    body: KnowledgeUpdateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """改 content / classification(只传要改的),置 human_edited=True。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_knowledge_doc(
+            doc_id, body.model_dump(exclude_unset=True),
+        ))
+
+
+@router.delete("/knowledge/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_knowledge_doc(
+    doc_id: int, current_user: CurrentUser,
+) -> None:
+    """删除一条知识文档。404 透传。"""
+    async with ScannerClient() as client:
+        await _call_scanner(client.delete_knowledge_doc(doc_id))
+
+
+# ── AI 参考规则库 / 方法论 skills(scanner FEAT-018 phase B,只读)────
+#
+# 内置参考规则语料(master_rules ~2038 + ASVS 345)+ 方法论 skills(159)。
+# 规则库很大,服务端分页;这些是「规则」,与 ai/categories(审计类别)不同。
+
+
+@router.get("/ai/rules")
+async def list_rules(
+    current_user: CurrentUser,
+    q: str | None = Query(default=None),
+    source: str | None = Query(default=None, description="master_rules | asvs | custom"),
+    cwe: str | None = Query(default=None, description="e.g. CWE-89"),
+    owasp: str | None = Query(default=None, description="e.g. API01:2023"),
+    asvs: str | None = Query(default=None),
+    language: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> dict[str, Any]:
+    """规则库分页浏览(返回 {total, limit, offset, items}),可按 CWE/OWASP/ASVS 反查。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_rules(
+            q=q, source=source, cwe=cwe, owasp=owasp, asvs=asvs,
+            language=language, limit=limit, offset=offset,
+        ))
+
+
+@router.get("/ai/rules/{source}/{rule_id:path}")
+async def get_rule(
+    source: str, rule_id: str, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """单条规则详情(含 description / license)。rule_id 可含斜杠。404 透传。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_rule(source, rule_id))
+
+
+@router.get("/ai/skills")
+async def list_skills(
+    current_user: CurrentUser,
+    q: str | None = Query(default=None),
+    subdomain: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> dict[str, Any]:
+    """方法论 skills 分页浏览(返回 {total, limit, offset, items})。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_skills(
+            q=q, subdomain=subdomain, tag=tag, limit=limit, offset=offset,
+        ))
+
+
+@router.get("/ai/skills/{skill_id}")
+async def get_skill(
+    skill_id: str, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """单条 skill 详情(含方法论全文 body)。404 透传。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_skill(skill_id))
+
+
+# ── AI 自定义参考规则(scanner FEAT-018 phase B2,CRUD)──────────────
+#
+# 运营者自建的参考规则,并进规则库(source=custom)并按 CWE/OWASP/ASVS 被
+# category 注入。updated_by 由认证用户注入。
+
+
+@router.get("/ai/custom-rules")
+async def list_custom_rules(
+    current_user: CurrentUser,
+    enabled: bool | None = Query(default=None),
+) -> dict[str, Any]:
+    """列出自定义规则(含禁用,返回 {total, items})。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_custom_rules(enabled=enabled))
+
+
+@router.get("/ai/custom-rules/{rule_id}")
+async def get_custom_rule(
+    rule_id: str, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """单条自定义规则详情(含 description)。404 透传。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_custom_rule(rule_id))
+
+
+@router.post("/ai/custom-rules", status_code=status.HTTP_201_CREATED)
+async def create_custom_rule(
+    body: CustomRuleCreateBody, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """新增自定义规则。重名 409 透传。"""
+    by = getattr(current_user, "email", None) or str(current_user.id)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.create_custom_rule(
+            body.model_dump(), updated_by=by,
+        ))
+
+
+@router.put("/ai/custom-rules/{rule_id}")
+async def update_custom_rule(
+    rule_id: str, body: CustomRuleUpdateBody, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """部分更新一条自定义规则(含启停)。只传要改的字段。404 透传。"""
+    by = getattr(current_user, "email", None) or str(current_user.id)
+    changes = body.model_dump(exclude_unset=True)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_custom_rule(
+            rule_id, changes, updated_by=by,
+        ))
+
+
+@router.delete(
+    "/ai/custom-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_custom_rule(
+    rule_id: str, current_user: CurrentUser,
+) -> None:
+    """删除一条自定义规则。404 透传。"""
+    async with ScannerClient() as client:
+        await _call_scanner(client.delete_custom_rule(rule_id))
+
+
+# ── 项目理解:接口画像 / 服务 profile / ai-context(scanner phase D)──
+#
+# 编辑接口画像自动锁定(human_locked=True),AI 风险分级不再覆盖;服务
+# profile 是服务级业务描述;ai-context 预览 AI 扫描时看到的完整上下文。
+
+
+@router.put("/interfaces/{interface_id}")
+async def update_interface(
+    interface_id: int, body: InterfaceProfileBody, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """改接口业务画像(部分更新)。404 透传。"""
+    changes = body.model_dump(exclude_unset=True)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_interface(
+            interface_id, changes,
+        ))
+
+
+@router.get("/services/{name}/profile")
+async def get_service_profile(
+    name: str, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """服务级 profile(无则返回空字段,不 404)。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_service_profile(name))
+
+
+@router.put("/services/{name}/profile")
+async def update_service_profile(
+    name: str, body: ServiceProfileBody, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """upsert 服务 profile(全量覆盖,两字段一起提交)。"""
+    by = getattr(current_user, "email", None) or str(current_user.id)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_service_profile(
+            name, body.model_dump(), updated_by=by,
+        ))
+
+
+@router.delete(
+    "/services/{name}/profile", status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_service_profile(
+    name: str, current_user: CurrentUser,
+) -> None:
+    """删除服务 profile。404 透传。"""
+    async with ScannerClient() as client:
+        await _call_scanner(client.delete_service_profile(name))
+
+
+@router.get("/services/{name}/ai-context")
+async def get_ai_context(
+    name: str,
+    current_user: CurrentUser,
+    sha: str | None = Query(default=None),
+    project: str | None = Query(default=None,
+        description="多项目隔离:按项目定位服务(scanner FEAT-025)"),
+) -> dict[str, Any]:
+    """预览 AI 扫描时看到的完整上下文(只读)。返回 {service_name, sha, context}。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_ai_context(
+            name, sha=sha, project=project,
+        ))
+
+
+# ── 多项目:项目(租户)+ 服务定义 CRUD(scanner FEAT-024/025)───────────
+#
+# 薄代理:JWT 由本路由校验,ScannerClient 加 X-Admin-Token 打 scanner。
+# 业务约束全在 scanner 侧(重名 409 / 跨项目 repo 409 / default 不可删 400),
+# 由 _call_scanner 原样透传 detail,前端据此提示;这里不重复实现校验(单一真相源)。
+
+
+class ProjectCreateBody(BaseModel):
+    """建项目入参。key 为稳定 slug(项目内数据以此隔离)。"""
+    key: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1)
+    enabled: bool = True
+    created_by: str | None = None
+
+
+class ProjectUpdateBody(BaseModel):
+    """改项目:仅 name / enabled 可改,key 不可变(是隔离键)。"""
+    name: str | None = None
+    enabled: bool | None = None
+
+
+class ProjectConfigUpdateBody(BaseModel):
+    """设置每项目扫描配置覆盖。updates 仅允许 verify 开关 / verify 严重度 / AI 并发
+    三个键(scanner 侧白名单校验,传其它键返 400)。updated_by 缺省注入当前用户(审计)。"""
+    updates: dict[str, object]
+    updated_by: str | None = None
+
+
+class ServiceCreateBody(BaseModel):
+    """项目下加服务。language 兼容 str 或 list[str](scanner 侧同为 object)。"""
+    name: str = Field(min_length=1)
+    repo_url: str = Field(min_length=1)
+    group_name: str = "default"
+    ref: str = "main"
+    path_in_repo: str = "."
+    language: object = "unknown"
+    framework: str | None = None
+    service_type: str = "service"
+    internal_url: str | None = None
+    enabled: bool = True
+
+
+class ServiceUpdateBody(BaseModel):
+    """改服务:除 name/project 外任意子集(PUT 用 exclude_unset 只发改动字段)。"""
+    group_name: str | None = None
+    repo_url: str | None = None
+    ref: str | None = None
+    path_in_repo: str | None = None
+    language: object | None = None
+    framework: str | None = None
+    service_type: str | None = None
+    internal_url: str | None = None
+    enabled: bool | None = None
+
+
+class GroupDiscoverBody(BaseModel):
+    """按 GitLab 组地址枚举仓库(只读预览)。project_key 用于判每个仓库是否
+    已属该/别的项目。"""
+    group_path: str = Field(min_length=1)
+    project_key: str | None = None
+
+
+class GroupImportRepo(BaseModel):
+    """import-group 里被勾选的一个仓库(取自 discover 的 suggested_* 字段)。"""
+    project_id: int
+    repo_url: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    group_name: str = "default"
+    ref: str = "main"
+    language: object = "unknown"
+    framework: str | None = None
+    service_type: str = "service"
+    enabled: bool = True
+
+
+class GroupImportBody(BaseModel):
+    """建项目 + 落库选中仓库 + 建 webhook。冲突/重名逐仓库跳过报告。"""
+    project_key: str = Field(min_length=1, max_length=64)
+    project_name: str | None = None
+    created_by: str | None = None
+    group_path: str = Field(min_length=1)
+    repos: list[GroupImportRepo]
+
+
+class GroupSyncBody(BaseModel):
+    """已有项目重扫组:只加新增仓库 + 补 webhook。group_path 前端从现有服务
+    推导预填,用户可改。"""
+    group_path: str = Field(min_length=1)
+
+
+@router.get("/projects")
+async def list_projects(current_user: CurrentUser) -> dict[str, Any]:
+    """列项目(租户)+ 各自服务数。返回 {total, items[]}。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_projects())
+
+
+@router.post("/projects", status_code=status.HTTP_201_CREATED)
+async def create_project(
+    body: ProjectCreateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """建项目。重名 key → 409(scanner 透传)。created_by 缺省时注入当前用户。"""
+    payload = body.model_dump(exclude_unset=True)
+    # created_by 未显式给时,记为当前登录用户(审计溯源)
+    if not payload.get("created_by"):
+        payload["created_by"] = (
+            getattr(current_user, "email", None) or str(current_user.id)
+        )
+    async with ScannerClient() as client:
+        return await _call_scanner(client.create_project(payload))
+
+
+@router.put("/projects/{key}")
+async def update_project(
+    key: str,
+    body: ProjectUpdateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """改项目 name / enabled。只传要改的字段。404 透传。"""
+    changes = body.model_dump(exclude_unset=True)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_project(key, changes))
+
+
+@router.delete("/projects/{key}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(key: str, current_user: CurrentUser) -> None:
+    """删项目(连带其服务定义)。default 不可删 → 400(scanner 透传)。"""
+    async with ScannerClient() as client:
+        await _call_scanner(client.delete_project(key))
+
+
+@router.get("/projects/{key}/services")
+async def list_project_services(
+    key: str, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """列该项目下服务定义。返回 {total, items[]}。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.list_project_services(key))
+
+
+@router.post(
+    "/projects/{key}/services", status_code=status.HTTP_201_CREATED,
+)
+async def create_project_service(
+    key: str,
+    body: ServiceCreateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """项目下加服务。项目不存在 404;(项目,名字)重复 409;
+    repo 已属别项目 409(ADR-0019,detail 含目标项目名)。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.create_project_service(
+            key, body.model_dump(),
+        ))
+
+
+@router.post("/projects/discover-group")
+async def discover_group(
+    body: GroupDiscoverBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """按 GitLab 组地址枚举仓库(只读预览,不写库)。坏组名 404、token 缺失 503
+    由 scanner 透传。供新建项目弹框展示可勾选列表。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(
+            client.discover_group(body.model_dump(exclude_unset=True))
+        )
+
+
+@router.post("/projects/import-group", status_code=status.HTTP_201_CREATED)
+async def import_group(
+    body: GroupImportBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """建项目 + 落库选中仓库 + 建 webhook。冲突/重名逐仓库跳过报告(不整批失败)。
+    created_by 缺省时注入当前用户(审计溯源,与 create_project 一致)。"""
+    payload = body.model_dump(exclude_unset=True)
+    if not payload.get("created_by"):
+        payload["created_by"] = (
+            getattr(current_user, "email", None) or str(current_user.id)
+        )
+    async with ScannerClient() as client:
+        return await _call_scanner(client.import_group(payload))
+
+
+@router.post("/projects/{key}/sync-group")
+async def sync_group(
+    key: str,
+    body: GroupSyncBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """已有项目重扫组:只加新增仓库 + 补 webhook。项目不存在 404(scanner 透传)。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.sync_group(key, body.model_dump()))
+
+
+@router.put("/projects/{key}/services/{name}")
+async def update_project_service(
+    key: str,
+    name: str,
+    body: ServiceUpdateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """改服务(部分字段)。改 repo_url 时跨项目冲突同样 409 透传。"""
+    changes = body.model_dump(exclude_unset=True)
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_project_service(
+            key, name, changes,
+        ))
+
+
+@router.delete(
+    "/projects/{key}/services/{name}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_project_service(
+    key: str, name: str, current_user: CurrentUser,
+) -> None:
+    """删服务定义。404 透传。"""
+    async with ScannerClient() as client:
+        await _call_scanner(client.delete_project_service(key, name))
+
+
+# ── 每项目扫描配置覆盖(FEAT-027 M3;透传 scanner /projects/{key}/config)──
+@router.get("/projects/{key}/config")
+async def get_project_config(
+    key: str, current_user: CurrentUser,
+) -> dict[str, Any]:
+    """列该项目可覆盖的扫描配置(verify 开关 / verify 严重度 / AI 并发),
+    每项带 global_default / value / is_overridden。项目不存在 → 404 透传。"""
+    async with ScannerClient() as client:
+        return await _call_scanner(client.get_project_config(key))
+
+
+@router.put("/projects/{key}/config")
+async def update_project_config(
+    key: str,
+    body: ProjectConfigUpdateBody,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """设置每项目扫描配置覆盖(全或无)。updated_by 缺省时注入当前用户;
+    非白名单键 / 非法值 / 空 updates → 400 透传;项目不存在 → 404 透传。"""
+    payload = body.model_dump(exclude_unset=True)
+    # updated_by 未显式给时记为当前登录用户(与 create_project 一致的审计口径)
+    if not payload.get("updated_by"):
+        payload["updated_by"] = (
+            getattr(current_user, "email", None) or str(current_user.id)
+        )
+    async with ScannerClient() as client:
+        return await _call_scanner(client.update_project_config(key, payload))
+
+
+@router.delete(
+    "/projects/{key}/config/{config_key}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_project_config(
+    key: str, config_key: str, current_user: CurrentUser,
+) -> None:
+    """删单个每项目覆盖,该键回退全局默认。项目 / 覆盖不存在 → 404 透传。"""
+    async with ScannerClient() as client:
+        await _call_scanner(client.delete_project_config_key(key, config_key))

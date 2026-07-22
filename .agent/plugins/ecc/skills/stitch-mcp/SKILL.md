@@ -14,12 +14,12 @@ origin: ECC
 
 ## 执行入口
 
-- 唯一入口：`/root/omniapi/.agent/plugins/ecc/skills/stitch-mcp/scripts/stitch-cli.js`
-- 统一触发方式：`cd /root/omniapi/frontend && npm run stitch -- ...`
+- 唯一入口：`/root/security-platform/.agent/plugins/ecc/skills/stitch-mcp/scripts/stitch-cli.js`
+- 统一触发方式：`cd /root/security-platform/frontend && npm run stitch -- ...`
 
 ## 运行规则
 
-1. 默认项目目录为 `/root/omniapi/frontend`。
+1. 默认项目目录为 `/root/security-platform/frontend`。
 2. 所有调用统一转发到 `npm run stitch -- ...`。
 3. 若用户只输入 `/stitch`，输出帮助信息。
 4. 若用户输入自然语言，原样透传给 stitch CLI，由 CLI 做意图路由。
@@ -27,7 +27,7 @@ origin: ECC
 ## 示例
 
 ```bash
-cd /root/omniapi/frontend && npm run stitch -- /stitch
-cd /root/omniapi/frontend && npm run stitch -- /stitch list
-cd /root/omniapi/frontend && npm run stitch -- "同步服务卡片设计"
+cd /root/security-platform/frontend && npm run stitch -- /stitch
+cd /root/security-platform/frontend && npm run stitch -- /stitch list
+cd /root/security-platform/frontend && npm run stitch -- "同步服务卡片设计"
 ```

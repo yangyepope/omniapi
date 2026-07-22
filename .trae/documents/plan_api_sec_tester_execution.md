@@ -1,7 +1,7 @@
 # Plan: API Security Testing Platform 执行方案
 
 ## 1. 现状分析 (Current State Analysis)
-- **输入**: 用户要求执行 `\root\omniapi\.trae\specs\api-sec-tester\tasks.md` 中定义的任务。
+- **输入**: 用户要求执行 `\root\security-platform\.trae\specs\api-sec-tester\tasks.md` 中定义的任务。
 - **现有代码**: 
   - 数据模型基于 `SQLModel`，位于 `backend/app/models.py`。
   - 流量收集入口在 `backend/app/api/routes/collect.py`，目前仅记录日志。

@@ -1,6 +1,6 @@
 # aisec · AI 驱动安全渗透测试扫描平台
 
-> v3.0 实现 — 与 omniapi 平级的独立服务
+> v3.0 实现 — 与 security-platform 平级的独立服务
 
 ---
 
@@ -22,7 +22,7 @@
 ## 一句话
 
 监听 GitLab Webhook（MR / push），对 Java 微服务做 Joern CPG 静态分析 + Claude 语义审计 +
-Neo4j 调用链查询 + 攻击链推断，扫描结论回传到 omniapi 流量采集平台。
+Neo4j 调用链查询 + 攻击链推断，扫描结论回传到 security-platform 流量采集平台。
 
 不阻断合并，结果只记录。
 
@@ -37,7 +37,7 @@ GitLab ─(Webhook)─► aisec-api ─(Temporal)─► aisec-worker
                                        ▼            ▼            ▼
                                    joern-runner   neo4j      aisec_audit DB
                                        │
-                                       └────► omniapi backend (HTTP)
+                                       └────► security-platform backend (HTTP)
                                                   ↓
                                            流量采集平台 UI
 ```
@@ -93,7 +93,7 @@ docker compose up -d aisec-api aisec-worker
 
 ## 配置
 
-复制 `.env.example` 为 `.env` 后填写。所有变量也可以通过 `omniapi/.env` 注入（compose 共享）。
+复制 `.env.example` 为 `.env` 后填写。所有变量也可以通过 `security-platform/.env` 注入（compose 共享）。
 
 | 关键变量 | 说明 |
 |---------|------|
@@ -103,8 +103,8 @@ docker compose up -d aisec-api aisec-worker
 | `AI_AUDIT_POSTGRES_DSN` | 独立 aisec_audit 库 DSN |
 | `NEO4J_URI` | CPG 持久化 |
 | `JOERN_RUNNER_URL` | joern-runner 地址 |
-| `TRAFFIC_PLATFORM_URL` | 回传到 omniapi backend 的基地址 |
-| `TRAFFIC_PLATFORM_TOKEN` | omniapi backend 内部 API Token |
+| `TRAFFIC_PLATFORM_URL` | 回传到 security-platform backend 的基地址 |
+| `TRAFFIC_PLATFORM_TOKEN` | security-platform backend 内部 API Token |
 | `SCHEDULED_SCAN_CRON` | Temporal Schedule cron |
 
 详见 `.env.example`。

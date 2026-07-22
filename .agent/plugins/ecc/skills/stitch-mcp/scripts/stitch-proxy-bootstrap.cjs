@@ -1,7 +1,7 @@
 const path = require("node:path");
 const { createRequire } = require("node:module");
 
-const frontendDir = process.env.STITCH_FRONTEND_DIR || "/root/omniapi/frontend";
+const frontendDir = process.env.STITCH_FRONTEND_DIR || "/root/security-platform/frontend";
 const requireFromFrontend = createRequire(path.resolve(frontendDir, "package.json"));
 const { ProxyAgent, setGlobalDispatcher } = requireFromFrontend("undici");
 

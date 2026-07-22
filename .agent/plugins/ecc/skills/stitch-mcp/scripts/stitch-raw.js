@@ -3,7 +3,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const SCRIPTS_DIR = path.dirname(CURRENT_FILE);
-const FRONTEND_DIR = process.env.STITCH_FRONTEND_DIR || "/root/omniapi/frontend";
+const FRONTEND_DIR = process.env.STITCH_FRONTEND_DIR || "/root/security-platform/frontend";
 const AXIOS_ENTRY = path.resolve(FRONTEND_DIR, "node_modules/axios/index.js");
 const HTTPS_PROXY_AGENT_ENTRY = path.resolve(FRONTEND_DIR, "node_modules/https-proxy-agent/dist/index.js");
 const DOTENV_CONFIG = path.resolve(FRONTEND_DIR, "node_modules/dotenv/config.js");

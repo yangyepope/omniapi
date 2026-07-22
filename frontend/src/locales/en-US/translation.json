@@ -11,7 +11,7 @@
     "noAccount": "Don't have an account yet?",
     "signUp": "Sign up",
     "passwordRequired": "Password is required",
-    "passwordMinLength": "Password must be at least 8 characters"
+    "passwordMinLength": "Password must be at least 6 characters"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -51,7 +51,7 @@
     "updateSuccess": "User updated successfully",
     "deleteSuccess": "The user was deleted successfully",
     "passwordsNotMatch": "The passwords don't match",
-    "invalidEmail": "Invalid email address",
+    "invalidEmail": "Please enter a username or email",
     "table": {
       "fullName": "Full Name",
       "email": "Email",

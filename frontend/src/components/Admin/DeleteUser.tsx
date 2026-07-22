@@ -69,7 +69,8 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
             <DialogTitle>{t("admin.deleteUserTitle")}</DialogTitle>
             <DialogDescription>
               {t("admin.deleteUserDescription")}{" "}
-              <strong>{t("admin.deleteUserDescriptionStrong")}</strong> {t("admin.deleteUserDescriptionConfirm")}
+              <strong>{t("admin.deleteUserDescriptionStrong")}</strong>{" "}
+              {t("admin.deleteUserDescriptionConfirm")}
             </DialogDescription>
           </DialogHeader>
 

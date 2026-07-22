@@ -13,9 +13,9 @@
 - **Stage 3 (Original Storage)**: 遵循“原样存储”原则，在 `FilteredFlow` 中完整保留 Header 和 Body。
 
 ### 2. 关键代码变更
-- [models.py](file:///root/omniapi/backend/app/models.py): 更新数据模型定义。
-- [discovery.py](file:///root/omniapi/backend/app/services/discovery.py): 封装字段过滤引擎与 MD5 算法。
-- [worker.py](file:///root/omniapi/backend/app/worker.py): 重构异步任务逻辑。
+- [models.py](file:///root/security-platform/backend/app/models.py): 更新数据模型定义。
+- [discovery.py](file:///root/security-platform/backend/app/services/discovery.py): 封装字段过滤引擎与 MD5 算法。
+- [worker.py](file:///root/security-platform/backend/app/worker.py): 重构异步任务逻辑。
 
 ## 验证结果
 

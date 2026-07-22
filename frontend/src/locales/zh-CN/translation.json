@@ -11,7 +11,7 @@
     "noAccount": "还没有账户？",
     "signUp": "注册",
     "passwordRequired": "密码是必填项",
-    "passwordMinLength": "密码长度至少为8个字符"
+    "passwordMinLength": "密码长度至少为6个字符"
   },
   "sidebar": {
     "dashboard": "仪表盘",
@@ -51,7 +51,7 @@
     "updateSuccess": "用户更新成功",
     "deleteSuccess": "用户删除成功",
     "passwordsNotMatch": "两次输入的密码不一致",
-    "invalidEmail": "无效的邮箱地址",
+    "invalidEmail": "请输入用户名或邮箱",
     "table": {
       "fullName": "全名",
       "email": "邮箱",

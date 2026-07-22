@@ -1,13 +1,13 @@
-import { motion } from 'motion/react';
+import { motion } from "motion/react"
 
 interface ProgressBarProps {
-  label: string;
-  percentage: number;
+  label: string
+  percentage: number
 }
 
 /**
  * ProgressBar: 服务进度条组件
- * 
+ *
  * 展示某个服务或项目的活跃程度，内置基于 motion 的增长加载动画。
  */
 export const ProgressBar = ({ label, percentage }: ProgressBarProps) => (
@@ -15,7 +15,9 @@ export const ProgressBar = ({ label, percentage }: ProgressBarProps) => (
   <div className="mb-4 last:mb-0">
     <div className="flex justify-between text-xs mb-2">
       <span className="text-gray-600 font-medium tracking-tight">{label}</span>
-      <span className="text-blue-600 font-bold tracking-tighter">{percentage}% 活跃</span>
+      <span className="text-blue-600 font-bold tracking-tighter">
+        {percentage}% 活跃
+      </span>
     </div>
 
     {/* 此处是外部边框/背景轨道（轻灰色底槽） */}
@@ -24,7 +26,7 @@ export const ProgressBar = ({ label, percentage }: ProgressBarProps) => (
         内部的颜色长条使用 framer-motion 实现展开动画效果。
         Why: 静态的进度条缺乏动感。添加 { ease: "easeOut" } 旨在模拟自然的物理惯性增长而不是生硬的线性突变。
       */}
-      <motion.div 
+      <motion.div
         initial={{ width: 0 }}
         animate={{ width: `${percentage}%` }}
         transition={{ duration: 1, ease: "easeOut" }}
@@ -32,4 +34,4 @@ export const ProgressBar = ({ label, percentage }: ProgressBarProps) => (
       />
     </div>
   </div>
-);
+)

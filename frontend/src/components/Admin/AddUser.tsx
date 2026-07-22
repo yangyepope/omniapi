@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 import { useTranslation } from "react-i18next"
+import { z } from "zod"
 
 import { type UserCreate, UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -40,12 +40,12 @@ const AddUser = () => {
 
   const formSchema = z
     .object({
-      email: z.string().email({ message: t("admin.invalidEmail") }),
+      email: z.string().min(1, { message: t("admin.invalidEmail") }), // 登录标识(用户名或邮箱):与后端放宽后的 str 校验对齐,不再强制邮箱格式
       full_name: z.string().optional(),
       password: z
         .string()
         .min(1, { message: t("login.passwordRequired") })
-        .min(8, { message: t("login.passwordMinLength") }),
+        .min(6, { message: t("login.passwordMinLength") }),
       confirm_password: z
         .string()
         .min(1, { message: t("login.passwordRequired") }),
@@ -102,9 +102,7 @@ const AddUser = () => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("admin.addUserTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("admin.addUserDescription")}
-          </DialogDescription>
+          <DialogDescription>{t("admin.addUserDescription")}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -115,7 +113,8 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t("admin.emailLabel")} <span className="text-destructive">*</span>
+                      {t("admin.emailLabel")}{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -137,7 +136,11 @@ const AddUser = () => {
                   <FormItem>
                     <FormLabel>{t("admin.fullNameLabel")}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t("admin.fullNamePlaceholder")} type="text" {...field} />
+                      <Input
+                        placeholder={t("admin.fullNamePlaceholder")}
+                        type="text"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -150,7 +153,8 @@ const AddUser = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t("admin.passwordLabel")} <span className="text-destructive">*</span>
+                      {t("admin.passwordLabel")}{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -198,7 +202,9 @@ const AddUser = () => {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal">{t("admin.isSuperuser")}</FormLabel>
+                    <FormLabel className="font-normal">
+                      {t("admin.isSuperuser")}
+                    </FormLabel>
                   </FormItem>
                 )}
               />
@@ -214,7 +220,9 @@ const AddUser = () => {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal">{t("admin.isActive")}</FormLabel>
+                    <FormLabel className="font-normal">
+                      {t("admin.isActive")}
+                    </FormLabel>
                   </FormItem>
                 )}
               />

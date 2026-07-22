@@ -1,9 +1,9 @@
 ---
 name: db-concurrency-guard
-description: OmniAPI 数据库并发安全开发圣经 — 原子 Upsert、锁层级协议、原子计数、并发仿真测试、及全链路数据一致性核验框架。
+description: SecurityPlatform 数据库并发安全开发圣经 — 原子 Upsert、锁层级协议、原子计数、并发仿真测试、及全链路数据一致性核验框架。
 ---
 
-# OmniAPI 数据库并发安全开发王牌技能 (V8.2 Mega-Edition)
+# SecurityPlatform 数据库并发安全开发王牌技能 (V8.2 Mega-Edition)
 
 > **使用要求**：
 > - 所有的"读取-修改-回写"场景必须强制参考本手册。
@@ -14,7 +14,7 @@ description: OmniAPI 数据库并发安全开发圣经 — 原子 Upsert、锁�
 
 ## 🌟 决策树：遇到高并发写操作时如何博弈
 
-在 OmniAPI 的全场景开发中，选择正确的物理方案决定了吞吐量与一致性的生死：
+在 SecurityPlatform 的全场景开发中，选择正确的物理方案决定了吞吐量与一致性的生死：
 
 ```
 遇到并发写需求？

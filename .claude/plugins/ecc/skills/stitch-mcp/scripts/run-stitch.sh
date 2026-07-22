@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FRONTEND_DIR="${FRONTEND_DIR:-/root/omniapi/frontend}"
+FRONTEND_DIR="${FRONTEND_DIR:-/root/security-platform/frontend}"
 
 if [ ! -f "${FRONTEND_DIR}/package.json" ]; then
   echo "frontend/package.json 未找到: ${FRONTEND_DIR}" >&2

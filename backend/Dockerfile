@@ -10,6 +10,13 @@ ENV PYTHONUNBUFFERED=1
 # 这一步非常高明，不需要通过 pip 安装，直接拿来就能用，速度最快
 COPY --from=ghcr.io/astral-sh/uv:0.9.26 /uv /uvx /bin/
 
+# docker CLI + compose v2 plugin — for the ops「重建+部署 scanner」按钮.
+# Static Go binaries copied from the official docker image (no apt/network),
+# mirrors the uv COPY above. Needs /var/run/docker.sock + the scanner project
+# dir mounted at run time (see compose.yml backend volumes).
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:27-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+
 # Compile bytecode
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
 # 4. 告诉 uv：在安装包时编译字节码（.pyc），这会让你的容器启动时运行得更快

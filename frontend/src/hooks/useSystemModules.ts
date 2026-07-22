@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { 
-  SystemModulesService, 
+import {
+  type ApiError,
+  SystemModulesService,
   type SystemModuleUpdate,
-  type ApiError 
 } from "@/client"
 import useCustomToast from "./useCustomToast"
 
@@ -33,7 +33,7 @@ export const useSystemModules = () => {
 
   // --- 删除模块 ---
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => 
+    mutationFn: (id: string) =>
       SystemModulesService.deleteSystemModule({ moduleId: id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["system-modules"] })

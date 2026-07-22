@@ -4,7 +4,7 @@ globs: "*"
 alwaysApply: true
 ---
 
-# Trae 项目规则（OmniAPI）
+# Trae 项目规则（SecurityPlatform）
 
 本文件用于 Trae 的“规则（Rules）”。目标是：在不依赖 Cursor 的前提下，让 Trae 在本仓库里稳定按约定工作，并按任务类型自动选用合适的 Skills。
 
@@ -84,7 +84,7 @@ alwaysApply: true
 
 为了确保全栈功能（尤其是前台 UI）的持续稳定性，AI 助手在执行 `/e2e` 或相关自动化验证任务时，必须遵守以下持久化规据：
 
-- **凭据获取策略**：必须优先读取项目根目录下的 [.env](file:///root/omniapi/.env) 文件。该文件包含 `FIRST_SUPERUSER` 和 `FIRST_SUPERUSER_PASSWORD`。严禁在代码中硬编码或使用虚假账户。
+- **凭据获取策略**：必须优先读取项目根目录下的 [.env](file:///root/security-platform/.env) 文件。该文件包含 `FIRST_SUPERUSER` 和 `FIRST_SUPERUSER_PASSWORD`。严禁在代码中硬编码或使用虚假账户。
 - **Session 自动维系**：若测试因权限（401/403）失败，应主动运行 `npx playwright test tests/auth.setup.ts`。此操作会将登录状态持久化至 `playwright/.auth/user.json`，供后续所有测试复用。
 - **本地连通性配置**：在执行测试时，默认使用 `http://localhost:5173` 作为 Frontend 入口，确保环境内部回路连通。
 - **视觉取证要求**：对于 UI 变更，必须保留 Playwright 生成的 `test-results` 截图或录屏记录，并将其路径同步至 `WALKTHROUGH.md` 供用户复核。

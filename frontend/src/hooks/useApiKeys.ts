@@ -1,8 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  type ApiKeysCreateApiKeyData,
-  ApiKeysService,
-} from "../client"
+import { type ApiKeysCreateApiKeyData, ApiKeysService } from "../client"
 import useCustomToast from "./useCustomToast"
 
 export const useApiKeys = () => {

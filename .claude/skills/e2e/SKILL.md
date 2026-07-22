@@ -16,7 +16,7 @@ user-invocable: true
 
 ```bash
 # 读取根目录 .env 获取测试账号
-grep -E "FIRST_SUPERUSER|FIRST_SUPERUSER_PASSWORD" /root/omniapi/.env
+grep -E "FIRST_SUPERUSER|FIRST_SUPERUSER_PASSWORD" /root/security-platform/.env
 ```
 
 若变量缺失，**停止并提醒用户补充**，不得使用 Mock 数据。
@@ -25,7 +25,7 @@ grep -E "FIRST_SUPERUSER|FIRST_SUPERUSER_PASSWORD" /root/omniapi/.env
 
 ```bash
 # 持久化登录态，供后续所有测试复用
-cd /root/omniapi/frontend && npx playwright test tests/auth.setup.ts
+cd /root/security-platform/frontend && npx playwright test tests/auth.setup.ts
 ```
 
 ### 阶段二：确定测试范围
@@ -46,7 +46,7 @@ cd /root/omniapi/frontend && npx playwright test tests/auth.setup.ts
 ### 阶段四：执行测试
 
 ```bash
-cd /root/omniapi/frontend
+cd /root/security-platform/frontend
 npx playwright test [test-file] --reporter=list
 ```
 

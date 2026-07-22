@@ -1,4 +1,4 @@
-# aisec Dockerfile —— 独立 Python 镜像（不复用 omniapi backend 镜像）
+# aisec Dockerfile —— 独立 Python 镜像（不复用 security-platform backend 镜像）
 #
 # 镜像用于两类容器：
 #   aisec-api    : uvicorn aisec.main:app
@@ -6,7 +6,7 @@
 # 通过 compose 的 command 字段切换入口。
 #
 # 项目布局（扁平）：
-#   omniapi/aisec/         ← build context = Python 包根
+#   security-platform/aisec/         ← build context = Python 包根
 #   ├── Dockerfile
 #   ├── pyproject.toml
 #   ├── uv.lock            ← 由 uv lock 生成，确保依赖版本可复现

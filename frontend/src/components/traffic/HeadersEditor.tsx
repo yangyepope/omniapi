@@ -10,8 +10,8 @@
  *   - onChange: (h: Record<string, string>) => void  任意编辑后的回调
  */
 
-import { useState, useCallback } from "react"
 import { Plus, X } from "lucide-react"
+import { useCallback, useState } from "react"
 import { cn } from "@/lib/utils"
 import type { KVPair } from "./types"
 
@@ -23,12 +23,17 @@ interface HeadersEditorProps {
 export function HeadersEditor({ headers, onChange }: HeadersEditorProps) {
   // 将 Record 转为 KV 数组，便于逐行渲染和编辑
   const [pairs, setPairs] = useState<KVPair[]>(() =>
-    Object.entries(headers).map(([key, value]) => ({ key, value: String(value) }))
+    Object.entries(headers).map(([key, value]) => ({
+      key,
+      value: String(value),
+    })),
   )
   // 模式切换：kv（逐行）/ json（原始 textarea）
   const [mode, setMode] = useState<"kv" | "json">("kv")
   // json 模式下的原始文本缓存（与 pairs 保持双向同步）
-  const [jsonText, setJsonText] = useState(() => JSON.stringify(headers, null, 2))
+  const [jsonText, setJsonText] = useState(() =>
+    JSON.stringify(headers, null, 2),
+  )
   // json 文本无法解析时的错误标记
   const [jsonError, setJsonError] = useState(false)
 
@@ -80,7 +85,9 @@ export function HeadersEditor({ headers, onChange }: HeadersEditorProps) {
 
   // 更新单行的 key 或 value
   const updatePair = (idx: number, field: "key" | "value", val: string) => {
-    const newPairs = pairs.map((p, i) => (i === idx ? { ...p, [field]: val } : p))
+    const newPairs = pairs.map((p, i) =>
+      i === idx ? { ...p, [field]: val } : p,
+    )
     syncFromPairs(newPairs)
   }
 
@@ -130,7 +137,9 @@ export function HeadersEditor({ headers, onChange }: HeadersEditorProps) {
                   className="w-[38%] px-4 py-2.5 text-[11px] font-mono text-blue-500 bg-transparent focus:outline-none focus:bg-primary-fixed/5 transition-colors"
                 />
                 {/* 分隔符 */}
-                <span className="text-on-surface-variant/20 text-[11px] shrink-0">:</span>
+                <span className="text-on-surface-variant/20 text-[11px] shrink-0">
+                  :
+                </span>
                 {/* Value 列 */}
                 <input
                   value={pair.value}

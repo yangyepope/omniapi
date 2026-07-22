@@ -25,7 +25,10 @@ export function Main({ items }: MainProps) {
   return (
     <nav className="flex-1 px-3 space-y-2">
       {items.map((item) => {
-        const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path)
+        const isActive =
+          item.path === "/"
+            ? currentPath === "/"
+            : currentPath.startsWith(item.path)
 
         return (
           <RouterLink
@@ -38,8 +41,8 @@ export function Main({ items }: MainProps) {
                 : "text-on-surface-variant hover:text-primary hover:bg-surface-variant rounded-lg"
             }`}
           >
-            <span 
-              className="material-symbols-outlined text-xl" 
+            <span
+              className="material-symbols-outlined text-xl"
               style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
               data-icon={item.icon}
             >

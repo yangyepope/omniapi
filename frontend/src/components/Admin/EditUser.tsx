@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 import { useTranslation } from "react-i18next"
+import { z } from "zod"
 
 import { type UserPublic, UsersService } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -45,21 +45,24 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
 
   const formSchema = z
     .object({
-      email: z.string().email({ message: t("admin.invalidEmail") }),
+      email: z.string().min(1, { message: t("admin.invalidEmail") }), // 登录标识(用户名或邮箱):与后端放宽后的 str 校验对齐,不再强制邮箱格式
       full_name: z.string().optional(),
       password: z
         .string()
-        .min(8, { message: t("login.passwordMinLength") })
+        .min(6, { message: t("login.passwordMinLength") })
         .optional()
         .or(z.literal("")),
       confirm_password: z.string().optional(),
       is_superuser: z.boolean().optional(),
       is_active: z.boolean().optional(),
     })
-    .refine((data) => !data.password || data.password === data.confirm_password, {
-      message: t("admin.passwordsNotMatch"),
-      path: ["confirm_password"],
-    })
+    .refine(
+      (data) => !data.password || data.password === data.confirm_password,
+      {
+        message: t("admin.passwordsNotMatch"),
+        path: ["confirm_password"],
+      },
+    )
 
   type FormData = z.infer<typeof formSchema>
 
@@ -123,7 +126,8 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t("admin.emailLabel")} <span className="text-destructive">*</span>
+                      {t("admin.emailLabel")}{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -145,7 +149,11 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   <FormItem>
                     <FormLabel>{t("admin.fullNameLabel")}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t("admin.fullNamePlaceholder")} type="text" {...field} />
+                      <Input
+                        placeholder={t("admin.fullNamePlaceholder")}
+                        type="text"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -199,7 +207,9 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal">{t("admin.isSuperuser")}</FormLabel>
+                    <FormLabel className="font-normal">
+                      {t("admin.isSuperuser")}
+                    </FormLabel>
                   </FormItem>
                 )}
               />
@@ -215,7 +225,9 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal">{t("admin.isActive")}</FormLabel>
+                    <FormLabel className="font-normal">
+                      {t("admin.isActive")}
+                    </FormLabel>
                   </FormItem>
                 )}
               />

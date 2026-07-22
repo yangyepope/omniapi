@@ -1,7 +1,7 @@
-# OmniAPI 混合并发架构准则 (Mixed Concurrency Architecture)
+# SecurityPlatform 混合并发架构准则 (Mixed Concurrency Architecture)
 
 ## 1. 背景与核心价值
-OmniAPI 采用“异构并发”模型，旨在同时兼顾 **CPU 密集型（流量去重）** 与 **I/O 密集型（重放攻击）** 任务的最优执行效率。
+SecurityPlatform 采用“异构并发”模型，旨在同时兼顾 **CPU 密集型（流量去重）** 与 **I/O 密集型（重放攻击）** 任务的最优执行效率。
 
 - **Prefork 模型**：用于流量采集与去重。利用多进程规避 Python GIL，保护计算密集型任务的稳定性。
 - **Gevent 模型**：用于重放引擎。通过原生协程模型支持 10,000+ 并发网络 IO，支撑 10 万级重放压测。

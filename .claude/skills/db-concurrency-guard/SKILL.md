@@ -1,6 +1,6 @@
 ---
 name: db-concurrency-guard
-description: 数据库并发安全通用模板库 — Upsert、行锁、原子计数器、并发功能测试、项目级 E2E 一致性框架，适用于整个 OmniAPI 项目所有写操作场景。
+description: 数据库并发安全通用模板库 — Upsert、行锁、原子计数器、并发功能测试、项目级 E2E 一致性框架，适用于整个 SecurityPlatform 项目所有写操作场景。
 ---
 
 > **使用时机**：

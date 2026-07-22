@@ -8,7 +8,7 @@
 //
 // live=true(run 仍在跑)时 hook 内 4s 快轮询;结束即停。
 
-import { ScanStatusBadge } from "@/components/security/badges"
+import { ScanStatusBadge, TriggerBadge } from "@/components/security/badges"
 import {
   PHASE_KEY_FOR_STAGE,
   SCAN_STATUS_META,
@@ -24,6 +24,7 @@ import {
   LoadingBlock,
   SectionCard,
 } from "@/components/security/ui"
+import { fmtDateTime, fmtTime } from "@/lib/format"
 import { useScanRunDetail } from "@/security/hooks"
 
 function fmtDuration(startISO: string, endISO: string | null): string {
@@ -32,12 +33,6 @@ function fmtDuration(startISO: string, endISO: string | null): string {
   if (s < 60) return `${s}s`
   if (s < 3600) return `${Math.floor(s / 60)}m${s % 60}s`
   return `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)}m`
-}
-
-function fmtClock(iso?: string | null): string {
-  if (!iso) return "—"
-  const t = new Date(iso).getTime()
-  return Number.isNaN(t) ? "—" : new Date(iso).toLocaleTimeString("zh-CN")
 }
 
 export function ScanRunDetailPanel({
@@ -86,9 +81,25 @@ export function ScanRunDetailPanel({
             )}
           </div>
           <div className="text-xs text-gray-500">
-            {new Date(data.started_at).toLocaleString("zh-CN")} ·{" "}
+            {fmtDateTime(data.started_at)} ·{" "}
             {fmtDuration(data.started_at, data.finished_at)}
           </div>
+        </div>
+        {/* 触发来源:方式 + 触发人 + 分支/MR + 触发时间(存量任务缺失渲染「—」)*/}
+        <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+          <TriggerBadge type={data.trigger_type} />
+          <span className="text-gray-700">{data.trigger_actor ?? "—"}</span>
+          {data.trigger_ref && (
+            <span className="font-mono text-gray-400">{data.trigger_ref}</span>
+          )}
+          {data.trigger_mr_iid != null && (
+            <span className="text-violet-600">!{data.trigger_mr_iid}</span>
+          )}
+          {data.triggered_at && (
+            <span className="text-gray-400">
+              触发于 {fmtDateTime(data.triggered_at)}
+            </span>
+          )}
         </div>
         {running && (
           <div className="mt-2 flex items-center gap-3 text-xs">
@@ -154,7 +165,7 @@ export function ScanRunDetailPanel({
                 )}
                 {doneAt && (
                   <span className="ml-auto text-[10px] text-gray-400 font-mono">
-                    {fmtClock(doneAt)}
+                    {fmtTime(doneAt)}
                   </span>
                 )}
               </li>
@@ -177,7 +188,9 @@ export function ScanRunDetailPanel({
                   <th className="text-left py-2.5 px-3 font-semibold">引擎</th>
                   <th className="text-left py-2 px-2 font-semibold">状态</th>
                   <th className="text-right py-2 px-2 font-semibold">耗时</th>
-                  <th className="text-right py-2 px-2 font-semibold">发现</th>
+                  <th className="text-right py-2 px-2 font-semibold">
+                    发现(原始/去重)
+                  </th>
                   <th className="text-right py-2 px-2 font-semibold">token</th>
                   <th className="text-left py-2 px-2 font-semibold">模型</th>
                 </tr>
@@ -208,7 +221,12 @@ export function ScanRunDetailPanel({
                       {e.elapsed_seconds}s
                     </td>
                     <td className="py-2 px-2 text-right tabular-nums text-gray-900">
+                      {/* 原始产出数(去重前) / 去重后 distinct 数;伪引擎去重位为 — */}
                       {e.findings}
+                      <span className="text-gray-400">
+                        {" / "}
+                        {e.distinct_findings ?? "—"}
+                      </span>
                     </td>
                     <td className="py-2 px-2 text-right tabular-nums text-gray-500 text-xs">
                       {e.total_tokens || "—"}

@@ -75,6 +75,45 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 from app.api.routes import collect
 app.include_router(collect.router, prefix="/v1")
 
+# ── MCP server 挂载（任务 #182）─────────────────────────────────
+# 把 gitlab-scanner 的能力以 MCP 协议暴露给 Claude Desktop / Cursor。
+# 走 SSE 传输,挂在 /mcp/sse。鉴权:Authorization Bearer <SECURITY_PLATFORM_MCP_TOKEN>。
+# Tools 跟 React 前端走的 /api/v1/security/* 是同一份 ScannerClient,
+# 两条路并行不冲突。仅当 SECURITY_PLATFORM_MCP_TOKEN 已配置时才挂载。
+if getattr(settings, "SECURITY_PLATFORM_MCP_TOKEN", None):
+    try:
+        from fastapi import Depends
+        from app.mcp.scanner_mcp_server import build_sse_app, verify_mcp_auth
+        app.mount(
+            "/mcp",
+            build_sse_app(),
+            name="security-platform-scanner-mcp",
+        )
+        # SSE app doesn't go through APIRouter dependencies, so we add a
+        # plain HTTP middleware that gates ALL /mcp/* requests on the token.
+        from starlette.middleware.base import BaseHTTPMiddleware
+        from fastapi import Request as FastAPIRequest
+        from starlette.responses import Response as StarletteResponse
+
+        class _MCPAuthMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                if request.url.path.startswith("/mcp"):
+                    try:
+                        await verify_mcp_auth(request)
+                    except Exception as e:
+                        from fastapi.responses import JSONResponse
+                        detail = getattr(e, "detail", str(e))
+                        code = getattr(e, "status_code", 500)
+                        return JSONResponse({"detail": detail}, status_code=code)
+                return await call_next(request)
+
+        app.add_middleware(_MCPAuthMiddleware)
+        logger.success("✅ [MCP] scanner MCP server mounted at /mcp/sse")
+    except ImportError as exc:
+        logger.warning(f"⚠️ [MCP] mcp package not installed — {exc}; pip add 'mcp'")
+else:
+    logger.info("ℹ️ [MCP] SECURITY_PLATFORM_MCP_TOKEN not set — MCP server disabled")
+
 
 @app.get("/docs", include_in_schema=False)
 def custom_scalar():

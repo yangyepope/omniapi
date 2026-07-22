@@ -4,7 +4,7 @@
 支持渠道（按需开启）：
 - 飞书：NOTIFY_FEISHU_WEBHOOK
 - 钉钉：NOTIFY_DINGTALK_WEBHOOK
-- 邮件：NOTIFY_EMAIL_TO（依赖 SMTP_* 由 omniapi 主配置注入）
+- 邮件：NOTIFY_EMAIL_TO（依赖 SMTP_* 由 security-platform 主配置注入）
 
 只在 summary.findings 中存在 ≥ NOTIFY_MIN_SEVERITY 的发现时才推送。
 """

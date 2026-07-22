@@ -16,13 +16,16 @@ export function copyViaExecCommand(text: string): void {
   // 创建屏幕外的 textarea，避免页面滚动或布局抖动
   const el = document.createElement("textarea")
   el.value = text
-  el.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;"
+  el.style.cssText =
+    "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;"
   document.body.appendChild(el)
   el.focus()
   el.select()
   try {
     // execCommand 在现代浏览器中已废弃，但在 HTTP 环境下仍是唯一可用的同步复制方案
-    ;(document as unknown as { execCommand: (cmd: string) => boolean }).execCommand("copy")
+    ;(
+      document as unknown as { execCommand: (cmd: string) => boolean }
+    ).execCommand("copy")
   } finally {
     // 无论成功与否，必须清理 DOM
     document.body.removeChild(el)
@@ -37,11 +40,14 @@ export function copyViaExecCommand(text: string): void {
 export function copyText(text: string, onSuccess: () => void): void {
   if (navigator?.clipboard) {
     // 优先路径：Clipboard API（需要 HTTPS 或 localhost）
-    navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
-      // 降级路径：execCommand（HTTP 内网兼容）
-      copyViaExecCommand(text)
-      onSuccess()
-    })
+    navigator.clipboard
+      .writeText(text)
+      .then(onSuccess)
+      .catch(() => {
+        // 降级路径：execCommand（HTTP 内网兼容）
+        copyViaExecCommand(text)
+        onSuccess()
+      })
   } else {
     // clipboard 不存在时直接走降级路径
     copyViaExecCommand(text)

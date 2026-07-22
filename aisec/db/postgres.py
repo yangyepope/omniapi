@@ -1,4 +1,4 @@
-"""asyncpg 连接池（独立于 omniapi 主库）。"""
+"""asyncpg 连接池（独立于 security-platform 主库）。"""
 import logging
 from typing import Optional
 

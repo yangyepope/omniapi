@@ -1,25 +1,29 @@
+import { Sidebar } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
 import { type Item, Main } from "./Main"
-import { Sidebar } from "@/components/ui/sidebar"
 
 export function AppSidebar() {
   const { user: currentUser } = useAuth()
 
   const mainItems: Item[] = [
     { icon: "dashboard", title: "仪表盘", path: "/" },
+    { icon: "monitoring", title: "安全大屏", path: "/security-dashboard" },
+    { icon: "radar", title: "扫描管理", path: "/security/scans" },
     { icon: "account_tree", title: "项目管理", path: "/projects" },
     { icon: "hub", title: "接口中心", path: "/api-center" },
   ]
 
   if (currentUser?.is_superuser) {
-    mainItems.push(
-      { icon: "admin_panel_settings", title: "后台管理", path: "/admin" }
-    )
+    mainItems.push({
+      icon: "admin_panel_settings",
+      title: "后台管理",
+      path: "/admin",
+    })
   }
 
   const bottomItems: Item[] = [
     { icon: "settings", title: "系统设置", path: "/settings" },
-    { icon: "help_outline", title: "技术支持", path: "/support" }
+    { icon: "help_outline", title: "技术支持", path: "/support" },
   ]
 
   return (
@@ -32,8 +36,12 @@ export function AppSidebar() {
           <div className="inline-flex items-center rounded-full border border-[#a1faff]/25 bg-[#a1faff]/10 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-[#a1faff] uppercase">
             控制台
           </div>
-          <div className="mt-3 text-[22px] leading-none font-bold text-[#d5fbff] tracking-tight uppercase font-headline">AAM 微服务管理</div>
-          <div className="mt-1.5 text-[#8e9ab7] text-[10px] tracking-[0.2em] uppercase">API 发现</div>
+          <div className="mt-3 text-[22px] leading-none font-bold text-[#d5fbff] tracking-tight uppercase font-headline">
+            AAM 微服务管理
+          </div>
+          <div className="mt-1.5 text-[#8e9ab7] text-[10px] tracking-[0.2em] uppercase">
+            API 发现
+          </div>
         </div>
 
         <div className="mx-5 mb-4 h-px bg-gradient-to-r from-transparent via-[#a1faff]/25 to-transparent" />
@@ -52,25 +60,29 @@ export function AppSidebar() {
 
         <div className="mt-auto pb-4 space-y-4">
           <Main items={bottomItems} />
-          
+
           <div className="mx-3 mt-2 flex items-center gap-3 rounded-2xl bg-[#121c2b] p-3 shadow-lg border border-[#a1faff]/10 transition-colors hover:border-[#a1faff]/30 cursor-pointer">
             <div className="relative flex-shrink-0">
-              <img 
-                src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${currentUser?.full_name || 'Admin'}&backgroundColor=b6e3f4`} 
-                alt="avatar" 
-                className="h-10 w-10 rounded-full object-cover border border-[#a1faff]/20" 
+              <img
+                src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${currentUser?.full_name || "Admin"}&backgroundColor=b6e3f4`}
+                alt="avatar"
+                className="h-10 w-10 rounded-full object-cover border border-[#a1faff]/20"
               />
-              <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#121c2b] bg-[#7be8ff]"></div>
+              <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#121c2b] bg-[#7be8ff]" />
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span 
+              <span
                 className="text-sm font-bold text-[#7be8ff] tracking-wide truncate"
-                title={currentUser?.full_name || currentUser?.email || "Admin User"}
+                title={
+                  currentUser?.full_name || currentUser?.email || "Admin User"
+                }
               >
                 {currentUser?.full_name || currentUser?.email || "Admin User"}
               </span>
               <span className="text-[10px] font-semibold tracking-wider text-[#64748b] uppercase mt-0.5 truncate">
-                {currentUser?.is_superuser ? "Root Privileges" : "User Privileges"}
+                {currentUser?.is_superuser
+                  ? "Root Privileges"
+                  : "User Privileges"}
               </span>
             </div>
           </div>

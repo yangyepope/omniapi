@@ -10,11 +10,15 @@ import ReactDOM from "react-dom/client"
 import { ApiError, OpenAPI } from "./client"
 import { ThemeProvider } from "./components/providers/theme-provider"
 import { Toaster } from "./components/ui/sonner"
+import { CurrentProjectProvider } from "./security/CurrentProjectProvider"
 import "./index.css"
 import "./i18n"
 import { routeTree } from "./routeTree.gen"
 
-OpenAPI.BASE = import.meta.env.VITE_API_URL
+// API 基地址:VITE_API_URL 未设置时必须兜底为空串(相对路径),
+// 由 Vite dev proxy / frontend nginx 反代 /api → backend;
+// 直接赋 undefined 会被拼成 "/undefined/api/v1/..." 导致全部请求 404
+OpenAPI.BASE = import.meta.env.VITE_API_URL || ""
 OpenAPI.TOKEN = async () => {
   return localStorage.getItem("access_token") || ""
 }
@@ -45,7 +49,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        {/* 当前项目 Provider 在 Query 内(便于用 useQuery 校验项目列表)、
+            包住 Router(全路由与 Header 均可读当前项目) */}
+        <CurrentProjectProvider>
+          <RouterProvider router={router} />
+        </CurrentProjectProvider>
         <Toaster closeButton />
       </QueryClientProvider>
     </ThemeProvider>

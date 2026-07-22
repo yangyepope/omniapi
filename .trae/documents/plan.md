@@ -12,7 +12,7 @@
 
 ## 2. 拟定的修改 (Proposed Changes)
 
-我已经直接修改了后端的规则集文件 [SKILL.md](file:///root/omniapi/.trae/skills/backend-standards/SKILL.md)。
+我已经直接修改了后端的规则集文件 [SKILL.md](file:///root/security-platform/.trae/skills/backend-standards/SKILL.md)。
 在该文件中新增了以下两个强制条款，确保以后无论是你还是 AI 在编写代码时都能受到这个约束：
 
 ### 新增：3.1) 架构分层规范（强制）
@@ -35,7 +35,7 @@
 
 ## 3. 验证步骤 (Verification)
 
-* 检查 `/root/omniapi/.trae/skills/backend-standards/SKILL.md` 是否已成功更新。
+* 检查 `/root/security-platform/.trae/skills/backend-standards/SKILL.md` 是否已成功更新。
 
 * 后续对话中触发该 Skill 时，系统会严格执行分层和测试要求。
 

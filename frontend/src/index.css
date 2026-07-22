@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -33,29 +33,31 @@
   --color-primary-fixed: #005daa;
   --color-primary-container: #0075d5;
   --color-on-primary: #ffffff;
-  
+
   --color-secondary-fixed: #266d00;
   --color-secondary-container: #85fa51;
-  
+
   --color-tertiary: #bb0018;
   --color-tertiary-container: #e71325;
-  
+
   --color-surface: #fcf9f8;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-low: #f6f3f2;
   --color-surface-container: #f0eded;
   --color-surface-container-high: #eae7e7;
   --color-surface-container-highest: #e4e2e1;
-  
+
   --color-on-surface: #1b1c1c;
   --color-on-surface-variant: #404753;
-  
+
   --color-outline: #707785;
   --color-outline-variant: #c0c7d6;
-  
+
   --color-error: #ba1a1a;
 
-  --font-sans: "Fira Code", "Noto Sans SC", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans:
+    "Fira Code", "Noto Sans SC", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
   --font-display: "Fira Code", monospace;
   --font-mono: "Fira Code", monospace;
 }
@@ -113,7 +115,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     @apply tracking-tight;
   }
@@ -125,19 +132,36 @@
 
 @layer utilities {
   .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
   }
   .pulse-secondary {
     box-shadow: 0 0 0 0 rgba(105, 246, 184, 0.4);
     animation: pulse-green 2s infinite;
   }
   @keyframes pulse-green {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 246, 184, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(105, 246, 184, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 246, 184, 0); }
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(105, 246, 184, 0.7);
+    }
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 10px rgba(105, 246, 184, 0);
+    }
+    100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(105, 246, 184, 0);
+    }
   }
   @keyframes shimmer {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(100%); }
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
   }
 }

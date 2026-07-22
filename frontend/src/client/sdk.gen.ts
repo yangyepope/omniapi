@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ApiKeysReadApiKeysData, ApiKeysReadApiKeysResponse, ApiKeysCreateApiKeyData, ApiKeysCreateApiKeyResponse, ApiKeysDeleteApiKeyData, ApiKeysDeleteApiKeyResponse, CollectCollectTrafficResponse, DouyinFetchOneVideoByShareUrlData, DouyinFetchOneVideoByShareUrlResponse, ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ReplaysExecuteReplayData, ReplaysExecuteReplayResponse, SecurityAssetsReadAssetsData, SecurityAssetsReadAssetsResponse, SecurityAssetsTriggerScanData, SecurityAssetsTriggerScanResponse, SecurityAssetsReadReportsData, SecurityAssetsReadReportsResponse, SystemModulesGetSystemModulesStatsResponse, SystemModulesCreateSystemModuleData, SystemModulesCreateSystemModuleResponse, SystemModulesUpdateSystemModuleData, SystemModulesUpdateSystemModuleResponse, SystemModulesDeleteSystemModuleData, SystemModulesDeleteSystemModuleResponse, SystemModulesGetModuleEndpointsData, SystemModulesGetModuleEndpointsResponse, SystemModulesGetModuleEndpointDetailData, SystemModulesGetModuleEndpointDetailResponse, TrafficManagerGetConfigResponse, TrafficManagerUpdateConfigData, TrafficManagerUpdateConfigResponse, TrafficManagerImportApifoxData, TrafficManagerImportApifoxResponse, TrafficManagerGetEndpointTrafficData, TrafficManagerGetEndpointTrafficResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse, VariantsGetVariantsData, VariantsGetVariantsResponse, VariantsCreateVariantData, VariantsCreateVariantResponse, VariantsPushVariantData, VariantsPushVariantResponse, VariantsUpdateVariantData, VariantsUpdateVariantResponse, VariantsDeleteVariantData, VariantsDeleteVariantResponse, VariantsReplayVariantData, VariantsReplayVariantResponse, VariantsGetReplayHistoryData, VariantsGetReplayHistoryResponse } from './types.gen';
+import type { ApiKeysReadApiKeysData, ApiKeysReadApiKeysResponse, ApiKeysCreateApiKeyData, ApiKeysCreateApiKeyResponse, ApiKeysDeleteApiKeyData, ApiKeysDeleteApiKeyResponse, CollectCollectTrafficResponse, DouyinFetchOneVideoByShareUrlData, DouyinFetchOneVideoByShareUrlResponse, InternalReceiveSecurityFindingsData, InternalReceiveSecurityFindingsResponse, ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, ReplaysExecuteBaselineData, ReplaysExecuteBaselineResponse, ReplaysExecuteReplayData, ReplaysExecuteReplayResponse, SecurityGetStatsResponse, SecurityGetStatsTrendData, SecurityGetStatsTrendResponse, SecurityGetCategoriesData, SecurityGetCategoriesResponse, SecurityGetVerifierStatsData, SecurityGetVerifierStatsResponse, SecurityGetFindingReviewStatsData, SecurityGetFindingReviewStatsResponse, SecurityGetCostStatsData, SecurityGetCostStatsResponse, SecurityGetScannerConfigResponse, SecurityUpdateScannerConfigData, SecurityUpdateScannerConfigResponse, SecurityDeleteScannerConfigData, SecurityDeleteScannerConfigResponse, SecurityListServiceInterfacesData, SecurityListServiceInterfacesResponse, SecurityGetInterfaceData, SecurityGetInterfaceResponse, SecurityMcpStatusResponse, SecurityListServicesResponse, SecurityListScanRunsData, SecurityListScanRunsResponse, SecurityTriggerScanData, SecurityTriggerScanResponse, SecurityListFindingsData, SecurityListFindingsResponse, SecurityGetFindingData, SecurityGetFindingResponse, SecurityTriageFindingData, SecurityTriageFindingResponse, SecurityAssetsReadAssetsData, SecurityAssetsReadAssetsResponse, SecurityAssetsTriggerScanData, SecurityAssetsTriggerScanResponse, SecurityAssetsReadReportsData, SecurityAssetsReadReportsResponse, SystemModulesGetSystemModulesStatsResponse, SystemModulesCreateSystemModuleData, SystemModulesCreateSystemModuleResponse, SystemModulesUpdateSystemModuleData, SystemModulesUpdateSystemModuleResponse, SystemModulesDeleteSystemModuleData, SystemModulesDeleteSystemModuleResponse, SystemModulesGetModuleEndpointsData, SystemModulesGetModuleEndpointsResponse, SystemModulesGetModuleEndpointDetailData, SystemModulesGetModuleEndpointDetailResponse, TrafficManagerGetConfigResponse, TrafficManagerUpdateConfigData, TrafficManagerUpdateConfigResponse, TrafficManagerImportApifoxData, TrafficManagerImportApifoxResponse, TrafficManagerGetEndpointTrafficData, TrafficManagerGetEndpointTrafficResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse, VariantsGetVariantsData, VariantsGetVariantsResponse, VariantsCreateVariantData, VariantsCreateVariantResponse, VariantsPushVariantData, VariantsPushVariantResponse, VariantsUpdateVariantData, VariantsUpdateVariantResponse, VariantsDeleteVariantData, VariantsDeleteVariantResponse, VariantsReplayVariantData, VariantsReplayVariantResponse, VariantsGetReplayHistoryData, VariantsGetReplayHistoryResponse } from './types.gen';
 
 export class ApiKeysService {
     /**
@@ -148,6 +148,36 @@ export class DouyinService {
             query: {
                 share_url: data.shareUrl
             },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class InternalService {
+    /**
+     * Receive Security Findings
+     * 接收 aisec 推送的扫描结论，落到流量采集平台：
+     * - 每条 vulnerability → flow_tags（tag = "{rule_id}:{severity}"）
+     * - 非空 payload_hint → 衍生一条 variants（source_type='scan'）
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @param data.xInternalToken
+     * @param data.authorization
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static receiveSecurityFindings(data: InternalReceiveSecurityFindingsData): CancelablePromise<InternalReceiveSecurityFindingsResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/internal/security-findings',
+            headers: {
+                'X-Internal-Token': data.xInternalToken,
+                authorization: data.authorization
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }
@@ -394,6 +424,27 @@ export class PrivateService {
 
 export class ReplaysService {
     /**
+     * Execute Baseline Replay
+     * Replay the original captured flow to get a baseline response for DIFF comparison.
+     * @param data The data for the request.
+     * @param data.flowId
+     * @returns BaselineResult Successful Response
+     * @throws ApiError
+     */
+    public static executeBaseline(data: ReplaysExecuteBaselineData): CancelablePromise<ReplaysExecuteBaselineResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/replays/baseline/{flow_id}',
+            path: {
+                flow_id: data.flowId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
      * Execute Replay for Variant
      * Trigger an asynchronous-ish HTTP request to replay a captured variant and update its state.
      * @param data The data for the request.
@@ -408,6 +459,412 @@ export class ReplaysService {
             path: {
                 variant_id: data.variantId
             },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class SecurityService {
+    /**
+     * Get Stats
+     * Dashboard totals (totals + by_severity + by_engine + by_status).
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getStats(): CancelablePromise<SecurityGetStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/stats'
+        });
+    }
+    
+    /**
+     * Get Stats Trend
+     * Per-day new/closed/open series for the trend chart.
+     * @param data The data for the request.
+     * @param data.days
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getStatsTrend(data: SecurityGetStatsTrendData = {}): CancelablePromise<SecurityGetStatsTrendResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/stats/trend',
+            query: {
+                days: data.days
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Categories
+     * Aggregate findings by OWASP / CWE / engine / rule_namespace.
+     * @param data The data for the request.
+     * @param data.dimension
+     * @param data.service
+     * @param data.top
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getCategories(data: SecurityGetCategoriesData = {}): CancelablePromise<SecurityGetCategoriesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/categories',
+            query: {
+                dimension: data.dimension,
+                service: data.service,
+                top: data.top
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Verifier Stats
+     * AI verifier effectiveness — refute counts + FP-suppression rate.
+     * @param data The data for the request.
+     * @param data.service
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getVerifierStats(data: SecurityGetVerifierStatsData = {}): CancelablePromise<SecurityGetVerifierStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/verifier-stats',
+            query: {
+                service: data.service
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Finding Review Stats
+     * AI post-process review effectiveness — FP rate / auto-closed / by-engine.
+     * @param data The data for the request.
+     * @param data.service
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getFindingReviewStats(data: SecurityGetFindingReviewStatsData = {}): CancelablePromise<SecurityGetFindingReviewStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/finding-review-stats',
+            query: {
+                service: data.service
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Cost Stats
+     * Per-engine AI token usage + wall-clock timing (scanner FEAT-009).
+     * @param data The data for the request.
+     * @param data.service
+     * @param data.days
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getCostStats(data: SecurityGetCostStatsData = {}): CancelablePromise<SecurityGetCostStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/cost-stats',
+            query: {
+                service: data.service,
+                days: data.days
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Scanner Config
+     * Scanner runtime config — every configurable field with current value,
+     * category, is_overridden and requires_restart flags. Internal platform:
+     * values (including tokens) are returned in plaintext.
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getScannerConfig(): CancelablePromise<SecurityGetScannerConfigResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/config'
+        });
+    }
+    
+    /**
+     * Update Scanner Config
+     * Persist + hot-apply scanner config overrides.
+     *
+     * `updated_by` is forced to the authenticated user (same audit rule as
+     * triage) — never taken from the request body. Scanner validates every
+     * key/value and 400s the whole batch on any bad entry.
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static updateScannerConfig(data: SecurityUpdateScannerConfigData): CancelablePromise<SecurityUpdateScannerConfigResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/security/config',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Scanner Config
+     * Drop one config override so the field falls back to env/default.
+     *
+     * 404 passes through when no override exists for the key.
+     * @param data The data for the request.
+     * @param data.key
+     * @returns void Successful Response
+     * @throws ApiError
+     */
+    public static deleteScannerConfig(data: SecurityDeleteScannerConfigData): CancelablePromise<SecurityDeleteScannerConfigResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/security/config/{key}',
+            path: {
+                key: data.key
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * List Service Interfaces
+     * All discovered HTTP/Feign interfaces for one service.
+     * @param data The data for the request.
+     * @param data.name
+     * @param data.riskLevel
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static listServiceInterfaces(data: SecurityListServiceInterfacesData): CancelablePromise<SecurityListServiceInterfacesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/services/{name}/interfaces',
+            path: {
+                name: data.name
+            },
+            query: {
+                risk_level: data.riskLevel
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Interface
+     * Single interface + its related findings.
+     * @param data The data for the request.
+     * @param data.interfaceId
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getInterface(data: SecurityGetInterfaceData): CancelablePromise<SecurityGetInterfaceResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/interfaces/{interface_id}',
+            path: {
+                interface_id: data.interfaceId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Mcp Status
+     * Tell the console whether MCP is mounted + list available tools.
+     *
+     * Used by the front-end's MCP integration panel to render server
+     * state and the Claude Desktop config snippet. Does NOT leak the
+     * bearer token — that's set by ops out-of-band.
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static mcpStatus(): CancelablePromise<SecurityMcpStatusResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/mcp/status'
+        });
+    }
+    
+    /**
+     * List Services
+     * List services from scanner's manifest with open/closed counts.
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static listServices(): CancelablePromise<SecurityListServicesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/services'
+        });
+    }
+    
+    /**
+     * List Scan Runs
+     * Scan history for one service.
+     * @param data The data for the request.
+     * @param data.name
+     * @param data.limit
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static listScanRuns(data: SecurityListScanRunsData): CancelablePromise<SecurityListScanRunsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/services/{name}/scan-runs',
+            path: {
+                name: data.name
+            },
+            query: {
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Trigger Scan
+     * Trigger an on-demand scan for the given service.
+     *
+     * TODO: gate with a `security:scan` permission once RBAC matures.
+     * @param data The data for the request.
+     * @param data.name
+     * @param data.ref
+     * @param data.sha
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static triggerScan(data: SecurityTriggerScanData): CancelablePromise<SecurityTriggerScanResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/security/services/{name}/scan',
+            path: {
+                name: data.name
+            },
+            query: {
+                ref: data.ref,
+                sha: data.sha
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * List Findings
+     * List findings — main triage table view.
+     * @param data The data for the request.
+     * @param data.service
+     * @param data.severity
+     * @param data.status open | closed
+     * @param data.engine
+     * @param data.rulePrefix
+     * @param data.limit
+     * @param data.offset
+     * @param data.sort
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static listFindings(data: SecurityListFindingsData = {}): CancelablePromise<SecurityListFindingsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/findings',
+            query: {
+                service: data.service,
+                severity: data.severity,
+                status: data.status,
+                engine: data.engine,
+                rule_prefix: data.rulePrefix,
+                limit: data.limit,
+                offset: data.offset,
+                sort: data.sort
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Finding
+     * Full finding detail — includes verifier reasoning when present.
+     * @param data The data for the request.
+     * @param data.findingId
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static getFinding(data: SecurityGetFindingData): CancelablePromise<SecurityGetFindingResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/security/findings/{finding_id}',
+            path: {
+                finding_id: data.findingId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Triage Finding
+     * Mark a finding fp / fixed / wontfix / suppressed / duplicate / reopen.
+     *
+     * `by` is forced to current_user.email (or username if available) —
+     * we do NOT trust any field from the frontend for attribution.
+     *
+     * For 'fp', the operator's `reason` is what gitlab-scanner's AI
+     * sees next scan via the historical-FP feedback loop (#177). So
+     * reasons should be precise and actionable, e.g.
+     * "single-admin model — BOLA inapplicable" not "误报".
+     * @param data The data for the request.
+     * @param data.findingId
+     * @param data.requestBody
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static triageFinding(data: SecurityTriageFindingData): CancelablePromise<SecurityTriageFindingResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/security/findings/{finding_id}/triage',
+            path: {
+                finding_id: data.findingId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }

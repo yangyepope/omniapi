@@ -38,7 +38,7 @@ def test_execute_variant_replay_failed(
         root_flow_id=flow.id,
         method="GET",
         url="http://localhost:8000/api/v1/test-replay?id=1' OR 1=1",
-        headers={"User-Agent": "OmniAPI-Replayer"},
+        headers={"User-Agent": "SecurityPlatform-Replayer"},
         body_str=None
     )
     db.add(variant)

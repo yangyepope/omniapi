@@ -5,7 +5,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { ListChecks, RadioTower } from "lucide-react"
 import { useMemo } from "react"
 import { z } from "zod"
-import { ScanStatusBadge } from "@/components/security/badges"
+import { ScanStatusBadge, TriggerBadge } from "@/components/security/badges"
 import { TriggerScanButton } from "@/components/security/TriggerScanButton"
 import { SCAN_STATUS_META } from "@/components/security/theme"
 import {
@@ -15,8 +15,10 @@ import {
   PageHeader,
   SectionCard,
 } from "@/components/security/ui"
+import { fmtDateTime } from "@/lib/format"
 import { type ScanRun, scannerErrorDetail } from "@/security/api"
 import { useAllScanRuns, useServiceList } from "@/security/hooks"
+import { ScanHubTabs } from "@/security/ScanHubTabs"
 
 const searchSchema = z.object({
   // 空串表示不筛选;进 search params 驱动 query 重取
@@ -45,6 +47,13 @@ function formatDuration(run: ScanRun): string {
 const SELECT_CLS =
   "h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
 
+// 由服务 repo_url + MR iid 拼 GitLab MR 页面链接:去掉 .git 后缀 → 拼
+// /-/merge_requests/{iid}。repo_url 缺失时返回 null(降级为纯文本)。
+function mrUrl(repoUrl: string | undefined, iid: number): string | null {
+  if (!repoUrl) return null
+  return `${repoUrl.replace(/\.git$/, "")}/-/merge_requests/${iid}`
+}
+
 function ScanTasksPage() {
   const { service, status } = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -57,12 +66,21 @@ function ScanTasksPage() {
     return service ? all.filter((t) => t.service_name === service) : all
   }, [tasks.data, service])
 
+  // 服务名 → repo_url,用于把 MR iid 拼成可点的 GitLab MR 链接
+  const repoByName = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const s of services.data ?? []) m.set(s.name, s.repo_url)
+    return m
+  }, [services.data])
+
   // 更新单个 search param,其余保持
   const setParam = (key: "service" | "status", value: string) =>
     navigate({ search: (prev) => ({ ...prev, [key]: value }) })
 
   return (
     <div className="space-y-6">
+      {/* 区内枢纽:「扫描」区 Tab 条(运行记录/成本明细/回归对比) */}
+      <ScanHubTabs />
       <PageHeader
         icon={ListChecks}
         title="扫描任务"
@@ -119,6 +137,10 @@ function ScanTasksPage() {
               <tr className="text-[11px] uppercase tracking-wider text-gray-500 border-b border-gray-100">
                 <th className="text-left py-2.5 px-4 font-semibold">服务</th>
                 <th className="text-left py-2.5 px-2 font-semibold">状态</th>
+                <th className="text-left py-2.5 px-2 font-semibold">
+                  触发方式
+                </th>
+                <th className="text-left py-2.5 px-2 font-semibold">触发人</th>
                 <th className="text-left py-2.5 px-2 font-semibold">SHA</th>
                 <th className="text-left py-2.5 px-2 font-semibold">
                   开始时间
@@ -148,13 +170,47 @@ function ScanTasksPage() {
                   <td className="py-2.5 px-2">
                     <ScanStatusBadge status={run.status} />
                   </td>
+                  <td className="py-2.5 px-2">
+                    <TriggerBadge type={run.trigger_type} />
+                  </td>
+                  <td className="py-2.5 px-2 text-xs">
+                    {/* 触发人 + 分支/MR:webhook 带真实用户名,手动为 admin */}
+                    <div className="text-gray-700">
+                      {run.trigger_actor ?? "—"}
+                    </div>
+                    {(run.trigger_ref || run.trigger_mr_iid != null) && (
+                      <div className="text-gray-400 mt-0.5 flex items-center gap-1.5">
+                        {run.trigger_ref && (
+                          <span className="font-mono">{run.trigger_ref}</span>
+                        )}
+                        {run.trigger_mr_iid != null &&
+                          (() => {
+                            const url = mrUrl(
+                              repoByName.get(run.service_name),
+                              run.trigger_mr_iid,
+                            )
+                            const label = `!${run.trigger_mr_iid}`
+                            return url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                {label}
+                              </a>
+                            ) : (
+                              <span className="text-violet-600">{label}</span>
+                            )
+                          })()}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2.5 px-2 font-mono text-xs text-gray-500">
                     {run.sha ? run.sha.slice(0, 8) : "—"}
                   </td>
                   <td className="py-2.5 px-2 text-gray-500 text-xs tabular-nums">
-                    {run.started_at
-                      ? new Date(run.started_at).toLocaleString()
-                      : "—"}
+                    {fmtDateTime(run.started_at)}
                   </td>
                   <td className="py-2.5 px-2 text-gray-500 text-xs tabular-nums">
                     {formatDuration(run)}

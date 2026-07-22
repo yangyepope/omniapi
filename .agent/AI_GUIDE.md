@@ -1,4 +1,4 @@
-# OmniAPI 开发者 AI 助手使用指南
+# SecurityPlatform 开发者 AI 助手使用指南
 
 本指南整合了项目中集成的 **ECC (Everything Claude Code)**、**Superpowers** 以及 **MCP (Model Context Protocol)** 的核心使用方法，旨在帮助你利用 AI 助手高效完成从需求分析到代码交付的完整流程。
 

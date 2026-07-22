@@ -11,7 +11,7 @@ from typing import (  # Any：放宽类型以兼容第三方库；cast：显式�
 )
 
 import sqlalchemy
-from pydantic import EmailStr, ValidationInfo, field_validator
+from pydantic import ValidationInfo, field_validator
 from sqlalchemy import (
     DateTime,  # DateTime：SQLAlchemy 的时间列类型（这里用于带时区的时间）
     UniqueConstraint,  # UniqueConstraint：声明联合唯一约束，与 alembic autogenerate 同步，避免代码-DB 漂移
@@ -31,9 +31,9 @@ def get_datetime_utc() -> (
 
 # Shared properties  # 用户模型的“公共字段”（创建/更新/响应会复用这些字段）
 class UserBase(SQLModel):  # UserBase：用户的基础属性集合（不包含密码/哈希等敏感字段）
-    email: EmailStr = Field(
+    email: str = Field(
         unique=True, index=True, max_length=255
-    )  # 用户邮箱：唯一 + 索引 + 长度限制
+    )  # 登录标识（用户名或邮箱）：唯一 + 索引 + 长度限制；放宽自 EmailStr 以支持 admin 这类纯用户名账号
     is_active: bool = True  # 是否激活：禁用用户时置 False（登录校验会拦截）
     is_superuser: bool = False  # 是否超管：决定能否访问后台管理类接口
     full_name: str | None = Field(
@@ -46,40 +46,40 @@ class UserCreate(
     UserBase
 ):  # UserCreate：创建用户请求体（含明文 password，写库时会被哈希化）
     password: str = Field(
-        min_length=8, max_length=128
-    )  # 明文密码：只在创建/更新密码时出现，不会对外返回
+        min_length=6, max_length=128
+    )  # 明文密码：只在创建/更新密码时出现，不会对外返回；最小长度放宽到 6 以支持简易超管密码
 
 
 class UserRegister(
     SQLModel
 ):  # UserRegister：注册（signup）请求体（对外开放时通常字段更少）
-    email: EmailStr = Field(max_length=255)  # 注册邮箱：必填，长度限制
-    password: str = Field(min_length=8, max_length=128)  # 注册密码：必填，长度限制
+    email: str = Field(max_length=255)  # 注册登录标识（用户名或邮箱）：必填，长度限制
+    password: str = Field(min_length=6, max_length=128)  # 注册密码：必填，长度限制（最小 6 位，与 UserCreate 对齐）
     full_name: str | None = Field(default=None, max_length=255)  # 注册姓名：可选
 
 
 # Properties to receive via API on update, all are optional  # 更新用户时 API 需要接收的字段（一般允许部分更新）
 class UserUpdate(UserBase):  # UserUpdate：超管更新任意用户的请求体（字段通常允许不传）
-    email: EmailStr | None = Field(default=None, max_length=255)  # type: ignore  # 邮箱：可选；type:ignore 用于兼容 SQLModel/EmailStr 的类型检查细节
+    email: str | None = Field(default=None, max_length=255)  # type: ignore  # 登录标识（用户名或邮箱）：可选；type:ignore 用于兼容 SQLModel 字段覆盖的类型检查细节
     password: str | None = Field(
-        default=None, min_length=8, max_length=128
-    )  # 密码：可选；若提供则会被更新并重新哈希
+        default=None, min_length=6, max_length=128
+    )  # 密码：可选；若提供则会被更新并重新哈希（最小 6 位，与 UserCreate 对齐）
 
 
 class UserUpdateMe(
     SQLModel
 ):  # UserUpdateMe：用户更新“自己的资料”的请求体（通常不允许改权限字段）
     full_name: str | None = Field(default=None, max_length=255)  # 自己的姓名：可选更新
-    email: EmailStr | None = Field(
+    email: str | None = Field(
         default=None, max_length=255
-    )  # 自己的邮箱：可选更新（需要做唯一性校验）
+    )  # 自己的登录标识（用户名或邮箱）：可选更新（需要做唯一性校验）
 
 
 class UpdatePassword(SQLModel):  # UpdatePassword：更新密码请求体（需要旧密码 + 新密码）
     current_password: str = Field(
-        min_length=8, max_length=128
-    )  # 当前密码（用于验证操作者确实知道旧密码）
-    new_password: str = Field(min_length=8, max_length=128)  # 新密码（写库时会哈希化）
+        min_length=6, max_length=128
+    )  # 当前密码（用于验证操作者确实知道旧密码；最小 6 位，否则 6 位密码用户无法通过校验改密）
+    new_password: str = Field(min_length=6, max_length=128)  # 新密码（写库时会哈希化）
 
 
 # Database model, database table inferred from class name  # 数据库模型（table=True 表示映射成真实表）
@@ -180,7 +180,7 @@ class TokenPayload(SQLModel):  # TokenPayload：JWT payload 中我们关心的�
 
 class NewPassword(SQLModel):  # NewPassword：找回密码/重置密码使用的请求体
     token: str  # 重置密码 token（通常是一次性的）
-    new_password: str = Field(min_length=8, max_length=128)  # 新密码：长度限制
+    new_password: str = Field(min_length=6, max_length=128)  # 新密码：长度限制（最小 6 位，与 UserCreate 对齐）
 
 
 # API Key Models  # API Key 相关的数据模型（用于第三方调用或给用户创建/管理 Key）

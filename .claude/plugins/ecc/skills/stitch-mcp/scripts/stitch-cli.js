@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const SCRIPTS_DIR = path.dirname(CURRENT_FILE);
-const FRONTEND_DIR = process.env.STITCH_FRONTEND_DIR || "/root/omniapi/frontend";
+const FRONTEND_DIR = process.env.STITCH_FRONTEND_DIR || "/root/security-platform/frontend";
 const DOTENV_CONFIG = path.resolve(FRONTEND_DIR, "node_modules/dotenv/config.js");
 const MCP_CLIENT_ENTRY = path.resolve(FRONTEND_DIR, "node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js");
 const MCP_STDIO_ENTRY = path.resolve(FRONTEND_DIR, "node_modules/@modelcontextprotocol/sdk/dist/esm/client/stdio.js");
@@ -41,7 +41,7 @@ async function withClient(handler, options = {}) {
     env
   });
   const client = new Client(
-    { name: "omniapi-stitch-cli", version: "1.4.0" },
+    { name: "security-platform-stitch-cli", version: "1.4.0" },
     { capabilities: {} }
   );
   try {
@@ -247,7 +247,7 @@ const COMMANDS = {
 
   help: () => {
     process.stderr.write(`
-OmniAPI Stitch CLI - 高级增强版 (Protocol-Safe)
+SecurityPlatform Stitch CLI - 高级增强版 (Protocol-Safe)
 
 可用命令:
   npm run stitch list           - 查看当前项目的屏幕素材
@@ -268,7 +268,7 @@ OmniAPI Stitch CLI - 高级增强版 (Protocol-Safe)
   STITCH_TIMEOUT_MS             - MCP 请求超时毫秒数（默认 20000）
   STITCH_SYNC_TIMEOUT_MS        - 同步生成超时毫秒数（默认 300000）
   STITCH_PROXY_URL              - 可选代理地址，例如 http://127.0.0.1:7891
-  STITCH_FRONTEND_DIR           - 前端目录（默认 /root/omniapi/frontend）
+  STITCH_FRONTEND_DIR           - 前端目录（默认 /root/security-platform/frontend）
     \n`);
   }
 };

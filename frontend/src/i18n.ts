@@ -1,8 +1,7 @@
-import i18n from "i18next";
-import { initReactI18next } from "react-i18next";
-
-import zhCN from "./locales/zh-CN/translation.json";
-import enUS from "./locales/en-US/translation.json";
+import i18n from "i18next"
+import { initReactI18next } from "react-i18next"
+import enUS from "./locales/en-US/translation.json"
+import zhCN from "./locales/zh-CN/translation.json"
 
 const resources = {
   "zh-CN": {
@@ -11,7 +10,7 @@ const resources = {
   "en-US": {
     translation: enUS,
   },
-};
+}
 
 i18n
   .use(initReactI18next) // 将 i18n 实例传递给 react-i18next
@@ -22,6 +21,6 @@ i18n
     interpolation: {
       escapeValue: false, // react 已经默认防 XSS 注入了
     },
-  });
+  })
 
-export default i18n;
+export default i18n

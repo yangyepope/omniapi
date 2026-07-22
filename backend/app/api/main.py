@@ -9,6 +9,7 @@ from app.api.routes import (
     login,
     private,
     sec_assets,
+    security,
     system_modules,
     traffic_manager,
     users,
@@ -43,6 +44,8 @@ api_router.include_router(system_modules.router)
 api_router.include_router(variants.router)
 # 注册攻击重放相关路由
 api_router.include_router(replays.router, prefix="/replays", tags=["replays"])
+# 注册安全审计控制台（forward 到 gitlab-scanner 的 admin REST,任务 #181）
+api_router.include_router(security.router)
 # 注册内部 service-to-service 接口（仅供 aisec 等同栈服务调用）
 api_router.include_router(internal.router)
 

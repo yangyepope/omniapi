@@ -72,15 +72,19 @@ const DeleteConfirmation = () => {
               这是一个**不可逆**的操作。一旦确认，您的所有关联数据将被**永久性抹除**且无法找回。
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="p-8 bg-white">
             <p className="text-sm text-gray-500 font-medium leading-relaxed mb-8">
               如果您确认要继续，请点击下方黑色确认按钮。退出操作后，您将立即被强制注销当前会话。
             </p>
-            
+
             <DialogFooter className="flex !justify-between gap-4">
               <DialogClose asChild>
-                <Button variant="ghost" disabled={mutation.isPending} className="h-12 rounded-2xl px-8 font-bold text-gray-500 hover:bg-gray-100">
+                <Button
+                  variant="ghost"
+                  disabled={mutation.isPending}
+                  className="h-12 rounded-2xl px-8 font-bold text-gray-500 hover:bg-gray-100"
+                >
                   返回安全地带
                 </Button>
               </DialogClose>
@@ -98,6 +102,5 @@ const DeleteConfirmation = () => {
     </Dialog>
   )
 }
-
 
 export default DeleteConfirmation

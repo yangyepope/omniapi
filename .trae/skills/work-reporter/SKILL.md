@@ -56,7 +56,7 @@ description: "输出本次任务的改动清单、原因、影响、验证与回
 ## 示例（简版）
 
 ### 改动概览
-- 更新 [logger.py](file:///root/omniapi/backend/app/core/logger.py#L1-L120)：统一将标准 logging 转发到 loguru，优化日志格式与噪声控制。
+- 更新 [logger.py](file:///root/security-platform/backend/app/core/logger.py#L1-L120)：统一将标准 logging 转发到 loguru，优化日志格式与噪声控制。
 
 ### 具体改动
 - **改了什么**：将 httpx/uvicorn 的标准 logging 输出统一格式化；隐藏 logging 内部调用位置。

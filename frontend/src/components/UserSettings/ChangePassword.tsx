@@ -22,11 +22,11 @@ const formSchema = z
     current_password: z
       .string()
       .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(6, { message: "Password must be at least 6 characters" }),
     new_password: z
       .string()
       .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(6, { message: "Password must be at least 6 characters" }),
     confirm_password: z
       .string()
       .min(1, { message: "Password confirmation is required" }),
@@ -68,8 +68,12 @@ const ChangePassword = () => {
   return (
     <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex flex-col gap-2">
-        <h3 className="text-xl font-black text-gray-900 tracking-tight">修改登录密码</h3>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed">定期更换密码可以显著提高您的账户安全性。建议使用包含字母、数字和特殊字符的复杂组合。</p>
+        <h3 className="text-xl font-black text-gray-900 tracking-tight">
+          修改登录密码
+        </h3>
+        <p className="text-sm text-gray-500 font-medium leading-relaxed">
+          定期更换密码可以显著提高您的账户安全性。建议使用包含字母、数字和特殊字符的复杂组合。
+        </p>
       </div>
 
       <Form {...form}>
@@ -79,7 +83,9 @@ const ChangePassword = () => {
             name="current_password"
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">当前旧密码</FormLabel>
+                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">
+                  当前旧密码
+                </FormLabel>
                 <FormControl>
                   <PasswordInput
                     id="current_password"
@@ -99,7 +105,9 @@ const ChangePassword = () => {
               name="new_password"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">新登录密码</FormLabel>
+                  <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">
+                    新登录密码
+                  </FormLabel>
                   <FormControl>
                     <PasswordInput
                       id="new_password"
@@ -118,7 +126,9 @@ const ChangePassword = () => {
               name="confirm_password"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">确认新密码</FormLabel>
+                  <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">
+                    确认新密码
+                  </FormLabel>
                   <FormControl>
                     <PasswordInput
                       id="confirm_password"
@@ -148,6 +158,4 @@ const ChangePassword = () => {
   )
 }
 
-
 export default ChangePassword
-

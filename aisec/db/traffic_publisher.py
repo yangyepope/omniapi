@@ -1,12 +1,12 @@
 """
-扫描结论回传到 omniapi 流量采集平台（v3.0 §2.2 Activity 9）。
+扫描结论回传到 security-platform 流量采集平台（v3.0 §2.2 Activity 9）。
 
 策略：HTTP API（service-to-service）。
 - POST {TRAFFIC_PLATFORM_URL}/api/v1/internal/security-findings
 - 头：Authorization: Bearer <TRAFFIC_PLATFORM_TOKEN>
 - 体：scan_id / project_id / summary（ScanSummary 序列化）
 
-omniapi backend 内部接收后，按接口归档为 FlowTag + 派生 Variant。
+security-platform backend 内部接收后，按接口归档为 FlowTag + 派生 Variant。
 """
 import logging
 from typing import Any
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class TrafficPublisher:
-    """异步推送扫描结论到 omniapi 流量采集平台。"""
+    """异步推送扫描结论到 security-platform 流量采集平台。"""
 
     async def publish(
         self,

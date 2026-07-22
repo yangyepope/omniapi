@@ -1,11 +1,14 @@
-import { Bell, Search, ChevronRight, User, LogOut, Home } from "lucide-react"
-import { motion } from "motion/react"
-import useAuth from "@/hooks/useAuth"
-import { useRouterState, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
+import { Link, useRouterState } from "@tanstack/react-router"
+import { Bell, ChevronRight, Home, LogOut, Search, User } from "lucide-react"
+import { motion } from "motion/react"
+import type { ReactNode } from "react"
 import { SystemModulesService } from "@/client"
+import useAuth from "@/hooks/useAuth"
 
-export function Header() {
+// rightSlot:由 route 层(可依赖 feature)注入的右侧插槽,例如安全区的项目选择器。
+// Header 属共享 layout 层,不直接 import feature,靠此插槽保持单向依赖(规则 05 §二)。
+export function Header({ rightSlot }: { rightSlot?: ReactNode }) {
   const { user: currentUser, logout } = useAuth()
   const router = useRouterState()
   const pathname = router.location.pathname
@@ -39,15 +42,18 @@ export function Header() {
     let currentPath = ""
     segments.forEach((seg, index) => {
       currentPath += `/${seg}`
-      
+
       // 处理一级目录
       if (index === 0 && mapping[seg]) {
         parts.push({ label: mapping[seg], to: currentPath })
-      } 
+      }
       // 处理二级目录 (服务 ID)
       else if (index === 1 && segments[0] === "services") {
-        const service = statsQuery.data?.data?.find(s => s.id === seg)
-        parts.push({ label: service ? service.name : (seg || "详情"), to: currentPath })
+        const service = statsQuery.data?.data?.find((s) => s.id === seg)
+        parts.push({
+          label: service ? service.name : seg || "详情",
+          to: currentPath,
+        })
       }
       // 处理三级目录 (接口 ID) → 显示为"接口详情"
       else if (index === 2 && segments[0] === "services") {
@@ -58,7 +64,7 @@ export function Header() {
         parts.push({ label: "流量详情", to: currentPath })
       }
       // 兜底处理：防止未知路径导致面包屑缺失
-      else if (index > 0 && !parts.find(p => p.to === currentPath)) {
+      else if (index > 0 && !parts.find((p) => p.to === currentPath)) {
         parts.push({ label: seg, to: currentPath })
       }
     })
@@ -69,7 +75,7 @@ export function Header() {
   const breadcrumbs = getBreadcrumbs()
 
   return (
-    <motion.header 
+    <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -78,7 +84,10 @@ export function Header() {
       {/* Left Side: Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm">
         {breadcrumbs.map((crumb, index) => (
-          <div key={`${crumb.label}-${index}`} className="flex items-center gap-2">
+          <div
+            key={`${crumb.label}-${index}`}
+            className="flex items-center gap-2"
+          >
             {index === breadcrumbs.length - 1 ? (
               <span className="text-blue-700 font-bold flex items-center">
                 {crumb.label}
@@ -91,29 +100,34 @@ export function Header() {
                 {index === 0 ? <Home className="w-4 h-4" /> : crumb.label}
               </Link>
             )}
-            
+
             {index < breadcrumbs.length - 1 && (
               <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             )}
           </div>
         ))}
       </nav>
-      
+
       {/* Right Side: Search & Actions */}
       <div className="flex items-center gap-6">
+        {/* 路由注入的右侧插槽(如安全区项目选择器) */}
+        {rightSlot}
         {/* Rounded Search Bar */}
         <div className="relative w-64 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 transition-colors" />
-          <input 
-            type="text" 
-            placeholder="搜索资源或指标..." 
+          <input
+            type="text"
+            placeholder="搜索资源或指标..."
             className="w-full bg-gray-50 border-none rounded-full py-2 pl-10 pr-4 text-xs transition-all outline-none text-gray-900 placeholder:text-gray-400 focus:bg-gray-100/80 focus:ring-1 focus:ring-blue-100"
           />
         </div>
 
         <div className="flex items-center gap-4 h-8">
           {/* Notification with Red Dot */}
-          <button className="relative p-1.5 rounded-full text-gray-500 hover:bg-gray-50 transition-all">
+          <button
+            type="button"
+            className="relative p-1.5 rounded-full text-gray-500 hover:bg-gray-50 transition-all"
+          >
             <Bell className="w-5 h-5 fill-gray-500/10" />
             <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-white" />
           </button>
@@ -123,26 +137,30 @@ export function Header() {
 
           {/* User Profile Area */}
           <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-600" />
-             </div>
-             <div className="hidden lg:flex flex-col items-start leading-none">
-                <span className="text-[11px] font-bold text-gray-900">
-                  {currentUser?.full_name || currentUser?.email?.split('@')[0] || "管理员"}
-                </span>
-                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter mt-1">Administrator</span>
-             </div>
-             <button 
-                onClick={logout}
-                className="ml-2 p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors rounded-lg"
-                title="退出登录"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+            <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
+              <User className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="hidden lg:flex flex-col items-start leading-none">
+              <span className="text-[11px] font-bold text-gray-900">
+                {currentUser?.full_name ||
+                  currentUser?.email?.split("@")[0] ||
+                  "管理员"}
+              </span>
+              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter mt-1">
+                Administrator
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="ml-2 p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors rounded-lg"
+              title="退出登录"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
     </motion.header>
   )
 }
-

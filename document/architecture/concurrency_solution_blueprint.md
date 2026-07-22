@@ -1,4 +1,4 @@
-# OmniAPI 高并发并发冲突终极解决方案蓝图
+# SecurityPlatform 高并发并发冲突终极解决方案蓝图
 
 ## 1. 核心挑战 (The Challenge)
 在高并发（50/sec+）的流量采集场景下，传统的“读取-修改-写回（Read-Modify-Write）”模式会发生 **“丢失更新”**。同时，PostgreSQL 对错误事务的“严格中止”特性会导致并发探测逻辑（Auto-Discovery）引发连锁反应，使整个后台任务崩溃。
@@ -37,4 +37,4 @@
 ```
 
 ---
-*OmniAPI 并发对账专题组 2026-04-03*
+*SecurityPlatform 并发对账专题组 2026-04-03*

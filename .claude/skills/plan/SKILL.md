@@ -35,7 +35,7 @@ user-invocable: true
 规划完成后，**必须**将文档保存至：
 
 ```
-document/YYYYMMDD_[任务描述]_plan.md
+document/plans/YYYYMMDD_[任务描述]_plan.md
 ```
 
 格式遵循项目规范（`01-工作流与语言规范.md` 第三节）。

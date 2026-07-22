@@ -72,6 +72,37 @@ export const SCAN_STATUS_META: Record<
     chip: "bg-amber-50 text-amber-600 border-amber-100",
     hex: "#d97706",
   },
+  // 进程崩溃/重启时在跑的扫描,启动对账时置为 interrupted(FIX-009)。已配置
+  // 自动续跑时会被重新派发从断点继续,故用中性灰、区别于超时/失败。
+  interrupted: {
+    label: "已中断",
+    chip: "bg-slate-50 text-slate-600 border-slate-200",
+    hex: "#64748b",
+  },
+}
+
+// ── 扫描触发来源(FEAT:触发来源记录)──────────────────────────────
+// trigger_type → 徽章。push / merge_request 为 webhook 自动触发,manual 为
+// 控制台手动触发。字面亮色 chip,同 SCAN_STATUS_META 口径,不用语义 token。
+export const TRIGGER_META: Record<
+  string,
+  { label: string; chip: string; hex: string }
+> = {
+  push: {
+    label: "Push 自动",
+    chip: "bg-blue-50 text-blue-600 border-blue-100",
+    hex: "#2563eb",
+  },
+  merge_request: {
+    label: "MR 自动",
+    chip: "bg-violet-50 text-violet-600 border-violet-100",
+    hex: "#7c3aed",
+  },
+  manual: {
+    label: "手动",
+    chip: "bg-gray-100 text-gray-600 border-gray-200",
+    hex: "#64748b",
+  },
 }
 
 // ── 扫描阶段(FEAT-011)──────────────────────────────────────────────
@@ -89,6 +120,7 @@ export const STAGE_ORDER = [
   "engines",
   "corroboration",
   "finding_review",
+  "system_profile",
 ] as const
 
 export const STAGE_META: Record<string, string> = {
@@ -102,6 +134,7 @@ export const STAGE_META: Record<string, string> = {
   engines: "引擎扫描",
   corroboration: "跨引擎互证",
   finding_review: "AI 复核",
+  system_profile: "系统画像",
 }
 
 // scan_runs.phases_completed 的键名 → STAGE_ORDER 槽名(scanner 侧历史命名

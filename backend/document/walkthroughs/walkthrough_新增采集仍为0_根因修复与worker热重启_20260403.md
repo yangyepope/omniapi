@@ -13,7 +13,7 @@
   - 重算 `apiendpoint.total_traffic_count/variants_count/last_active_at`。
   - 重算 `systemmodule.total_traffic_count/unique_traffic_count/last_active_at`。
 - [x] 运维动作
-  - `docker compose -f /root/omniapi/compose.yml restart celery-worker`
+  - `docker compose -f /root/security-platform/compose.yml restart celery-worker`
   - 通过 `docker compose logs` 确认 worker 已重新 ready。
 
 ## 验证结果

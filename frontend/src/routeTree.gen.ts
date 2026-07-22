@@ -17,11 +17,29 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutServicesRouteImport } from './routes/_layout/services'
+import { Route as LayoutSecurityDashboardRouteImport } from './routes/_layout/security-dashboard'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutServicesIndexRouteImport } from './routes/_layout/services/index'
+import { Route as LayoutProjectsIndexRouteImport } from './routes/_layout/projects.index'
 import { Route as LayoutBusinessConfigIndexRouteImport } from './routes/_layout/business-config/index'
+import { Route as LayoutSecurityTasksRouteImport } from './routes/_layout/security/tasks'
+import { Route as LayoutSecuritySystemProfileRouteImport } from './routes/_layout/security/system-profile'
+import { Route as LayoutSecurityScansRouteImport } from './routes/_layout/security/scans'
+import { Route as LayoutSecurityRulesRouteImport } from './routes/_layout/security/rules'
+import { Route as LayoutSecurityRegressionRouteImport } from './routes/_layout/security/regression'
+import { Route as LayoutSecurityKnowledgeRouteImport } from './routes/_layout/security/knowledge'
+import { Route as LayoutSecurityEnginesRouteImport } from './routes/_layout/security/engines'
+import { Route as LayoutSecurityCostRouteImport } from './routes/_layout/security/cost'
+import { Route as LayoutSecurityConfigRouteImport } from './routes/_layout/security/config'
+import { Route as LayoutSecurityAiRulesRouteImport } from './routes/_layout/security/ai-rules'
+import { Route as LayoutProjectsKeyRouteImport } from './routes/_layout/projects.$key'
 import { Route as LayoutServicesServiceIdIndexRouteImport } from './routes/_layout/services/$serviceId/index'
+import { Route as LayoutSecurityServicesIndexRouteImport } from './routes/_layout/security/services/index'
+import { Route as LayoutSecurityFindingsIndexRouteImport } from './routes/_layout/security/findings/index'
+import { Route as LayoutSecurityServicesNameRouteImport } from './routes/_layout/security/services/$name'
+import { Route as LayoutSecurityInterfacesIdRouteImport } from './routes/_layout/security/interfaces/$id'
+import { Route as LayoutSecurityFindingsIdRouteImport } from './routes/_layout/security/findings/$id'
 import { Route as LayoutServicesServiceIdEndpointIdIndexRouteImport } from './routes/_layout/services/$serviceId/$endpointId/index'
 import { Route as LayoutServicesServiceIdEndpointIdTrafficIdRouteImport } from './routes/_layout/services/$serviceId/$endpointId/$trafficId'
 import { Route as LayoutServicesServiceIdEndpointIdTrafficIdIndexRouteImport } from './routes/_layout/services/$serviceId/$endpointId/$trafficId/index'
@@ -65,6 +83,11 @@ const LayoutServicesRoute = LayoutServicesRouteImport.update({
   path: '/services',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutSecurityDashboardRoute = LayoutSecurityDashboardRouteImport.update({
+  id: '/security-dashboard',
+  path: '/security-dashboard',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutItemsRoute = LayoutItemsRouteImport.update({
   id: '/items',
   path: '/items',
@@ -80,17 +103,109 @@ const LayoutServicesIndexRoute = LayoutServicesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutServicesRoute,
 } as any)
+const LayoutProjectsIndexRoute = LayoutProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutBusinessConfigIndexRoute =
   LayoutBusinessConfigIndexRouteImport.update({
     id: '/business-config/',
     path: '/business-config/',
     getParentRoute: () => LayoutRoute,
   } as any)
+const LayoutSecurityTasksRoute = LayoutSecurityTasksRouteImport.update({
+  id: '/security/tasks',
+  path: '/security/tasks',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSecuritySystemProfileRoute =
+  LayoutSecuritySystemProfileRouteImport.update({
+    id: '/security/system-profile',
+    path: '/security/system-profile',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutSecurityScansRoute = LayoutSecurityScansRouteImport.update({
+  id: '/security/scans',
+  path: '/security/scans',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSecurityRulesRoute = LayoutSecurityRulesRouteImport.update({
+  id: '/security/rules',
+  path: '/security/rules',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSecurityRegressionRoute =
+  LayoutSecurityRegressionRouteImport.update({
+    id: '/security/regression',
+    path: '/security/regression',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutSecurityKnowledgeRoute = LayoutSecurityKnowledgeRouteImport.update({
+  id: '/security/knowledge',
+  path: '/security/knowledge',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSecurityEnginesRoute = LayoutSecurityEnginesRouteImport.update({
+  id: '/security/engines',
+  path: '/security/engines',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSecurityCostRoute = LayoutSecurityCostRouteImport.update({
+  id: '/security/cost',
+  path: '/security/cost',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSecurityConfigRoute = LayoutSecurityConfigRouteImport.update({
+  id: '/security/config',
+  path: '/security/config',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSecurityAiRulesRoute = LayoutSecurityAiRulesRouteImport.update({
+  id: '/security/ai-rules',
+  path: '/security/ai-rules',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutProjectsKeyRoute = LayoutProjectsKeyRouteImport.update({
+  id: '/projects/$key',
+  path: '/projects/$key',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutServicesServiceIdIndexRoute =
   LayoutServicesServiceIdIndexRouteImport.update({
     id: '/$serviceId/',
     path: '/$serviceId/',
     getParentRoute: () => LayoutServicesRoute,
+  } as any)
+const LayoutSecurityServicesIndexRoute =
+  LayoutSecurityServicesIndexRouteImport.update({
+    id: '/security/services/',
+    path: '/security/services/',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutSecurityFindingsIndexRoute =
+  LayoutSecurityFindingsIndexRouteImport.update({
+    id: '/security/findings/',
+    path: '/security/findings/',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutSecurityServicesNameRoute =
+  LayoutSecurityServicesNameRouteImport.update({
+    id: '/security/services/$name',
+    path: '/security/services/$name',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutSecurityInterfacesIdRoute =
+  LayoutSecurityInterfacesIdRouteImport.update({
+    id: '/security/interfaces/$id',
+    path: '/security/interfaces/$id',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutSecurityFindingsIdRoute =
+  LayoutSecurityFindingsIdRouteImport.update({
+    id: '/security/findings/$id',
+    path: '/security/findings/$id',
+    getParentRoute: () => LayoutRoute,
   } as any)
 const LayoutServicesServiceIdEndpointIdIndexRoute =
   LayoutServicesServiceIdEndpointIdIndexRouteImport.update({
@@ -119,10 +234,28 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
   '/items': typeof LayoutItemsRoute
+  '/security-dashboard': typeof LayoutSecurityDashboardRoute
   '/services': typeof LayoutServicesRouteWithChildren
   '/settings': typeof LayoutSettingsRoute
+  '/projects/$key': typeof LayoutProjectsKeyRoute
+  '/security/ai-rules': typeof LayoutSecurityAiRulesRoute
+  '/security/config': typeof LayoutSecurityConfigRoute
+  '/security/cost': typeof LayoutSecurityCostRoute
+  '/security/engines': typeof LayoutSecurityEnginesRoute
+  '/security/knowledge': typeof LayoutSecurityKnowledgeRoute
+  '/security/regression': typeof LayoutSecurityRegressionRoute
+  '/security/rules': typeof LayoutSecurityRulesRoute
+  '/security/scans': typeof LayoutSecurityScansRoute
+  '/security/system-profile': typeof LayoutSecuritySystemProfileRoute
+  '/security/tasks': typeof LayoutSecurityTasksRoute
   '/business-config/': typeof LayoutBusinessConfigIndexRoute
+  '/projects/': typeof LayoutProjectsIndexRoute
   '/services/': typeof LayoutServicesIndexRoute
+  '/security/findings/$id': typeof LayoutSecurityFindingsIdRoute
+  '/security/interfaces/$id': typeof LayoutSecurityInterfacesIdRoute
+  '/security/services/$name': typeof LayoutSecurityServicesNameRoute
+  '/security/findings/': typeof LayoutSecurityFindingsIndexRoute
+  '/security/services/': typeof LayoutSecurityServicesIndexRoute
   '/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
   '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRouteWithChildren
   '/services/$serviceId/$endpointId/': typeof LayoutServicesServiceIdEndpointIdIndexRoute
@@ -135,10 +268,28 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
   '/items': typeof LayoutItemsRoute
+  '/security-dashboard': typeof LayoutSecurityDashboardRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/projects/$key': typeof LayoutProjectsKeyRoute
+  '/security/ai-rules': typeof LayoutSecurityAiRulesRoute
+  '/security/config': typeof LayoutSecurityConfigRoute
+  '/security/cost': typeof LayoutSecurityCostRoute
+  '/security/engines': typeof LayoutSecurityEnginesRoute
+  '/security/knowledge': typeof LayoutSecurityKnowledgeRoute
+  '/security/regression': typeof LayoutSecurityRegressionRoute
+  '/security/rules': typeof LayoutSecurityRulesRoute
+  '/security/scans': typeof LayoutSecurityScansRoute
+  '/security/system-profile': typeof LayoutSecuritySystemProfileRoute
+  '/security/tasks': typeof LayoutSecurityTasksRoute
   '/business-config': typeof LayoutBusinessConfigIndexRoute
+  '/projects': typeof LayoutProjectsIndexRoute
   '/services': typeof LayoutServicesIndexRoute
+  '/security/findings/$id': typeof LayoutSecurityFindingsIdRoute
+  '/security/interfaces/$id': typeof LayoutSecurityInterfacesIdRoute
+  '/security/services/$name': typeof LayoutSecurityServicesNameRoute
+  '/security/findings': typeof LayoutSecurityFindingsIndexRoute
+  '/security/services': typeof LayoutSecurityServicesIndexRoute
   '/services/$serviceId': typeof LayoutServicesServiceIdIndexRoute
   '/services/$serviceId/$endpointId': typeof LayoutServicesServiceIdEndpointIdIndexRoute
   '/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdIndexRoute
@@ -152,11 +303,29 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/items': typeof LayoutItemsRoute
+  '/_layout/security-dashboard': typeof LayoutSecurityDashboardRoute
   '/_layout/services': typeof LayoutServicesRouteWithChildren
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/projects/$key': typeof LayoutProjectsKeyRoute
+  '/_layout/security/ai-rules': typeof LayoutSecurityAiRulesRoute
+  '/_layout/security/config': typeof LayoutSecurityConfigRoute
+  '/_layout/security/cost': typeof LayoutSecurityCostRoute
+  '/_layout/security/engines': typeof LayoutSecurityEnginesRoute
+  '/_layout/security/knowledge': typeof LayoutSecurityKnowledgeRoute
+  '/_layout/security/regression': typeof LayoutSecurityRegressionRoute
+  '/_layout/security/rules': typeof LayoutSecurityRulesRoute
+  '/_layout/security/scans': typeof LayoutSecurityScansRoute
+  '/_layout/security/system-profile': typeof LayoutSecuritySystemProfileRoute
+  '/_layout/security/tasks': typeof LayoutSecurityTasksRoute
   '/_layout/business-config/': typeof LayoutBusinessConfigIndexRoute
+  '/_layout/projects/': typeof LayoutProjectsIndexRoute
   '/_layout/services/': typeof LayoutServicesIndexRoute
+  '/_layout/security/findings/$id': typeof LayoutSecurityFindingsIdRoute
+  '/_layout/security/interfaces/$id': typeof LayoutSecurityInterfacesIdRoute
+  '/_layout/security/services/$name': typeof LayoutSecurityServicesNameRoute
+  '/_layout/security/findings/': typeof LayoutSecurityFindingsIndexRoute
+  '/_layout/security/services/': typeof LayoutSecurityServicesIndexRoute
   '/_layout/services/$serviceId/': typeof LayoutServicesServiceIdIndexRoute
   '/_layout/services/$serviceId/$endpointId/$trafficId': typeof LayoutServicesServiceIdEndpointIdTrafficIdRouteWithChildren
   '/_layout/services/$serviceId/$endpointId/': typeof LayoutServicesServiceIdEndpointIdIndexRoute
@@ -172,10 +341,28 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/items'
+    | '/security-dashboard'
     | '/services'
     | '/settings'
+    | '/projects/$key'
+    | '/security/ai-rules'
+    | '/security/config'
+    | '/security/cost'
+    | '/security/engines'
+    | '/security/knowledge'
+    | '/security/regression'
+    | '/security/rules'
+    | '/security/scans'
+    | '/security/system-profile'
+    | '/security/tasks'
     | '/business-config/'
+    | '/projects/'
     | '/services/'
+    | '/security/findings/$id'
+    | '/security/interfaces/$id'
+    | '/security/services/$name'
+    | '/security/findings/'
+    | '/security/services/'
     | '/services/$serviceId/'
     | '/services/$serviceId/$endpointId/$trafficId'
     | '/services/$serviceId/$endpointId/'
@@ -188,10 +375,28 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/items'
+    | '/security-dashboard'
     | '/settings'
     | '/'
+    | '/projects/$key'
+    | '/security/ai-rules'
+    | '/security/config'
+    | '/security/cost'
+    | '/security/engines'
+    | '/security/knowledge'
+    | '/security/regression'
+    | '/security/rules'
+    | '/security/scans'
+    | '/security/system-profile'
+    | '/security/tasks'
     | '/business-config'
+    | '/projects'
     | '/services'
+    | '/security/findings/$id'
+    | '/security/interfaces/$id'
+    | '/security/services/$name'
+    | '/security/findings'
+    | '/security/services'
     | '/services/$serviceId'
     | '/services/$serviceId/$endpointId'
     | '/services/$serviceId/$endpointId/$trafficId'
@@ -204,11 +409,29 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_layout/admin'
     | '/_layout/items'
+    | '/_layout/security-dashboard'
     | '/_layout/services'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/projects/$key'
+    | '/_layout/security/ai-rules'
+    | '/_layout/security/config'
+    | '/_layout/security/cost'
+    | '/_layout/security/engines'
+    | '/_layout/security/knowledge'
+    | '/_layout/security/regression'
+    | '/_layout/security/rules'
+    | '/_layout/security/scans'
+    | '/_layout/security/system-profile'
+    | '/_layout/security/tasks'
     | '/_layout/business-config/'
+    | '/_layout/projects/'
     | '/_layout/services/'
+    | '/_layout/security/findings/$id'
+    | '/_layout/security/interfaces/$id'
+    | '/_layout/security/services/$name'
+    | '/_layout/security/findings/'
+    | '/_layout/security/services/'
     | '/_layout/services/$serviceId/'
     | '/_layout/services/$serviceId/$endpointId/$trafficId'
     | '/_layout/services/$serviceId/$endpointId/'
@@ -281,6 +504,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutServicesRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/security-dashboard': {
+      id: '/_layout/security-dashboard'
+      path: '/security-dashboard'
+      fullPath: '/security-dashboard'
+      preLoaderRoute: typeof LayoutSecurityDashboardRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/items': {
       id: '/_layout/items'
       path: '/items'
@@ -302,11 +532,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutServicesIndexRouteImport
       parentRoute: typeof LayoutServicesRoute
     }
+    '/_layout/projects/': {
+      id: '/_layout/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof LayoutProjectsIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/business-config/': {
       id: '/_layout/business-config/'
       path: '/business-config'
       fullPath: '/business-config/'
       preLoaderRoute: typeof LayoutBusinessConfigIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/tasks': {
+      id: '/_layout/security/tasks'
+      path: '/security/tasks'
+      fullPath: '/security/tasks'
+      preLoaderRoute: typeof LayoutSecurityTasksRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/system-profile': {
+      id: '/_layout/security/system-profile'
+      path: '/security/system-profile'
+      fullPath: '/security/system-profile'
+      preLoaderRoute: typeof LayoutSecuritySystemProfileRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/scans': {
+      id: '/_layout/security/scans'
+      path: '/security/scans'
+      fullPath: '/security/scans'
+      preLoaderRoute: typeof LayoutSecurityScansRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/rules': {
+      id: '/_layout/security/rules'
+      path: '/security/rules'
+      fullPath: '/security/rules'
+      preLoaderRoute: typeof LayoutSecurityRulesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/regression': {
+      id: '/_layout/security/regression'
+      path: '/security/regression'
+      fullPath: '/security/regression'
+      preLoaderRoute: typeof LayoutSecurityRegressionRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/knowledge': {
+      id: '/_layout/security/knowledge'
+      path: '/security/knowledge'
+      fullPath: '/security/knowledge'
+      preLoaderRoute: typeof LayoutSecurityKnowledgeRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/engines': {
+      id: '/_layout/security/engines'
+      path: '/security/engines'
+      fullPath: '/security/engines'
+      preLoaderRoute: typeof LayoutSecurityEnginesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/cost': {
+      id: '/_layout/security/cost'
+      path: '/security/cost'
+      fullPath: '/security/cost'
+      preLoaderRoute: typeof LayoutSecurityCostRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/config': {
+      id: '/_layout/security/config'
+      path: '/security/config'
+      fullPath: '/security/config'
+      preLoaderRoute: typeof LayoutSecurityConfigRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/ai-rules': {
+      id: '/_layout/security/ai-rules'
+      path: '/security/ai-rules'
+      fullPath: '/security/ai-rules'
+      preLoaderRoute: typeof LayoutSecurityAiRulesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/projects/$key': {
+      id: '/_layout/projects/$key'
+      path: '/projects/$key'
+      fullPath: '/projects/$key'
+      preLoaderRoute: typeof LayoutProjectsKeyRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/services/$serviceId/': {
@@ -315,6 +629,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/services/$serviceId/'
       preLoaderRoute: typeof LayoutServicesServiceIdIndexRouteImport
       parentRoute: typeof LayoutServicesRoute
+    }
+    '/_layout/security/services/': {
+      id: '/_layout/security/services/'
+      path: '/security/services'
+      fullPath: '/security/services/'
+      preLoaderRoute: typeof LayoutSecurityServicesIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/findings/': {
+      id: '/_layout/security/findings/'
+      path: '/security/findings'
+      fullPath: '/security/findings/'
+      preLoaderRoute: typeof LayoutSecurityFindingsIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/services/$name': {
+      id: '/_layout/security/services/$name'
+      path: '/security/services/$name'
+      fullPath: '/security/services/$name'
+      preLoaderRoute: typeof LayoutSecurityServicesNameRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/interfaces/$id': {
+      id: '/_layout/security/interfaces/$id'
+      path: '/security/interfaces/$id'
+      fullPath: '/security/interfaces/$id'
+      preLoaderRoute: typeof LayoutSecurityInterfacesIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/security/findings/$id': {
+      id: '/_layout/security/findings/$id'
+      path: '/security/findings/$id'
+      fullPath: '/security/findings/$id'
+      preLoaderRoute: typeof LayoutSecurityFindingsIdRouteImport
+      parentRoute: typeof LayoutRoute
     }
     '/_layout/services/$serviceId/$endpointId/': {
       id: '/_layout/services/$serviceId/$endpointId/'
@@ -378,19 +727,55 @@ const LayoutServicesRouteWithChildren = LayoutServicesRoute._addFileChildren(
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutItemsRoute: typeof LayoutItemsRoute
+  LayoutSecurityDashboardRoute: typeof LayoutSecurityDashboardRoute
   LayoutServicesRoute: typeof LayoutServicesRouteWithChildren
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutProjectsKeyRoute: typeof LayoutProjectsKeyRoute
+  LayoutSecurityAiRulesRoute: typeof LayoutSecurityAiRulesRoute
+  LayoutSecurityConfigRoute: typeof LayoutSecurityConfigRoute
+  LayoutSecurityCostRoute: typeof LayoutSecurityCostRoute
+  LayoutSecurityEnginesRoute: typeof LayoutSecurityEnginesRoute
+  LayoutSecurityKnowledgeRoute: typeof LayoutSecurityKnowledgeRoute
+  LayoutSecurityRegressionRoute: typeof LayoutSecurityRegressionRoute
+  LayoutSecurityRulesRoute: typeof LayoutSecurityRulesRoute
+  LayoutSecurityScansRoute: typeof LayoutSecurityScansRoute
+  LayoutSecuritySystemProfileRoute: typeof LayoutSecuritySystemProfileRoute
+  LayoutSecurityTasksRoute: typeof LayoutSecurityTasksRoute
   LayoutBusinessConfigIndexRoute: typeof LayoutBusinessConfigIndexRoute
+  LayoutProjectsIndexRoute: typeof LayoutProjectsIndexRoute
+  LayoutSecurityFindingsIdRoute: typeof LayoutSecurityFindingsIdRoute
+  LayoutSecurityInterfacesIdRoute: typeof LayoutSecurityInterfacesIdRoute
+  LayoutSecurityServicesNameRoute: typeof LayoutSecurityServicesNameRoute
+  LayoutSecurityFindingsIndexRoute: typeof LayoutSecurityFindingsIndexRoute
+  LayoutSecurityServicesIndexRoute: typeof LayoutSecurityServicesIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutItemsRoute: LayoutItemsRoute,
+  LayoutSecurityDashboardRoute: LayoutSecurityDashboardRoute,
   LayoutServicesRoute: LayoutServicesRouteWithChildren,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutProjectsKeyRoute: LayoutProjectsKeyRoute,
+  LayoutSecurityAiRulesRoute: LayoutSecurityAiRulesRoute,
+  LayoutSecurityConfigRoute: LayoutSecurityConfigRoute,
+  LayoutSecurityCostRoute: LayoutSecurityCostRoute,
+  LayoutSecurityEnginesRoute: LayoutSecurityEnginesRoute,
+  LayoutSecurityKnowledgeRoute: LayoutSecurityKnowledgeRoute,
+  LayoutSecurityRegressionRoute: LayoutSecurityRegressionRoute,
+  LayoutSecurityRulesRoute: LayoutSecurityRulesRoute,
+  LayoutSecurityScansRoute: LayoutSecurityScansRoute,
+  LayoutSecuritySystemProfileRoute: LayoutSecuritySystemProfileRoute,
+  LayoutSecurityTasksRoute: LayoutSecurityTasksRoute,
   LayoutBusinessConfigIndexRoute: LayoutBusinessConfigIndexRoute,
+  LayoutProjectsIndexRoute: LayoutProjectsIndexRoute,
+  LayoutSecurityFindingsIdRoute: LayoutSecurityFindingsIdRoute,
+  LayoutSecurityInterfacesIdRoute: LayoutSecurityInterfacesIdRoute,
+  LayoutSecurityServicesNameRoute: LayoutSecurityServicesNameRoute,
+  LayoutSecurityFindingsIndexRoute: LayoutSecurityFindingsIndexRoute,
+  LayoutSecurityServicesIndexRoute: LayoutSecurityServicesIndexRoute,
 }
 
 const LayoutRouteWithChildren =

@@ -13,15 +13,15 @@
 
 ### 基础设施构建
 
-#### [NEW] [stitch-cli.js](file:///root/omniapi/frontend/scripts/stitch-cli.js)
+#### [NEW] [stitch-cli.js](file:///root/security-platform/frontend/scripts/stitch-cli.js)
 封装了 `Client` 和 `StdioClientTransport`。核心逻辑包括：
 - 自动连接到本地 `stitch-mcp-server`。
 - 函数化封装 `callTool`，提供更高层级的 API。
 
-#### [MODIFY] [package.json](file:///root/omniapi/frontend/package.json)
+#### [MODIFY] [package.json](file:///root/security-platform/frontend/package.json)
 增加 `"stitch": "node scripts/stitch-cli.js"`，支持 `npm run stitch <command>`。
 
-#### [NEW] [stitch.md](file:///root/omniapi/.agent/workflows/stitch.md)
+#### [NEW] [stitch.md](file:///root/security-platform/.agent/workflows/stitch.md)
 工作流规范：
 1. 检查设计 ID。
 2. 运行 `npm run stitch sync "..."`。

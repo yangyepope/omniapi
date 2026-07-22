@@ -14,7 +14,12 @@ export function getJsonDiff(objOld: any, objNew: any, path = ""): DiffResult[] {
   let diffs: DiffResult[] = []
 
   // 1. 处理非对象类型
-  if (typeof objOld !== typeof objNew || (typeof objOld !== "object" || objOld === null || objNew === null)) {
+  if (
+    typeof objOld !== typeof objNew ||
+    typeof objOld !== "object" ||
+    objOld === null ||
+    objNew === null
+  ) {
     if (objOld !== objNew) {
       diffs.push({ path, type: "modified", oldValue: objOld, newValue: objNew })
     }

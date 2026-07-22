@@ -11,9 +11,9 @@
  * 全屏弹层与内联编辑区共享同一 body 状态，保持数据一致。
  */
 
-import { useState } from "react"
 import { Check, Copy, Maximize2, X } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
+import { AnimatePresence, motion } from "motion/react"
+import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { copyText } from "./copy-utils"
 
@@ -57,10 +57,15 @@ export function BodyEditor({ body, onChange }: BodyEditorProps) {
         {/* 工具栏：标签 + 格式化 / 复制 / 全屏操作 */}
         <div className="flex items-center justify-between px-4 py-2 bg-surface-container-low/50 border-b border-outline-variant/5">
           <div className="flex items-center gap-2">
-            <Badge variant="neutral" className="text-[9px] font-black uppercase">
+            <Badge
+              variant="neutral"
+              className="text-[9px] font-black uppercase"
+            >
               JSON
             </Badge>
-            <span className="text-[9px] text-on-surface-variant/30 font-mono">REQUEST BODY</span>
+            <span className="text-[9px] text-on-surface-variant/30 font-mono">
+              REQUEST BODY
+            </span>
           </div>
           <div className="flex items-center gap-3">
             {/* 格式化：只对 JSON 有效，其他格式静默忽略 */}
@@ -124,10 +129,15 @@ export function BodyEditor({ body, onChange }: BodyEditorProps) {
               {/* 全屏弹层顶栏 */}
               <div className="flex items-center justify-between px-5 py-3 bg-surface-container-low/50 border-b border-outline-variant/5 shrink-0">
                 <div className="flex items-center gap-3">
-                  <Badge variant="neutral" className="text-[9px] font-black uppercase">
+                  <Badge
+                    variant="neutral"
+                    className="text-[9px] font-black uppercase"
+                  >
                     JSON
                   </Badge>
-                  <span className="text-xs font-bold text-on-surface-variant">Request Body</span>
+                  <span className="text-xs font-bold text-on-surface-variant">
+                    Request Body
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <button

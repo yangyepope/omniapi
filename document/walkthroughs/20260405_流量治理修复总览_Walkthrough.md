@@ -1,6 +1,6 @@
 # 流量大治理：重放诊断透明化与 UI 布局优化汇总
 
-本次任务聚焦于提升 **OmniAPI 流量治理系统** 的诊断透明度与前端交互美感，解决了用户在使用过程中遇到的数值异常及布局冗余问题。
+本次任务聚焦于提升 **SecurityPlatform 流量治理系统** 的诊断透明度与前端交互美感，解决了用户在使用过程中遇到的数值异常及布局冗余问题。
 
 ## 🚀 主要改动
 
@@ -24,8 +24,8 @@
 ## 🏗️ 产出记录文件 (Audit Logs)
 
 所有修复过程已按项目规范在 `bugfix/` 目录下完成归档：
-- [20260405_replay_status_0_and_ui_layout_fix.md](file:///root/omniapi/bugfix/20260405_replay_status_0_and_ui_layout_fix.md)
-- [20260405_unique_traffic_count_zero_fix.md](file:///root/omniapi/bugfix/20260405_unique_traffic_count_zero_fix.md)
+- [20260405_replay_status_0_and_ui_layout_fix.md](file:///root/security-platform/bugfix/20260405_replay_status_0_and_ui_layout_fix.md)
+- [20260405_unique_traffic_count_zero_fix.md](file:///root/security-platform/bugfix/20260405_unique_traffic_count_zero_fix.md)
 
 ---
 

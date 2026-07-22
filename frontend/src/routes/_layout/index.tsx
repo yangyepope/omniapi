@@ -1,27 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Plus, ShieldCheck } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { motion } from "motion/react"
-import useAuth from "@/hooks/useAuth"
 import { DashboardDesign } from "@/components/Dashboard"
+import { Button } from "@/components/ui/button"
+import useAuth from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,
   head: () => ({
     meta: [
       {
-        title: "Dashboard - OmniAPI",
+        title: "Dashboard - Security Platform",
       },
     ],
   }),
 })
 
-
 function Dashboard() {
   const { user: currentUser } = useAuth()
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -39,12 +38,16 @@ function Dashboard() {
           <div className="flex items-center gap-2 mt-3 p-1">
             <ShieldCheck className="w-[18px] h-[18px] text-white fill-blue-600" />
             <p className="text-sm text-gray-500 font-medium tracking-wide">
-              欢迎回到 <span className="text-gray-600 font-bold">流量大师</span> 安全控制中心
+              欢迎回到 <span className="text-gray-600 font-bold">流量大师</span>{" "}
+              安全控制中心
             </p>
           </div>
         </div>
         <div className="flex gap-4 mb-1">
-          <Button variant="outline" className="rounded-full border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-6 bg-white shadow-sm">
+          <Button
+            variant="outline"
+            className="rounded-full border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-6 bg-white shadow-sm"
+          >
             导出报告
           </Button>
           <Button className="rounded-full bg-[#00f1fe] text-black font-black px-6 hover:bg-[#00dcf5] hover:shadow-md transition-all border-none shadow-sm">

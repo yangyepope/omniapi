@@ -22,12 +22,12 @@ import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 
 const formSchema = z
   .object({
-    email: z.string().email(),
+    email: z.string().min(1, { message: "请输入用户名或邮箱" }), // 登录标识(用户名或邮箱):与后端放宽后的 str 校验对齐
     full_name: z.string().min(1, { message: "Full Name is required" }),
     password: z
       .string()
       .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(6, { message: "Password must be at least 6 characters" }),
     confirm_password: z
       .string()
       .min(1, { message: "Password confirmation is required" }),

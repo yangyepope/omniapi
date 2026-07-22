@@ -42,6 +42,6 @@ description: "Adds detailed Chinese line-by-line comments to a target file witho
 ## 使用示例（用户怎么说）
 
 - “对我当前打开的文件逐行加中文详细注释，只加注释不要改逻辑。”
-- “请用 line-commenter 处理 /root/omniapi/backend/app/models.py，把每行都注释清楚。”
+- “请用 line-commenter 处理 /root/security-platform/backend/app/models.py，把每行都注释清楚。”
 - “我接下来改动的代码都按逐行注释风格补齐。”
 

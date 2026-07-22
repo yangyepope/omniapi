@@ -2,9 +2,9 @@
 #
 # 独立服务：监听 GitLab Webhook → Joern CPG → Neo4j 持久化 →
 #         Claude 语义审计（10 Agent + 397 规则） → 汇总归并 →
-#         结果回传 omniapi 流量采集平台。
+#         结果回传 security-platform 流量采集平台。
 #
-# 与 omniapi 关系：通过 HTTP 内部接口推送扫描结论；不直接访问主库。
+# 与 security-platform 关系：通过 HTTP 内部接口推送扫描结论；不直接访问主库。
 #
 # 部署形态：仅在 Docker 镜像里运行；不构建 / 发布 wheel，
 # 因此本文件主要用于声明依赖 + 配置 lint/test 工具，hatchling

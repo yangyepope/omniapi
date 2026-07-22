@@ -14,12 +14,15 @@ function copyViaExecCommand(text: string): boolean {
   const textarea = document.createElement("textarea")
   textarea.value = text
   // 防止元素影响页面布局和滚动位置
-  textarea.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;"
+  textarea.style.cssText =
+    "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;"
   document.body.appendChild(textarea)
   textarea.focus()
   textarea.select()
   try {
-    return (document as unknown as { execCommand: (cmd: string) => boolean }).execCommand("copy")
+    return (
+      document as unknown as { execCommand: (cmd: string) => boolean }
+    ).execCommand("copy")
   } catch {
     return false
   } finally {
